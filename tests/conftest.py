@@ -1,5 +1,6 @@
 """ Basic configuration for testing """
 
+
 def pytest_itemcollected(item):
     """Make tests names more readable in the tests output."""
     item._nodeid = (
