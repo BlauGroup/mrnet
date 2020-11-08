@@ -22,7 +22,7 @@ __version__ = "0.1"
 test_dir = os.path.join(os.path.dirname(__file__))
 
 
-class TestKMCReactionPropagatorFxns(PymatgenTest):
+class TestKMCReactionPropagator(PymatgenTest):
     def setUp(self):
         """ Create an initial state and reaction network, based on H2O molecule.
         Species include H2, H2O, H, O, O2, OH, H3O
