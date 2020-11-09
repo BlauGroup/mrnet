@@ -1,4 +1,11 @@
 """ Basic configuration for testing """
+import pytest
+from pathlib import Path
+
+
+@pytest.fixture(scope="session")
+def test_files():
+    return Path(__file__).parent.parent.joinpath("test_files")
 
 
 def pytest_itemcollected(item):
