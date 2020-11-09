@@ -1,10 +1,9 @@
 from abc import ABCMeta, abstractmethod
 import copy
 import itertools
+from typing import List, Dict, Tuple, Optional
 import numpy as np
 from scipy.constants import h, k, R
-from collections.abc import Iterable
-from typing import Dict, Tuple, Optional, Union, List
 
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
@@ -14,8 +13,7 @@ from monty.serialization import loadfn
 
 from pymatgen.analysis.graphs import MolGraphSplitError
 from pymatgen.entries.mol_entry import MoleculeEntry
-
-from mrnet.core.rates import (
+from pymatgen.reaction_network.reaction_rates import (
     ReactionRateCalculator,
     ExpandedBEPRateCalculator,
     RedoxRateCalculator,
@@ -32,7 +30,6 @@ MappingDict = Dict[str, Dict[int, Dict[int, List[MoleculeEntry]]]]
 Mapping_Energy_Dict = Dict[str, float]
 Mapping_ReactionType_Dict = Dict[str, str]
 Mapping_Record_Dict = Dict[str, List[str]]
-Atom_Mapping_Dict = Dict[int, int]
 
 
 class Reaction(MSONable, metaclass=ABCMeta):
@@ -70,6 +67,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
         self.p_dicts = [p.as_dict() for p in products]
         self.entry_ids = {e.entry_id for e in reactants}
         self.parameters = parameters or dict()
+        self.rct_indices = [r.parameters.get("ind") for r in reactants]
+        self.pro_indices = [p.parameters.get("ind") for p in products]
 
     def __in__(self, entry: MoleculeEntry):
         return entry.entry_id in self.entry_ids
@@ -266,9 +265,6 @@ class RedoxReaction(Reaction):
         self.pro_energy = product.energy
         self.num_rct = 1
         self.num_pro = 1
-
-        self.rct_ind = reactant.parameters.get("ind")
-        self.pro_ind = product.parameters.get("ind")
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -548,10 +544,9 @@ class IntramolSingleBondChangeReaction(Reaction):
         self.e1_free_energy_method = product.free_energy
         self.rct_energy = reactant.energy
         self.pro_energy = product.energy
+
         self.num_rct = 1
         self.num_pro = 1
-        self.rct_ind = reactant.parameters.get("ind")
-        self.pro_ind = product.parameters.get("ind")
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -796,20 +791,25 @@ class IntermolecularReaction(Reaction):
 
         """
 
+        product_0 = product[0]
+        product_1 = product[1]
         self.class_type = "IntermolecularReaction"
         super().__init__(
             [reactant], product, transition_state=transition_state, parameters=parameters,
         )
         self.reaction_type()
-        self.rct_ind = reactant.parameters.get("ind")
-        self.pro0_ind = product[0].parameters.get("ind")
-        self.pro1_ind = product[1].parameters.get("ind")
-        self.rct_free_energy = reactant.free_energy
-        self.pro0_free_energy = product[0].free_energy
-        self.pro1_free_energy = product[1].free_energy
+        self.rct_free_energy = reactant.get_free_energy
+        self.pro0_free_energy = product_0.get_free_energy
+        self.pro1_free_energy = product_1.get_free_energy
         self.rct_energy = reactant.energy
-        self.pro0_energy = product[0].energy
-        self.pro1_energy = product[1].energy
+        self.pro0_energy = product_0.energy
+        self.pro1_energy = product_1.energy
+        self.rct_charge = reactant.charge
+        self.pro0_charge = product_0.charge
+        self.pro1_charge = product_1.charge
+        self.rct_formula = reactant.formula
+        self.pro0_formula = product_0.formula
+        self.pro1_formula = product_1.formula
 
     def graph_representation(self) -> nx.DiGraph:
 
@@ -835,7 +835,7 @@ class IntermolecularReaction(Reaction):
                         if charge not in families:
                             families[charge] = dict()
                         for entry in entries[formula][Nbonds][charge]:
-                            for edge in entry.edges:
+                            for edge in entry.bonds:
                                 bond = [(edge[0], edge[1])]
                                 try:
                                     frags = entry.mol_graph.split_molecule_subgraphs(
@@ -924,9 +924,7 @@ class IntermolecularReaction(Reaction):
             and self.rct_free_energy() is not None
         ):
             self.free_energy_A = (
-                self.pro0_free_energy(temp=temperature)
-                + self.pro1_free_energy(temp=temperature)
-                - self.rct_free_energy(temp=temperature)
+                self.pro0_free_energy() + self.pro1_free_energy() - self.rct_free_energy()
             )
             self.free_energy_B = 0 - self.free_energy_A
 
@@ -1093,15 +1091,13 @@ class CoordinationBondChangeReaction(Reaction):
             [reactant], product, transition_state=transition_state, parameters=parameters,
         )
         self.reaction_type()
-        self.rct_ind = reactant.parameters.get("ind")
-        self.pro0_ind = product[0].parameters.get("ind")
-        self.pro1_ind = product[1].parameters.get("ind")
-        self.rct_free_energy = reactant.free_energy
+        self.rct_free_energy = reactant.get_free_energy
         self.pro0_free_energy = product[0].free_energy
         self.pro1_free_energy = product[1].free_energy
-        self.rct_energy = reactant.energy
-        self.pro0_energy = product[0].energy
+
         self.pro1_energy = product[1].energy
+        self.pro0_energy = product[0].energy
+        self.rct_energy = reactant.energy
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -1264,13 +1260,13 @@ class CoordinationBondChangeReaction(Reaction):
            on the reactant and product of the CoordinationBondChangeReaction
            object, and the backwards of this reaction would be free_energy_B.
         """
-        g_entry = self.rct_free_energy
-        g_0 = self.pro0_free_energy
-        g_1 = self.pro1_free_energy
-
-        if g_1() is not None and g_0() is not None and g_entry() is not None:
+        if (
+            self.pro1_free_energy() is not None
+            and self.pro0_free_energy() is not None
+            and self.rct_free_energy() is not None
+        ):
             self.free_energy_A = (
-                g_0(temp=temperature) + g_1(temp=temperature) - g_entry(temp=temperature)
+                self.pro0_free_energy() + self.pro1_free_energy() - self.rct_free_energy()
             )
             self.free_energy_B = 0 - self.free_energy_A
 
@@ -1296,7 +1292,7 @@ class CoordinationBondChangeReaction(Reaction):
             and self.rct_energy is not None
         ):
             self.energy_A = self.pro0_energy + self.pro1_energy - self.rct_energy
-            self.energy_B = 0 - self.energy_A
+            self.energy_B = -self.energy_A
 
         else:
             self.energy_A = None
@@ -1354,11 +1350,11 @@ class CoordinationBondChangeReaction(Reaction):
         d = {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
-            "reactants": self.r_dicts,
-            "products": self.p_dicts,
-            "reactant": self.r_dicts[0],
-            "product_0": self.p_dicts[0],
-            "product_1": self.p_dicts[1],
+            "reactants": [r.as_dict() for r in self.reactants],
+            "products": [p.as_dict() for p in self.products],
+            "reactant": self.reactant.as_dict(),
+            "product_0": self.product_0.as_dict(),
+            "product_1": self.product_1.as_dict(),
             "transition_state": ts,
             "rate_calculator": rc,
             "parameters": self.parameters,
@@ -1432,8 +1428,8 @@ class ConcertedReaction(Reaction):
 
         """
 
-        self.reactants = reactant
-        self.products = product
+        # self.reactants = reactant
+        # self.products = product
         self.electron_free_energy = electron_free_energy
         self.electron_energy = None
         self.class_type = "ConcertedReaction"
@@ -1441,6 +1437,12 @@ class ConcertedReaction(Reaction):
             reactant, product, transition_state=transition_state, parameters=parameters
         )
         self.reaction_type()
+        self.rct_free_energies = [r.get_free_energy for r in reactant]
+        self.pro_free_energies = [p.get_free_energy for p in product]
+        self.rct_energies = [r.energy for r in reactant]
+        self.pro_energies = [p.energy for p in product]
+        self.rct_charges = [r.charge for r in reactant]
+        self.pro_charges = [p.charge for p in product]
 
     def graph_representation(self,) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
 
@@ -1450,14 +1452,15 @@ class ConcertedReaction(Reaction):
         IntermolecularReaction must be of type 1 reactant -> 2 products
         :return nx.Digraph object of a single IntermolecularReaction object
         """
-        if len(self.reactants) == len(self.products) == 1:
+        if len(self.rct_indices) == len(self.pro_indices) == 1:
             return graph_rep_1_1(self)
-        elif len(self.reactants) == 1 and len(self.products) == 2:
+        elif len(self.rct_indices) == 1 and len(self.pro_indices) == 2:
             return graph_rep_1_2(self)
-        elif len(self.reactants) == 2 and len(self.products) == 1:
-            self.reactants, self.products = self.products, self.reactants
+        elif len(self.rct_indices) == 2 and len(self.pro_indices) == 1:
+            self.rct_indices, self.pro_indices = self.pro_indices, self.rct_indices
+            self.reactant_ids, self.product_ids = self.product_ids, self.reactant_ids
             return graph_rep_1_2(self)
-        elif len(self.reactants) == len(self.products) == 2:
+        elif len(self.rct_indices) == len(self.pro_indices) == 2:
             return graph_rep_2_2(self)
 
     @classmethod
@@ -1551,17 +1554,13 @@ class ConcertedReaction(Reaction):
         else:
             electron_free = self.electron_free_energy
 
-        cond_rct = all(reactant.free_energy() is not None for reactant in self.reactants)
-        cond_pro = all(product.free_energy() is not None for product in self.products)
+        cond_rct = all(nrg() is not None for nrg in self.rct_free_energies)
+        cond_pro = all(nrg() is not None for nrg in self.pro_free_energies)
         if cond_rct and cond_pro:
-            reactant_charge = np.sum([item.charge for item in self.reactants])
-            product_charge = np.sum([item.charge for item in self.products])
-            reactant_free_energy = np.sum(
-                [item.free_energy(temp=temperature) for item in self.reactants]
-            )
-            product_free_energy = np.sum(
-                [item.free_energy(temp=temperature) for item in self.products]
-            )
+            reactant_charge = np.sum([item for item in self.rct_charges])
+            product_charge = np.sum([item for item in self.pro_charges])
+            reactant_free_energy = np.sum([item() for item in self.rct_free_energies])
+            product_free_energy = np.sum([item() for item in self.pro_free_energies])
             total_charge_change = product_charge - reactant_charge
             free_energy_A = (
                 product_free_energy - reactant_free_energy + total_charge_change * electron_free
@@ -1587,13 +1586,13 @@ class ConcertedReaction(Reaction):
            object, and the backwards of this reaction would be energy_B.
            Electron electronic energy set to 0 for now.
         """
-        if all(reactant.energy is None for reactant in self.reactants) and all(
-            product.energy is None for product in self.products
+        if all(energy is None for energy in self.rct_energies) and all(
+            energy is None for energy in self.pro_energies
         ):
-            reactant_total_charge = np.sum([item.charge for item in self.reactants])
-            product_total_charge = np.sum([item.charge for item in self.products])
-            reactant_total_energy = np.sum([item.energy for item in self.reactants])
-            product_total_energy = np.sum([item.energy for item in self.products])
+            reactant_total_charge = np.sum([charge for item in self.rct_charges])
+            product_total_charge = np.sum([charge for item in self.pro_charges])
+            reactant_total_energy = np.sum([energy for item in self.rct_energies])
+            product_total_energy = np.sum([energy for item in self.pro_energies])
             # total_charge_change = product_total_charge - reactant_total_charge
             energy_A = product_total_energy - reactant_total_energy
             energy_B = reactant_total_energy - product_total_energy
@@ -1704,16 +1703,14 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     product_1 = reaction.products[1]
     graph = nx.DiGraph()
 
-    if product_0.parameters["ind"] <= product_1.parameters["ind"]:
-        two_prod_name = str(product_0.parameters["ind"]) + "+" + str(product_1.parameters["ind"])
-        two_prod_name_entry_ids = str(product_0.entry_id) + "+" + str(product_1.entry_id)
+    if prod0_index <= prod1_index:
+        two_prod_name = str(prod0_index) + "+" + str(prod1_index)
+        two_prod_name_entry_ids = str(reaction.product_ids[0]) + "+" + str(reaction.product_ids[1])
     else:
-        two_prod_name = str(product_1.parameters["ind"]) + "+" + str(product_0.parameters["ind"])
-        two_prod_name_entry_ids = str(product_1.entry_id) + "+" + str(product_0.entry_id)
+        two_prod_name = str(prod1_index) + "+" + str(prod0_index)
+        two_prod_name_entry_ids = str(reaction.product_ids[1]) + "+" + str(reaction.product_ids[0])
 
-    reactants_ind_list = np.array(
-        [reactant_0.parameters["ind"], reactant_1.parameters["ind"], reactant_2.parameters["ind"],]
-    )
+    reactants_ind_list = np.array([rct0_index, rct1_index, rct2_index,])
     reactant_inds = np.argsort(reactants_ind_list)
     reactants_ind_list = np.sort(reactants_ind_list)
 
@@ -1732,98 +1729,62 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
         + str(reactants_ind_list[reactant_inds[2]])
     )
 
-    two_prod_name0 = str(product_0.parameters["ind"]) + "+PR_" + str(product_1.parameters["ind"])
-    two_prod_name1 = str(product_1.parameters["ind"]) + "+PR_" + str(product_0.parameters["ind"])
+    two_prod_name0 = str(prod0_index) + "+PR_" + str(prod1_index)
+    two_prod_name1 = str(prod1_index) + "+PR_" + str(prod0_index)
 
-    if reactant_1.parameters["ind"] <= reactant_2.parameters["ind"]:
-        three_reac_name0 = (
-            str(reactant_0.parameters["ind"])
-            + "+PR_"
-            + str(reactant_1.parameters["ind"])
-            + "+PR_"
-            + str(reactant_2.parameters["ind"])
-        )
+    if rct1_index <= rct2_index:
+        three_reac_name0 = str(rct0_index) + "+PR_" + str(rct1_index) + "+PR_" + str(rct2_index)
         three_reac_entry_ids0 = (
-            str(reactant_0.entry_id)
+            str(reaction.reactant_ids[0])
             + "+PR_"
-            + str(reactant_1.entry_id)
+            + str(reaction.reactant_ids[1])
             + "+PR_"
-            + str(reactant_2.entry_id)
+            + str(reaction.reactant_ids[2])
         )
     else:
-        three_reac_name0 = (
-            str(reactant_0.parameters["ind"])
-            + "+PR_"
-            + str(reactant_2.parameters["ind"])
-            + "+PR_"
-            + str(reactant_1.parameters["ind"])
-        )
+        three_reac_name0 = str(rct0_index) + "+PR_" + str(rct2_index) + "+PR_" + str(rct1_index)
         three_reac_entry_ids0 = (
-            str(reactant_0.entry_id)
+            str(reaction.reactant_ids[0])
             + "+PR_"
-            + str(reactant_2.entry_id)
+            + str(reaction.reactant_ids[2])
             + "+PR_"
-            + str(reactant_1.entry_id)
+            + str(reaction.reactant_ids[1])
         )
-    if reactant_0.parameters["ind"] <= reactant_2.parameters["ind"]:
-        three_reac_name1 = (
-            str(reactant_1.parameters["ind"])
-            + "+PR_"
-            + str(reactant_0.parameters["ind"])
-            + "+PR_"
-            + str(reactant_2.parameters["ind"])
-        )
+    if rct0_index <= rct2_index:
+        three_reac_name1 = str(rct1_index) + "+PR_" + str(rct0_index) + "+PR_" + str(rct2_index)
         three_reac_entry_ids1 = (
-            str(reactant_1.entry_id)
+            str(reaction.reactant_ids[1])
             + "+PR_"
-            + str(reactant_0.entry_id)
+            + str(reaction.reactant_ids[0])
             + "+PR_"
-            + str(reactant_2.entry_id)
+            + str(reaction.reactant_ids[2])
         )
     else:
-        three_reac_name1 = (
-            str(reactant_1.parameters["ind"])
-            + "+PR_"
-            + str(reactant_2.parameters["ind"])
-            + "+PR_"
-            + str(reactant_0.parameters["ind"])
-        )
+        three_reac_name1 = str(rct1_index) + "+PR_" + str(rct2_index) + "+PR_" + str(rct0_index)
         three_reac_entry_ids1 = (
-            str(reactant_1.entry_id)
+            str(reaction.reactant_ids[1])
             + "+PR_"
-            + str(reactant_2.entry_id)
+            + str(reaction.reactant_ids[2])
             + "+PR_"
-            + str(reactant_0.entry_id)
+            + str(reaction.reactant_ids[0])
         )
-    if reactant_0.parameters["ind"] <= reactant_1.parameters["ind"]:
-        three_reac_name2 = (
-            str(reactant_2.parameters["ind"])
-            + "+PR_"
-            + str(reactant_0.parameters["ind"])
-            + "+PR_"
-            + str(reactant_1.parameters["ind"])
-        )
+    if rct0_index <= rct1_index:
+        three_reac_name2 = str(rct2_index) + "+PR_" + str(rct0_index) + "+PR_" + str(rct1_index)
         three_reac_entry_ids2 = (
-            str(reactant_2.entry_id)
+            str(reaction.reactant_ids[2])
             + "+PR_"
-            + str(reactant_0.entry_id)
+            + str(reaction.reactant_ids[0])
             + "+PR_"
-            + str(reactant_1.entry_id)
+            + str(reaction.reactant_ids[1])
         )
     else:
-        three_reac_name2 = (
-            str(reactant_2.parameters["ind"])
-            + "+PR_"
-            + str(reactant_1.parameters["ind"])
-            + "+PR_"
-            + str(reactant_0.parameters["ind"])
-        )
+        three_reac_name2 = str(rct2_index) + "+PR_" + str(rct1_index) + "+PR_" + str(rct0_index)
         three_reac_entry_ids2 = (
-            str(reactant_2.entry_id)
+            str(reaction.reactant_ids[2])
             + "+PR_"
-            + str(reactant_1.entry_id)
+            + str(reaction.reactant_ids[1])
             + "+PR_"
-            + str(reactant_0.entry_id)
+            + str(reaction.reactant_ids[0])
         )
 
     node_name_A0 = three_reac_name0 + "," + two_prod_name
@@ -1832,8 +1793,8 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     node_name_B0 = two_prod_name0 + "," + reactants_name
     node_name_B1 = two_prod_name1 + "," + reactants_name
 
-    two_prod_entry_ids0 = str(product_0.entry_id) + "+PR_" + str(product_1.entry_id)
-    two_prod_entry_ids1 = str(product_1.entry_id) + "+PR_" + str(product_0.entry_id)
+    two_prod_entry_ids0 = str(reaction.product_ids[0]) + "+PR_" + str(reaction.product_ids[1])
+    two_prod_entry_ids1 = str(reaction.product_ids[1]) + "+PR_" + str(reaction.product_ids[0])
 
     entry_ids_name_A0 = three_reac_entry_ids0 + "," + two_prod_name_entry_ids
     entry_ids_name_A1 = three_reac_entry_ids1 + "," + two_prod_name_entry_ids
@@ -1993,45 +1954,49 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
        IntramolSingleBondChangeReaction, Concerted)
     """
 
-    if len(reaction.reactants) != 2 or len(reaction.products) != 2:
+    if len(reaction.rct_indices) != 2 or len(reaction.rct_indices) != 2:
         raise ValueError("Must provide reaction with 2 reactants and 2 products for graph_rep_2_2")
 
-    reactant_0 = reaction.reactants[0]
-    reactant_1 = reaction.reactants[1]
-    product_0 = reaction.products[0]
-    product_1 = reaction.products[1]
+    prod0_index = reaction.pro_indices[0]
+    prod1_index = reaction.pro_indices[1]
+    rct0_index = reaction.rct_indices[0]
+    rct1_index = reaction.rct_indices[1]
     graph = nx.DiGraph()
 
-    if product_0.parameters["ind"] <= product_1.parameters["ind"]:
-        two_prod_name = str(product_0.parameters["ind"]) + "+" + str(product_1.parameters["ind"])
-        two_prod_name_entry_ids = str(product_0.entry_id) + "+" + str(product_1.entry_id)
+    if prod0_index <= prod1_index:
+        two_prod_name = str(prod0_index) + "+" + str(prod1_index)
+        two_prod_name_entry_ids = str(reaction.product_ids[0]) + "+" + str(reaction.product_ids[1])
     else:
-        two_prod_name = str(product_1.parameters["ind"]) + "+" + str(product_0.parameters["ind"])
-        two_prod_name_entry_ids = str(product_1.entry_id) + "+" + str(product_0.entry_id)
+        two_prod_name = str(prod1_index) + "+" + str(prod0_index)
+        two_prod_name_entry_ids = str(reaction.product_ids[1]) + "+" + str(reaction.product_ids[0])
 
-    if reactant_0.parameters["ind"] <= reactant_1.parameters["ind"]:
-        two_reac_name = str(reactant_0.parameters["ind"]) + "+" + str(reactant_1.parameters["ind"])
-        two_reac_name_entry_ids = str(reactant_0.entry_id) + "+" + str(reactant_1.entry_id)
+    if rct0_index <= rct1_index:
+        two_reac_name = str(rct0_index) + "+" + str(rct1_index)
+        two_reac_name_entry_ids = (
+            str(reaction.reactant_ids[0]) + "+" + str(reaction.reactant_ids[1])
+        )
     else:
-        two_reac_name = str(reactant_1.parameters["ind"]) + "+" + str(reactant_0.parameters["ind"])
-        two_reac_name_entry_ids = str(reactant_1.entry_id) + "+" + str(reactant_0.entry_id)
+        two_reac_name = str(rct1_index) + "+" + str(rct0_index)
+        two_reac_name_entry_ids = (
+            str(reaction.reactant_ids[1]) + "+" + str(reaction.reactant_ids[0])
+        )
 
-    two_prod_name0 = str(product_0.parameters["ind"]) + "+PR_" + str(product_1.parameters["ind"])
-    two_prod_name1 = str(product_1.parameters["ind"]) + "+PR_" + str(product_0.parameters["ind"])
+    two_prod_name0 = str(prod0_index) + "+PR_" + str(prod1_index)
+    two_prod_name1 = str(prod1_index) + "+PR_" + str(prod0_index)
 
-    two_reac_name0 = str(reactant_0.parameters["ind"]) + "+PR_" + str(reactant_1.parameters["ind"])
-    two_reac_name1 = str(reactant_1.parameters["ind"]) + "+PR_" + str(reactant_0.parameters["ind"])
+    two_reac_name0 = str(rct0_index) + "+PR_" + str(rct1_index)
+    two_reac_name1 = str(rct1_index) + "+PR_" + str(rct0_index)
 
     node_name_A0 = two_reac_name0 + "," + two_prod_name
     node_name_A1 = two_reac_name1 + "," + two_prod_name
     node_name_B0 = two_prod_name0 + "," + two_reac_name
     node_name_B1 = two_prod_name1 + "," + two_reac_name
 
-    two_prod_entry_ids0 = str(product_0.entry_id) + "+PR_" + str(product_1.entry_id)
-    two_prod_entry_ids1 = str(product_1.entry_id) + "+PR_" + str(product_0.entry_id)
+    two_prod_entry_ids0 = str(reaction.product_ids[0]) + "+PR_" + str(reaction.product_ids[1])
+    two_prod_entry_ids1 = str(reaction.product_ids[1]) + "+PR_" + str(reaction.product_ids[0])
 
-    two_reac_entry_ids0 = str(reactant_0.entry_id) + "+PR_" + str(reactant_1.entry_id)
-    two_reac_entry_ids1 = str(reactant_1.entry_id) + "+PR_" + str(reactant_0.entry_id)
+    two_reac_entry_ids0 = str(reaction.reactant_ids[0]) + "+PR_" + str(reaction.reactant_ids[1])
+    two_reac_entry_ids1 = str(reaction.reactant_ids[1]) + "+PR_" + str(reaction.reactant_ids[0])
 
     entry_ids_name_A0 = two_reac_entry_ids0 + "," + two_prod_name_entry_ids
     entry_ids_name_A1 = two_reac_entry_ids1 + "," + two_prod_name_entry_ids
@@ -2057,7 +2022,7 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        reactant_0.parameters["ind"],
+        rct0_index,
         node_name_A0,
         softplus=softplus(free_energy_A),
         exponent=exponent(free_energy_A),
@@ -2066,10 +2031,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A0, product_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_A0, rct0_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
     graph.add_edge(
-        node_name_A0, product_1.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_A0, prod0_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
 
     graph.add_node(
@@ -2082,7 +2047,7 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        reactant_1.parameters["ind"],
+        rct1_index,
         node_name_A1,
         softplus=softplus(free_energy_A),
         exponent=exponent(free_energy_A),
@@ -2091,10 +2056,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A1, product_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_A1, prod0_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
     graph.add_edge(
-        node_name_A1, product_1.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_A1, prod1_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
 
     graph.add_node(
@@ -2107,7 +2072,7 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        product_0.parameters["ind"],
+        prod0_index,
         node_name_B0,
         softplus=softplus(free_energy_B),
         exponent=exponent(free_energy_B),
@@ -2116,20 +2081,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B0,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B0, rct0_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
     graph.add_edge(
-        node_name_B0,
-        reactant_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B0, rct1_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
 
     graph.add_node(
@@ -2142,7 +2097,7 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        product_1.parameters["ind"],
+        prod1_index,
         node_name_B1,
         softplus=softplus(free_energy_B),
         exponent=exponent(free_energy_B),
@@ -2151,20 +2106,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B1,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B1, rct0_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
     graph.add_edge(
-        node_name_B1,
-        reactant_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B1, rct1_index, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
 
     return graph
@@ -2179,40 +2124,36 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
        :param reaction: (any of the reaction class object, ex. RedoxReaction,
        IntramolSingleBondChangeReaction)
     """
-
-    if len(reaction.reactant_ids) != 1 or len(reaction.product_ids) != 2:
+    if len(reaction.rct_indices) != 1 or len(reaction.pro_indices) != 2:
         raise ValueError("Must provide reaction with 1 reactant and 2 products" "for graph_rep_1_2")
 
-    # Reactant Parameters:
-    rct_ind = reaction.rct_ind
-    rct_id = reaction.reactant_ids[0]
-
-    # Product Parameters:
-    pro0_ind = reaction.pro0_ind
-    pro0_id = reaction.product_ids[0]
-    pro1_ind = reaction.pro1_ind
-    pro1_id = reaction.product_ids[1]
+    reactant_params = reaction.rct_indices[0]
+    reactant_eid = str(reaction.reactant_ids[0])
+    product0_params = reaction.pro_indices[0]
+    product0_eid = str(reaction.product_ids[0])
+    product1_params = reaction.pro_indices[1]
+    product1_eid = str(reaction.product_ids[1])
 
     graph = nx.DiGraph()
 
-    if pro0_ind <= pro1_ind:
-        two_mol_name = str(pro0_ind) + "+" + str(pro1_ind)
-        two_mol_name_entry_ids = str(pro0_id) + "+" + str(pro1_id)
+    if product0_params <= product1_params:
+        two_mol_name = str(product0_params) + "+" + str(product1_params)
+        two_mol_name_entry_ids = str(product0_eid) + "+" + str(product1_eid)
     else:
-        two_mol_name = str(pro1_ind) + "+" + str(pro0_ind)
-        two_mol_name_entry_ids = str(pro1_id) + "+" + str(pro0_id)
+        two_mol_name = str(product1_params) + "+" + str(product0_params)
+        two_mol_name_entry_ids = str(product1_eid) + "+" + str(product0_eid)
 
-    two_mol_name0 = str(pro0_ind) + "+PR_" + str(pro1_ind)
-    two_mol_name1 = str(pro1_ind) + "+PR_" + str(pro0_ind)
-    node_name_A = str(rct_ind) + "," + two_mol_name
-    node_name_B0 = two_mol_name0 + "," + str(rct_ind)
-    node_name_B1 = two_mol_name1 + "," + str(rct_ind)
+    two_mol_name0 = str(product0_params) + "+PR_" + str(product1_params)
+    two_mol_name1 = str(product1_params) + "+PR_" + str(product0_params)
+    node_name_A = str(reactant_params) + "," + two_mol_name
+    node_name_B0 = two_mol_name0 + "," + str(reactant_params)
+    node_name_B1 = two_mol_name1 + "," + str(reactant_params)
 
-    two_mol_entry_ids0 = str(pro0_id) + "+PR_" + str(pro1_id)
-    two_mol_entry_ids1 = str(pro1_id) + "+PR_" + str(pro0_id)
-    entry_ids_name_A = str(rct_id) + "," + two_mol_name_entry_ids
-    entry_ids_name_B0 = two_mol_entry_ids0 + "," + str(rct_id)
-    entry_ids_name_B1 = two_mol_entry_ids1 + "," + str(rct_id)
+    two_mol_entry_ids0 = str(product0_eid) + "+PR_" + str(product1_eid)
+    two_mol_entry_ids1 = str(product1_eid) + "+PR_" + str(product0_eid)
+    entry_ids_name_A = str(reactant_eid) + "," + two_mol_name_entry_ids
+    entry_ids_name_B0 = two_mol_entry_ids0 + "," + str(reactant_eid)
+    entry_ids_name_B1 = two_mol_entry_ids1 + "," + str(reactant_eid)
 
     rxn_type_A = reaction.rxn_type_A
     rxn_type_B = reaction.rxn_type_B
@@ -2233,7 +2174,7 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        rct_ind,
+        reactant_params,
         node_name_A,
         softplus=softplus(free_energy_A),
         exponent=exponent(free_energy_A),
@@ -2242,10 +2183,10 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A, pro0_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_A, product0_params, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
     graph.add_edge(
-        node_name_A, pro1_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_A, product1_params, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
 
     graph.add_node(
@@ -2266,14 +2207,14 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B0, rct_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_B0, reactant_params, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
     graph.add_edge(
-        node_name_B1, rct_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
+        node_name_B1, reactant_params, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0,
     )
 
     graph.add_edge(
-        pro0_ind,
+        product0_params,
         node_name_B0,
         softplus=softplus(free_energy_B),
         exponent=exponent(free_energy_B),
@@ -2281,7 +2222,7 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
         weight=1.0,
     )
     graph.add_edge(
-        pro1_ind,
+        product1_params,
         node_name_B1,
         softplus=softplus(free_energy_B),
         exponent=exponent(free_energy_B),
@@ -2301,16 +2242,16 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
        IntramolSingleBondChangeReaction)
     """
 
-    if reaction.num_rct != 1 or reaction.num_pro != 1:
+    if len(reaction.rct_indices) != 1 or len(reaction.pro_indices) != 1:
         raise ValueError("Must provide reaction with 1 reactant and product" "for graph_rep_1_1")
 
     graph = nx.DiGraph()
     # Reactant Data:
-    reactant_params = reaction.rct_ind
+    reactant_params = reaction.rct_indices[0]
     reactant_eid = str(reaction.reactant_ids[0])
 
     # Product Data:
-    product_params = reaction.pro_ind
+    product_params = reaction.pro_indices[0]
     product_eid = str(reaction.product_ids[0])
 
     # Param Updates
@@ -2438,172 +2379,3 @@ def rexp(free_energy: float) -> float:
         r = np.exp(38.94 * d)
 
     return r[0][0]
-
-
-def is_isomorphic(
-    g1: nx.MultiDiGraph, g2: nx.MultiDiGraph
-) -> Tuple[bool, Union[None, Dict[int, int]]]:
-    """
-    Check the isomorphic between two graphs g1 and g2 and return the node mapping.
-
-    Args:
-        g1: nx graph
-        g2: nx graph
-
-    See Also:
-        https://networkx.github.io/documentation/stable/reference/algorithms/isomorphism.vf2.html
-
-    Returns:
-        is_isomorphic: Whether graphs g1 and g2 are isomorphic.
-        node_mapping: Node mapping from g1 to g2 (e.g. {0:2, 1:1, 2:0}), if g1 and g2
-            are isomorphic, `None` if not isomorphic.
-    """
-    nm = iso.categorical_node_match("specie", "ERROR")
-    GM = iso.GraphMatcher(g1.to_undirected(), g2.to_undirected(), node_match=nm)
-    if GM.is_isomorphic():
-        return True, GM.mapping
-    else:
-        return False, None
-
-
-def generate_atom_mapping_1_1(
-    node_mapping: Dict[int, int]
-) -> Tuple[Atom_Mapping_Dict, Atom_Mapping_Dict]:
-    """
-    Generate rdkit style atom mapping for reactions with one reactant and one product.
-
-    For example, given `node_mapping = {0:2, 1:0, 2:1}`, which means atoms 0, 1,
-    and 2 in the reactant maps to atoms 2, 0, and 1 in the product, respectively,
-    the atom mapping number for reactant atoms are simply set to their index,
-    and the atom mapping number for product atoms are determined accordingly.
-    As a result, this function gives: `({0:0, 1:1, 2:2}, {0:1 1:2 2:0})` as the output.
-    Atoms in the reactant and product with the same atom mapping number
-    (keys in the dicts) are corresponding to each other.
-
-    Args:
-        node_mapping: node mapping from reactant to product
-
-    Returns:
-        reactant_atom_mapping: rdkit style atom mapping for the reactant
-        product_atom_mapping: rdkit style atom mapping for the product
-    """
-    reactant_atom_mapping = node_mapping
-    product_atom_mapping = {v: k for k, v in node_mapping.items()}
-
-
-def generate_atom_mapping_1_2(
-    reactant: MoleculeEntry, products: List[MoleculeEntry], edges: List[Tuple[int, int]],
-) -> Tuple[Atom_Mapping_Dict, List[Atom_Mapping_Dict]]:
-    """
-    Generate rdkit style atom mapping for reactions with one reactant and two products.
-
-    The atom mapping number for reactant atoms are simply set to their index,
-    and the atom mapping number for product atoms are determined accordingly.
-    Atoms in the reactant and products with the same atom mapping number (value in the
-    atom mapping dictionary {atom_index: atom_mapping_number}) corresponds to each other.
-
-    For example, given reactant
-
-          C 0
-         / \
-        /___\
-       O     N---H
-       1     2   3
-
-    and the two products
-          C 1
-         / \
-        /___\
-       O     N
-       2     0
-
-    and
-       H 0
-
-    This function returns:
-    reactant_atom_mapping = {0:0, 1:1, 2:2, 3:3}
-    products_atom_mapping = [{0:2, 1:0, 2:1}, {0:3}]
-
-    Args:
-        reactant: reactant molecule entry
-        products: products molecule entry
-        edges: a list of bonds in reactant, by breaking which can form the two products
-
-    Note:
-        This function assumes the two subgraphs of the reactant obtained by breaking
-        the edge are ordered the same as the products. i.e. subgraphs[0] corresponds to
-        products[0] and subgraphs[1] corresponds to products[1].
-
-    Returns:
-        reactant_atom_mapping: rdkit style atom mapping number for the reactant
-        products_atom_mapping: rdkit style atom mapping number for the two products
-    """
-
-
-def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] = None):
-    """
-    Bucket molecules into nested dictionaries according to molecule properties
-    specified in keys.
-
-    The nested dictionary has keys as given in `keys`, and the innermost value is a
-    list. For example, if `keys = ['formula', 'Nbonds', 'charge']`, then the returned
-    bucket dictionary is something like:
-
-    bucket[formula][Nbonds][charge] = [mol_entry1, mol_entry2, ...]
-
-    where mol_entry1, mol_entry2, ... have the same formula, number of bonds, and charge.
-
-    Args:
-        entries: a list of molecule entries to bucket
-        keys: each str should be a molecule property.
-            default to ['formula', 'Nbonds', 'charge']
-
-    Returns:
-        Nested dictionary of molecule entry bucketed according to keys.
-    """
-    keys = ["formula", "Nbonds", "charge"] if keys is None else keys
-
-    num_keys = len(keys)
-    buckets = {}
-    for m in entries:
-        b = buckets
-        for i, k in enumerate(keys):
-            v = getattr(m, k)
-            if i == num_keys - 1:
-                b.setdefault(v, []).append(m)
-            else:
-                b.setdefault(v, {})
-            b = b[v]
-
-    return buckets
-
-
-def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
-    """
-    Unbucket molecule entries stored in a nested dictionary to a list.
-
-    This is the opposite operation to `bucket_mol_entries()`.
-
-    Args:
-        entries: nested dictionaries, e.g.
-            bucket[formula][Nbonds][charge] = [mol_entry1, mol_entry2, ...]
-
-    Returns:
-        a list of molecule entries
-    """
-
-    def unbucket(d):
-        for k, v in d.items():
-            if isinstance(v, dict):
-                unbucket(v)
-            elif isinstance(v, Iterable):
-                entries_list.extend(v)
-            else:
-                raise RuntimeError(
-                    f"Cannot unbucket molecule entries. Unsupported data type `{type(v)}`"
-                )
-
-    entries_list = []
-    unbucket(entries)
-
-    return entries_list

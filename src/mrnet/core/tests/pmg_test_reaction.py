@@ -3,20 +3,18 @@ import os
 import unittest
 
 from pymatgen.util.testing import PymatgenTest
-from pymatgen.core.structure import Molecule
-from pymatgen.entries.mol_entry import MoleculeEntry
-from pymatgen.analysis.graphs import MoleculeGraph
-from pymatgen.analysis.local_env import OpenBabelNN
-from pymatgen.analysis.fragmenter import metal_edge_extender
-
-from mrnet.core.reactions import (
+from pymatgen.reaction_network.reaction import (
     RedoxReaction,
     IntramolSingleBondChangeReaction,
     IntermolecularReaction,
     CoordinationBondChangeReaction,
 )
-from mrnet.core.reactions import bucket_mol_entries, unbucket_mol_entries
-from mrnet.network.reaction_network import ReactionNetwork
+from pymatgen.reaction_network.reaction_network import ReactionNetwork
+from pymatgen.core.structure import Molecule
+from pymatgen.entries.mol_entry import MoleculeEntry
+from pymatgen.analysis.graphs import MoleculeGraph
+from pymatgen.analysis.local_env import OpenBabelNN
+from pymatgen.analysis.fragmenter import metal_edge_extender
 
 from monty.serialization import loadfn
 
@@ -25,9 +23,8 @@ try:
 except ImportError:
     ob = None
 
-
 test_dir = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "..", "test_files", "reaction_network_files",
+    os.path.dirname(__file__), "..", "..", "..", "test_files", "reaction_network_files"
 )
 
 
@@ -135,32 +132,8 @@ class TestRedoxReaction(PymatgenTest):
 
         RN = ReactionNetwork.from_input_entries(self.LiEC_reextended_entries)
         reactions, families = RedoxReaction.generate(RN.entries)
-
         self.assertEqual(len(reactions), 273)
-
-        # for r in reactions:
-        #    if r.reactant == self.EC_0_entry:
-        #        self.assertEqual(r.product.entry_id, self.EC_1_entry.entry_id)
-        #    if r.reactant == self.EC_minus_entry:
-        #        self.assertEqual(r.product.entry_id, self.EC_0_entry.entry_id)
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
-
-        entries = bucket_mol_entries([self.EC_minus_entry, self.EC_0_entry, self.EC_1_entry])
-
-        reactions, families = RedoxReaction.generate(entries)
-        self.assertEqual(len(reactions), 2)
-
-        for r in reactions:
-            self.assertEqual(
-                r.reactants_atom_mapping,
-                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
-            )
-            self.assertEqual(
-                r.products_atom_mapping,
-                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
-            )
+        pass
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
@@ -288,47 +261,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
         reactions, families = IntramolSingleBondChangeReaction.generate(RN.entries)
         self.assertEqual(len(reactions), 93)
 
-        for r in reactions:
-            # TODO (mjwen) this is never run for two reasons:
-            #  1. It should be:
-            #  if r.reactant == self.LiEC_RO_entry:
-            #     self.assertEqual(r.product.entry_id, self.LiEC_entry.entry_id)
-            #  since this class generates bond formation reactions
-            #  Even, after fixing 1, there is still another problem.
-            #  2. There are multiple MoleculeEntry with the same `formula`,`Nbonds`,
-            #  and `charge` as self.LiEC_entry. In `setUpClass`, one of such
-            #  MoleculeEntry is set to self.LiEC_entry,
-            #  but in IntramolSingleBondChangeReaction, another MoleculeEntry will be
-            #  used as the reactant. This happens because in both `setUpClass` and
-            #  `IntramolSingleBondChangeReaction`, the code `break` when one entry is
-            #  found.
-            #  To fix this, we can either clean the input data to make sure there is
-            #  only one LiEC, or we do some bookkeeping in `setUpClass` and then make
-            #  the correct check.
-
-            # if r.reactant == self.LiEC_entry:
-            #    self.assertEqual(r.product.entry_id, self.LiEC_RO_entry.entry_id)
-            pass
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
-
-        entries = bucket_mol_entries([self.LiEC_RO_entry, self.LiEC_entry])
-
-        reactions, families = IntramolSingleBondChangeReaction.generate(entries)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, self.LiEC_RO_entry.entry_id)
-        self.assertEqual(rxn.product.entry_id, self.LiEC_entry.entry_id)
-
-        self.assertEqual(
-            rxn.reactants_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-        self.assertEqual(
-            rxn.products_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
+        #for r in reactions:
+        #    if r.reactant == self.LiEC_entry:
+        #        self.assertEqual(r.product.entry_id, self.LiEC_RO_entry.entry_id)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
@@ -501,42 +436,20 @@ class TestIntermolecularReaction(PymatgenTest):
 
         self.assertEqual(len(reactions), 3673)
 
-        for r in reactions:
-            # if r.reactant.entry_id == self.LiEC_RO_entry.entry_id:
-            #    if (
-            #        r.products[0].entry_id == self.C2H4_entry.entry_id
-            #        or r.products[1].entry_id == self.C2H4_entry.entry_id
-            #    ):
-            #        self.assertTrue(
-            #            r.products[0].formula == "C1 Li1 O3" or r.products[1].formula == "C1 Li1 O3"
-            #        )
-            #        self.assertTrue(r.products[0].charge == 0 or r.products[1].charge == 0)
-            #        self.assertTrue(
-            #            r.products[0].free_energy() == self.C1Li1O3_entry.free_energy()
-            #            or r.products[1].free_energy() == self.C1Li1O3_entry.free_energy()
-            #        )
-            pass
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
-
-        entries = bucket_mol_entries([self.LiEC_RO_entry, self.C1Li1O3_entry, self.C2H4_entry])
-
-        reactions, families = IntermolecularReaction.generate(entries)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, self.LiEC_RO_entry.entry_id)
-        self.assertEqual(rxn.product_0.entry_id, self.C2H4_entry.entry_id)
-        self.assertEqual(rxn.product_1.entry_id, self.C1Li1O3_entry.entry_id)
-
-        self.assertEqual(
-            rxn.reactants_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-        self.assertEqual(
-            rxn.products_atom_mapping,
-            [{0: 0, 1: 1, 2: 7, 3: 8, 4: 9, 5: 10}, {0: 2, 1: 3, 2: 4, 3: 5, 4: 6}],
-        )
+        #for r in reactions:
+        #    if r.reactant.entry_id == self.LiEC_RO_entry.entry_id:
+        #        if (
+        #            r.products[0].entry_id == self.C2H4_entry.entry_id
+        #            or r.products[0].entry_id == self.C2H4_entry.entry_id
+        #        ):
+        #            self.assertTrue(
+        #                r.products[0].formula == "C1 Li1 O3" or r.products[1].formula == "C1 Li1 O3"
+        #            )
+        #            self.assertTrue(r.products[0].charge == 0 or r.products[1].charge == 0)
+        #            self.assertTrue(
+        #                r.products[0].free_energy() == self.C1Li1O3_entry.free_energy()
+        #                or r.products[1].free_energy() == self.C1Li1O3_entry.free_energy()
+        #            )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
@@ -697,7 +610,7 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reactions, families = CoordinationBondChangeReaction.generate(RN.entries)
         self.assertEqual(len(reactions), 50)
 
-        # for r in reactions:
+        #for r in reactions:
         #    if r.reactant.entry_id == self.LiEC_entry.entry_id:
         #        if (
         #            r.products[0].entry_id == self.Li_entry.entry_id
@@ -711,28 +624,6 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         #                r.products[0].free_energy() == self.EC_minus_entry.free_energy()
         #                or r.products[1].free_energy() == self.EC_minus_entry.free_energy()
         #            )
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
-
-        entries = bucket_mol_entries([self.LiEC_entry, self.EC_minus_entry, self.Li_entry])
-
-        reactions, families = CoordinationBondChangeReaction.generate(entries)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, self.LiEC_entry.entry_id)
-        self.assertEqual(rxn.product_0.entry_id, self.EC_minus_entry.entry_id)
-        self.assertEqual(rxn.product_1.entry_id, self.Li_entry.entry_id)
-
-        self.assertEqual(
-            rxn.reactants_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-
-        self.assertEqual(
-            rxn.products_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 7, 7: 8, 8: 9, 9: 10}, {0: 6}],
-        )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
@@ -762,43 +653,6 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         )
         self.assertEqual(reaction.rxn_type_A, "Coordination bond breaking AM -> A+M")
         self.assertEqual(reaction.rxn_type_B, "Coordination bond forming A+M -> AM")
-
-
-@unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-def test_bucket_mol_entries():
-    C2H4_entry = MoleculeEntry(
-        Molecule.from_file(os.path.join(test_dir, "C2H4.xyz")),
-        energy=0.0,
-        enthalpy=0.0,
-        entropy=0.0,
-    )
-    LiEC_RO_entry = MoleculeEntry(
-        Molecule.from_file(os.path.join(test_dir, "LiEC_RO.xyz")),
-        energy=0.0,
-        enthalpy=0.0,
-        entropy=0.0,
-    )
-    C1Li1O3_entry = MoleculeEntry(
-        Molecule.from_file(os.path.join(test_dir, "C1Li1O3.xyz")),
-        energy=0.0,
-        enthalpy=0.0,
-        entropy=0.0,
-    )
-
-    bucket = bucket_mol_entries([C2H4_entry, LiEC_RO_entry, C1Li1O3_entry])
-
-    ref_dict = {
-        "C2 H4": {5: {0: [C2H4_entry]}},
-        "C3 H4 Li1 O3": {11: {0: [LiEC_RO_entry]}},
-        "C1 Li1 O3": {5: {0: [C1Li1O3_entry]}},
-    }
-    assert bucket == ref_dict
-
-
-def test_unbucket_mol_entries():
-    d = {"a": {"aa": [0, 1, 2], "aaa": [3, 4]}, "b": {"bb": [5, 6, 7], "bbb": (8, 9)}}
-    out = unbucket_mol_entries(d)
-    assert out == list(range(10))
 
 
 if __name__ == "__main__":
