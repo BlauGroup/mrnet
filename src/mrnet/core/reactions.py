@@ -53,7 +53,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
         reactants: List[MoleculeEntry],
         products: List[MoleculeEntry],
         transition_state: Optional[MoleculeEntry] = None,
-        parameters: Optional[Dict] = None,
+        reactants_atom_mapping: List[Atom_Mapping_Dict] = None,
+        products_atom_mapping: List[Atom_Mapping_Dict] = None,
     ):
         self.transition_state = transition_state
         if self.transition_state is None:
@@ -69,7 +70,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
         self.r_dicts = [r.as_dict() for r in reactants]
         self.p_dicts = [p.as_dict() for p in products]
         self.entry_ids = {e.entry_id for e in reactants}
-        self.parameters = parameters or dict()
+        self.reactants_atom_mapping = reactants_atom_mapping
+        self.products_atom_mapping = products_atom_mapping
 
     def __in__(self, entry: MoleculeEntry):
         return entry.entry_id in self.entry_ids
@@ -152,7 +154,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
             "products": self.p_dicts,
             "transition_state": ts,
             "rate_calculator": rc,
-            "parameters": self.parameters,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -171,7 +174,20 @@ class Reaction(MSONable, metaclass=ABCMeta):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        reaction = cls(reactants, products, transition_state=ts, parameters=d["parameters"])
+        reactants_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["reactants_atom_mapping"]
+        ]
+        products_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["products_atom_mapping"]
+        ]
+
+        reaction = cls(
+            reactants,
+            products,
+            transition_state=ts,
+            reactants_atom_mapping=reactants_atom_mapping,
+            products_atom_mapping=products_atom_mapping,
+        )
         reaction.rate_calculator = rate_calculator
         return reaction
 
@@ -205,7 +221,8 @@ class RedoxReaction(Reaction):
         electron_free_energy=None,
         radius=None,
         electrode_dist=None,
-        parameters=None,
+        reactant_atom_mapping: Atom_Mapping_Dict = None,
+        product_atom_mapping: Atom_Mapping_Dict = None,
     ):
         """
           Initilizes RedoxReaction.reactant to be in the form of a MoleculeEntry,
@@ -227,9 +244,14 @@ class RedoxReaction(Reaction):
           parameters (dict): Any additional data about this reaction
 
         """
-
+        rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
+        prdts_mp = [product_atom_mapping] if product_atom_mapping is not None else None
         super().__init__(
-            [reactant], [product], transition_state=None, parameters=parameters,
+            [reactant],
+            [product],
+            transition_state=None,
+            reactants_atom_mapping=rcts_mp,
+            products_atom_mapping=prdts_mp,
         )
         self.class_type = "RedoxReaction"
         self.inner_reorganization_energy = inner_reorganization_energy
@@ -331,17 +353,20 @@ class RedoxReaction(Reaction):
                         charge1 = charges[ii + 1]
                         if charge1 - charge0 == 1:
                             for entry0 in entries[formula][Nbonds][charge0]:
-                                [
-                                    reactions.append(cls(entry0, entry1))
-                                    for entry1 in entries[formula][Nbonds][charge1]
-                                    if entry0.mol_graph.isomorphic_to(entry1.mol_graph)
-                                ]
-                                [
-                                    families[formula][charge0].append(cls(entry0, entry1))
-                                    for entry1 in entries[formula][Nbonds][charge1]
-                                    if entry0.mol_graph.isomorphic_to(entry1.mol_graph)
-                                ]
-
+                                for entry1 in entries[formula][Nbonds][charge1]:
+                                    isomorphic, node_mapping = is_isomorphic(
+                                        entry0.graph, entry1.graph
+                                    )
+                                    if isomorphic:
+                                        rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
+                                        r = cls(
+                                            entry0,
+                                            entry1,
+                                            reactant_atom_mapping=rct_mp,
+                                            product_atom_mapping=prdt_mp,
+                                        )
+                                        reactions.append(r)
+                                        families[formula][charge0].append(r)
         return reactions, families
 
     def reaction_type(self, reactant, product):
@@ -463,7 +488,8 @@ class RedoxReaction(Reaction):
             "radius": self.radius,
             "electrode_dist": self.electrode_dist,
             "rate_calculator": rc,
-            "parameters": self.parameters,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -478,7 +504,12 @@ class RedoxReaction(Reaction):
         else:
             rate_calculator = RedoxRateCalculator.from_dict(d["rate_calculator"])
 
-        parameters = d["parameters"]
+        reactants_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["reactants_atom_mapping"]
+        ]
+        products_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["products_atom_mapping"]
+        ]
 
         reaction = cls(
             reactant,
@@ -489,7 +520,8 @@ class RedoxReaction(Reaction):
             d["electron_free_energy"],
             d["radius"],
             d["electrode_dist"],
-            parameters=parameters,
+            reactant_atom_mapping=reactants_atom_mapping[0],
+            product_atom_mapping=products_atom_mapping[0],
         )
         reaction.rate_calculator = rate_calculator
 
@@ -540,7 +572,7 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         self.class_type = "IntramolSingleBondChangeReaction"
         super().__init__(
-            [reactant], [product], transition_state=transition_state, parameters=parameters,
+            [reactant], [product], transition_state=transition_state,
         )
 
         self.reaction_type(reactant, product)
@@ -724,7 +756,6 @@ class IntramolSingleBondChangeReaction(Reaction):
             "product": self.p_dicts[0],
             "transition_state": ts,
             "rate_calculator": rc,
-            "parameters": self.parameters,
         }
 
         return d
@@ -743,9 +774,7 @@ class IntramolSingleBondChangeReaction(Reaction):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        parameters = d["parameters"]
-
-        reaction = cls(reactant, product, transition_state=ts, parameters=parameters)
+        reaction = cls(reactant, product, transition_state=ts)
         reaction.rate_calculator = rate_calculator
         return reaction
 
@@ -797,9 +826,7 @@ class IntermolecularReaction(Reaction):
         """
 
         self.class_type = "IntermolecularReaction"
-        super().__init__(
-            [reactant], product, transition_state=transition_state, parameters=parameters,
-        )
+        super().__init__([reactant], product, transition_state=transition_state)
         self.reaction_type()
         self.rct_ind = reactant.parameters.get("ind")
         self.pro0_ind = product[0].parameters.get("ind")
@@ -1016,7 +1043,6 @@ class IntermolecularReaction(Reaction):
             "product_1": self.p_dicts[1],
             "transition_state": ts,
             "rate_calculator": rc,
-            "parameters": self.parameters,
         }
 
         return d
@@ -1036,9 +1062,7 @@ class IntermolecularReaction(Reaction):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        parameters = d["parameters"]
-
-        reaction = cls(reactant, [product_0, product_1], transition_state=ts, parameters=parameters)
+        reaction = cls(reactant, [product_0, product_1], transition_state=ts)
         reaction.rate_calculator = rate_calculator
         return reaction
 
@@ -1090,7 +1114,7 @@ class CoordinationBondChangeReaction(Reaction):
         """
         self.class_type = "CoordinationBondChangeReaction"
         super().__init__(
-            [reactant], product, transition_state=transition_state, parameters=parameters,
+            [reactant], product, transition_state=transition_state,
         )
         self.reaction_type()
         self.rct_ind = reactant.parameters.get("ind")
@@ -1361,7 +1385,6 @@ class CoordinationBondChangeReaction(Reaction):
             "product_1": self.p_dicts[1],
             "transition_state": ts,
             "rate_calculator": rc,
-            "parameters": self.parameters,
         }
 
         return d
@@ -1381,9 +1404,7 @@ class CoordinationBondChangeReaction(Reaction):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        parameters = d["parameters"]
-
-        reaction = cls(reactant, [product_0, product_1], transition_state=ts, parameters=parameters)
+        reaction = cls(reactant, [product_0, product_1], transition_state=ts,)
         reaction.rate_calculator = rate_calculator
         return reaction
 
@@ -1420,7 +1441,7 @@ class ConcertedReaction(Reaction):
         self.electron_energy = None
         self.class_type = "ConcertedReaction"
         super().__init__(
-            reactant, product, transition_state=transition_state, parameters=parameters
+            reactant, product, transition_state=transition_state,
         )
         self.reaction_type()
         self.reactant_indices = [r.parameters.get("ind") for r in reactant]
@@ -1654,7 +1675,6 @@ class ConcertedReaction(Reaction):
             "products": self.p_dicts,
             "transition_state": ts,
             "rate_calculator": rc,
-            "parameters": self.parameters,
         }
 
         return d
@@ -1673,9 +1693,7 @@ class ConcertedReaction(Reaction):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        parameters = d["parameters"]
-
-        reaction = cls(reactants, products, transition_state=ts, parameters=parameters)
+        reaction = cls(reactants, products, transition_state=ts)
         reaction.rate_calculator = rate_calculator
         return reaction
 
@@ -1738,58 +1756,22 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
 
     if rct1_ind <= rct2_ind:
         three_reac_name0 = str(rct0_ind) + "+PR_" + str(rct1_ind) + "+PR_" + str(rct2_ind)
-        three_reac_entry_ids0 = (
-            str(rct0_id)
-            + "+PR_"
-            + str(rct1_id)
-            + "+PR_"
-            + str(rct2_id)
-        )
+        three_reac_entry_ids0 = str(rct0_id) + "+PR_" + str(rct1_id) + "+PR_" + str(rct2_id)
     else:
         three_reac_name0 = str(rct0_ind) + "+PR_" + str(rct2_ind) + "+PR_" + str(rct1_ind)
-        three_reac_entry_ids0 = (
-            str(rct0_id)
-            + "+PR_"
-            + str(rct2_id)
-            + "+PR_"
-            + str(rct1_id)
-        )
+        three_reac_entry_ids0 = str(rct0_id) + "+PR_" + str(rct2_id) + "+PR_" + str(rct1_id)
     if rct0_ind <= rct2_ind:
         three_reac_name1 = str(rct1_ind) + "+PR_" + str(rct0_ind) + "+PR_" + str(rct2_ind)
-        three_reac_entry_ids1 = (
-            str(rct1_id)
-            + "+PR_"
-            + str(rct0_id)
-            + "+PR_"
-            + str(rct2_id)
-        )
+        three_reac_entry_ids1 = str(rct1_id) + "+PR_" + str(rct0_id) + "+PR_" + str(rct2_id)
     else:
         three_reac_name1 = str(rct1_ind) + "+PR_" + str(rct2_ind) + "+PR_" + str(rct0_ind)
-        three_reac_entry_ids1 = (
-            str(rct1_id)
-            + "+PR_"
-            + str(rct2_id)
-            + "+PR_"
-            + str(rct0_id)
-        )
+        three_reac_entry_ids1 = str(rct1_id) + "+PR_" + str(rct2_id) + "+PR_" + str(rct0_id)
     if rct0_ind <= rct1_ind:
         three_reac_name2 = str(rct2_ind) + "+PR_" + str(rct0_ind) + "+PR_" + str(rct1_ind)
-        three_reac_entry_ids2 = (
-            str(rct2_id)
-            + "+PR_"
-            + str(rct0_id)
-            + "+PR_"
-            + str(rct1_id)
-        )
+        three_reac_entry_ids2 = str(rct2_id) + "+PR_" + str(rct0_id) + "+PR_" + str(rct1_id)
     else:
         three_reac_name2 = str(rct2_ind) + "+PR_" + str(rct1_ind) + "+PR_" + str(rct0_ind)
-        three_reac_entry_ids2 = (
-            str(rct2_id)
-            + "+PR_"
-            + str(rct1_id)
-            + "+PR_"
-            + str(rct0_id)
-        )
+        three_reac_entry_ids2 = str(rct2_id) + "+PR_" + str(rct1_id) + "+PR_" + str(rct0_id)
 
     node_name_A0 = three_reac_name0 + "," + two_prod_name
     node_name_A1 = three_reac_name1 + "," + two_prod_name
@@ -2442,6 +2424,7 @@ def generate_atom_mapping_1_1(
     """
     reactant_atom_mapping = node_mapping
     product_atom_mapping = {v: k for k, v in node_mapping.items()}
+    return reactant_atom_mapping, product_atom_mapping
 
 
 def generate_atom_mapping_1_2(
@@ -2491,6 +2474,26 @@ def generate_atom_mapping_1_2(
         reactant_atom_mapping: rdkit style atom mapping number for the reactant
         products_atom_mapping: rdkit style atom mapping number for the two products
     """
+    assert len(products) == 2, f"Expect 2 product molecules, got {len(products)}."
+
+    reactant_atom_mapping = {i: i for i in range(reactant.num_atoms)}
+
+    # Split the reactant mol graph to form two sub graphs
+    # This is similar to MoleculeGraph.split_molecule_subbraphs(), but do not reorder
+    # the nodes, i.e. the nodes in the subgraphs will have the same node indexes as
+    original = copy.deepcopy(reactant.mol_graph)
+    for edge in edges:
+        original.break_edge(edge[0], edge[1], allow_reverse=True)
+    components = nx.weakly_connected_components(original.graph)
+    sub_graphs = [original.graph.subgraph(c) for c in components]
+
+    products_atom_mapping = []
+    for subg, prdt in zip(sub_graphs, products):
+        _, node_mapping = is_isomorphic(prdt.graph, subg)
+        assert node_mapping is not None, "Cannot obtain node mapping."
+        products_atom_mapping.append(node_mapping)
+
+    return reactant_atom_mapping, products_atom_mapping
 
 
 def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] = None):

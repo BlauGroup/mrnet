@@ -318,8 +318,8 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
         reactions, families = IntramolSingleBondChangeReaction.generate(entries)
         self.assertEqual(len(reactions), 1)
         rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, self.LiEC_RO_entry.entry_id)
-        self.assertEqual(rxn.product.entry_id, self.LiEC_entry.entry_id)
+        self.assertEqual(rxn.reactant_ids[0], self.LiEC_RO_entry.entry_id)
+        self.assertEqual(rxn.product_ids[0], self.LiEC_entry.entry_id)
 
         self.assertEqual(
             rxn.reactants_atom_mapping,
@@ -525,9 +525,9 @@ class TestIntermolecularReaction(PymatgenTest):
         reactions, families = IntermolecularReaction.generate(entries)
         self.assertEqual(len(reactions), 1)
         rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, self.LiEC_RO_entry.entry_id)
-        self.assertEqual(rxn.product_0.entry_id, self.C2H4_entry.entry_id)
-        self.assertEqual(rxn.product_1.entry_id, self.C1Li1O3_entry.entry_id)
+        self.assertEqual(rxn.reactant_ids[0], self.LiEC_RO_entry.entry_id)
+        self.assertEqual(rxn.product_ids[0], self.C2H4_entry.entry_id)
+        self.assertEqual(rxn.product_ids[1], self.C1Li1O3_entry.entry_id)
 
         self.assertEqual(
             rxn.reactants_atom_mapping,
@@ -720,9 +720,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reactions, families = CoordinationBondChangeReaction.generate(entries)
         self.assertEqual(len(reactions), 1)
         rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, self.LiEC_entry.entry_id)
-        self.assertEqual(rxn.product_0.entry_id, self.EC_minus_entry.entry_id)
-        self.assertEqual(rxn.product_1.entry_id, self.Li_entry.entry_id)
+        self.assertEqual(rxn.reactant_ids[0], self.LiEC_entry.entry_id)
+        self.assertEqual(rxn.product_ids[0], self.EC_minus_entry.entry_id)
+        self.assertEqual(rxn.product_ids[1], self.Li_entry.entry_id)
 
         self.assertEqual(
             rxn.reactants_atom_mapping,
