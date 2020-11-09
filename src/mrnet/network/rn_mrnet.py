@@ -10,12 +10,13 @@ from networkx.readwrite import json_graph
 from monty.json import MSONable
 
 from pymatgen.entries.mol_entry import MoleculeEntry
-from pymatgen.util.classes import load_class
+
+from mrnet.utils.classes import load_class
 
 # TODO (mjwen) remove imports that is not used in this file
 # Import everything used to be in this file but moved to reaction.py in case somebody
 # imports it directly from this file. (The pickled files in the unit test uses them).
-from pymatgen.reaction_network.reaction import (
+from mrnet.core.reactions import (
     Reaction,
     RedoxReaction,
     IntramolSingleBondChangeReaction,
@@ -146,6 +147,7 @@ class ReactionPath(MSONable):
     ):  # -> ReactionPath
         """
             A method to define ReactionPath attributes based on the inputs
+
         :param path: a list of nodes that defines a path from node A to B
             within a graph built using ReactionNetwork.build()
         :param weight: string (either "softplus" or "exponent")
@@ -183,11 +185,10 @@ class ReactionPath(MSONable):
                                 d = int(rxn[1].split("+")[1])
                             else:
                                 c = int(rxn[1])
-                            # pool_modified = copy.deepcopy(pool)
-                            # pool_modified.remove(a)
-                            # pool.remove(a)
+                            pool_modified = copy.deepcopy(pool)
+                            pool_modified.remove(a)
                             if PR_b2 == None:
-                                if PR_b in pool and PR_b != a:  # mod
+                                if PR_b in pool_modified:
                                     if PR_b in list(min_cost.keys()):
                                         class_instance.cost = (
                                             class_instance.cost - min_cost[PR_b]
@@ -199,7 +200,7 @@ class ReactionPath(MSONable):
                                     pool.append(c)
                                     if concerted:
                                         pool.append(d)
-                                elif PR_b not in pool or PR_b == a:  # mod
+                                elif PR_b not in pool_modified:
                                     if PR_b in old_solved_PRs:
                                         class_instance.solved_prereqs.append(PR_b)
                                         class_instance.all_prereqs.append(PR_b)
@@ -271,9 +272,7 @@ class ReactionPath(MSONable):
                                         if concerted:
                                             pool.append(d)
                             else:  # nodes with 2 PRs
-                                if (PR_b in pool and PR_b != a) and (
-                                    PR_b2 in pool and PR_b2 != a
-                                ):  # mod
+                                if PR_b in pool_modified and PR_b2 in pool_modified:
                                     # print("!!")
                                     class_instance.cost = (
                                         class_instance.cost - min_cost[PR_b]
@@ -299,9 +298,10 @@ class ReactionPath(MSONable):
                                     pool.append(c)
                                     pool.append(d)
 
-                                elif (PR_b not in pool or PR_b == a) and (
-                                    PR_b2 not in pool or PR_b == a
-                                ):  # mod
+                                elif (
+                                    PR_b not in pool_modified
+                                    and PR_b2 not in pool_modified
+                                ):
                                     if (
                                         PR_b in old_solved_PRs
                                         and PR_b2 in old_solved_PRs
@@ -337,14 +337,12 @@ class ReactionPath(MSONable):
                                         pool.append(c)
                                         pool.append(d)
 
-                                elif (PR_b in pool and PR_b != a) or (
-                                    PR_b2 in pool and PR_b2 != a
-                                ):  # mod
+                                elif PR_b in pool_modified or PR_b2 in pool_modified:
                                     # print("$$")
-                                    if PR_b in pool and PR_b != a:  # mod
+                                    if PR_b in pool_modified:
                                         PR_in_pool = PR_b
                                         PR_not_in_pool = PR_b2
-                                    elif PR_b2 in pool and PR_b2 != a:  # mod
+                                    elif PR_b2 in pool_modified:
                                         PR_in_pool = PR_b2
                                         PR_not_in_pool = PR_b
                                     if PR_not_in_pool in old_solved_PRs:
@@ -412,6 +410,7 @@ class ReactionPath(MSONable):
         """
             A method to define all the attributes of a given path once all the
             PRs are solved
+
         :param path: a list of nodes that defines a path from node A to B
             within a graph built using ReactionNetwork.build()
         :param weight: string (either "softplus" or "exponent")
@@ -546,7 +545,6 @@ Mapping_PR_Dict = Dict[int, Dict[int, ReactionPath]]
 class ReactionNetwork(MSONable):
     """
     Class to build a reaction network from entries
-
     """
 
     def __init__(
@@ -636,7 +634,7 @@ class ReactionNetwork(MSONable):
         print(len(input_entries), "input entries")
 
         connected_entries = list()
-        for entry in input_entries:  # (MoleculeEntries)
+        for entry in input_entries:
             if len(entry.molecule) > 1:
                 if nx.is_weakly_connected(entry.graph):
                     connected_entries.append(entry)
@@ -792,20 +790,20 @@ class ReactionNetwork(MSONable):
 
         for ii, r in enumerate(self.reactions):
             r.parameters["ind"] = ii
-            this_class = r.class_type
-            if this_class == "RedoxReaction":
+            if r.reaction_type()["class"] == "RedoxReaction":
                 redox_c += 1
                 r.electron_free_energy = self.electron_free_energy
-            elif this_class == "IntramolSingleBondChangeReaction":
+            elif r.reaction_type()["class"] == "IntramolSingleBondChangeReaction":
                 intra_c += 1
-            elif this_class == "IntermolecularReaction":
+            elif r.reaction_type()["class"] == "IntermolecularReaction":
                 inter_c += 1
-            elif this_class == "CoordinationBondChangeReaction":
+            elif r.reaction_type()["class"] == "CoordinationBondChangeReaction":
                 coord_c += 1
             self.add_reaction(r.graph_representation())
 
             # TODO: concerted reactions?
 
+            this_class = r.reaction_type()["class"]
             for layer1, class1 in raw_families[this_class].items():
                 for layer2, class2 in class1.items():
                     for rxn in class2:
@@ -1388,7 +1386,7 @@ class ReactionNetwork(MSONable):
 
                         self.graph.remove_node(node)
             self.PR_record.pop(n, None)
-            # self.Product_record.pop(n, None)
+            self.Product_record.pop(n, None)
 
     def find_or_remove_bad_nodes(
         self, nodes: List[str], remove_nodes=False
@@ -1538,8 +1536,9 @@ class ReactionNetwork(MSONable):
 
     @staticmethod
     def mols_w_cuttoff(RN_pr_solved, cutoff=0, build_pruned_network=True):
-        """ "
-            A method to identify molecules reached by dG <= cutoff
+        """
+        A method to identify molecules reached by dG <= cutoff
+
         :param RN_pr_solved: instance of reaction network
         :param: cutoff: dG value
         :return: mols_to_keep: list of molecule nodes that can be reached by dG <= cutoff
@@ -1579,14 +1578,14 @@ class ReactionNetwork(MSONable):
             if entry.parameters["ind"] in mols_to_keep:
                 pruned_entries_list.append(entry)
 
-        # if build_pruned_network:
-        #    pruned_network_build = ReactionNetwork.from_input_entries(
-        #        pruned_entries_list, replace_ind=False
-        #    )
-        #    pruned_network_build.build()
-        #    return mols_to_keep, pruned_entries_list, pruned_network_build
-        # else:
-        return mols_to_keep, pruned_entries_list
+        if build_pruned_network:
+            pruned_network_build = ReactionNetwork.from_input_entries(
+                pruned_entries_list, replace_ind=False
+            )
+            pruned_network_build.build()
+            return mols_to_keep, pruned_entries_list, pruned_network_build
+        else:
+            return mols_to_keep, pruned_entries_list
 
     @staticmethod
     def identify_concerted_rxns_via_intermediates(
@@ -1601,7 +1600,7 @@ class ReactionNetwork(MSONable):
         :return: list of reactions
         """
 
-        # flag = True
+        flag = True
         print("identify_concerted_rxns_via_intermediates start", time.time())
         mols_to_keep.append(None)
         count_total = 0
@@ -1645,7 +1644,7 @@ class ReactionNetwork(MSONable):
                                         in_mol = in_node.split(",")[0]
                                         out_mol = out_node.split(",")[1]
                                         glist = [int(in_mol), int(out_mol)]
-                                        # gnode = in_mol + "," + out_mol
+                                        gnode = in_mol + "," + out_mol
                                         reactant = int(in_mol)
                                         product = int(out_mol)
                                         glist = [reactant, product]
