@@ -25,7 +25,6 @@ try:
 except ImportError:
     ob = None
 
-
 test_dir = os.path.join(
     os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
 )
