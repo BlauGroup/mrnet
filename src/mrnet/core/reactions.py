@@ -553,10 +553,11 @@ class IntramolSingleBondChangeReaction(Reaction):
         reactant: MoleculeEntry,
         product: MoleculeEntry,
         transition_state: Optional[MoleculeEntry] = None,
-        parameters: Optional[Dict] = None,
+        reactant_atom_mapping: Atom_Mapping_Dict = None,
+        product_atom_mapping: Atom_Mapping_Dict = None,
     ):
         """
-          Initilizes IntramolSingleBondChangeReaction.reactant to be in the form of a MoleculeEntry,
+          Initializes IntramolSingleBondChangeReaction.reactant to be in the form of a MoleculeEntry,
           IntramolSingleBondChangeReaction.product to be in the form of MoleculeEntry,
           Reaction.reactant to be in the form of a of a list of MoleculeEntry of length 1
           Reaction.products to be in the form of a of a list of MoleculeEntry of length 1
@@ -570,9 +571,15 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         """
 
+        rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
+        prdts_mp = [product_atom_mapping] if product_atom_mapping is not None else None
         self.class_type = "IntramolSingleBondChangeReaction"
         super().__init__(
-            [reactant], [product], transition_state=transition_state,
+            [reactant],
+            [product],
+            transition_state=transition_state,
+            reactants_atom_mapping=rcts_mp,
+            products_atom_mapping=prdts_mp,
         )
 
         self.reaction_type(reactant, product)
@@ -603,39 +610,61 @@ class IntramolSingleBondChangeReaction(Reaction):
         templates = list()
         for formula in entries:
             Nbonds_list = list(entries[formula].keys())
-            if len(Nbonds_list) > 1:
-                for ii in range(len(Nbonds_list) - 1):
-                    Nbonds0 = Nbonds_list[ii]
-                    Nbonds1 = Nbonds_list[ii + 1]
-                    if Nbonds1 - Nbonds0 == 1:
-                        for charge in entries[formula][Nbonds0]:
-                            if charge not in families:
-                                families[charge] = dict()
-                            if charge in entries[formula][Nbonds1]:
-                                for entry1 in entries[formula][Nbonds1][charge]:
-                                    for edge in entry1.edges:
-                                        mg = copy.deepcopy(entry1.mol_graph)
-                                        mg.break_edge(edge[0], edge[1], allow_reverse=True)
-                                        if nx.is_weakly_connected(mg.graph):
-                                            for entry0 in entries[formula][Nbonds0][charge]:
-                                                if entry0.mol_graph.isomorphic_to(mg):
-                                                    r = cls(entry0, entry1)
-                                                    reactions.append(r)
-                                                    indices = entry1.mol_graph.extract_bond_environment(
-                                                        [edge]
-                                                    )
-                                                    subg = (
-                                                        entry1.graph.subgraph(list(indices))
-                                                        .copy()
-                                                        .to_undirected()
-                                                    )
+            if len(Nbonds_list) <= 1:
+                continue
 
-                                                    families, templates = categorize(
-                                                        r, families, templates, subg, charge,
-                                                    )
-                                                    break
+            for ii in range(len(Nbonds_list) - 1):
+                Nbonds0 = Nbonds_list[ii]
+                Nbonds1 = Nbonds_list[ii + 1]
+                if Nbonds1 - Nbonds0 != 1:
+                    continue
+
+                for charge in entries[formula][Nbonds0]:
+                    if charge not in entries[formula][Nbonds1]:
+                        continue
+
+                    for entry1 in entries[formula][Nbonds1][charge]:
+                        rxns, subgs = cls._generate_one(
+                            entry1, entries, formula, Nbonds0, charge, cls
+                        )
+                        reactions.extend(rxns)
+                        for r, g in zip(rxns, subgs):
+                            families, templates = categorize(r, families, templates, g, charge)
 
         return reactions, families
+
+    @staticmethod
+    def _generate_one(
+        entry1, entries, formula, Nbonds0, charge, cls
+    ) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        """
+        Helper function to generate reactions for one molecule entry.
+        """
+        reactions = []
+        sub_graphs = []
+        for edge in entry1.edges:
+            mg = copy.deepcopy(entry1.mol_graph)
+            mg.break_edge(edge[0], edge[1], allow_reverse=True)
+            if nx.is_weakly_connected(mg.graph):
+                for entry0 in entries[formula][Nbonds0][charge]:
+                    isomorphic, node_mapping = is_isomorphic(entry0.graph, mg.graph)
+                    if isomorphic:
+                        rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
+                        r = cls(
+                            entry0,
+                            entry1,
+                            reactant_atom_mapping=rct_mp,
+                            product_atom_mapping=prdt_mp,
+                        )
+                        indices = entry1.mol_graph.extract_bond_environment([edge])
+                        subg = entry1.graph.subgraph(list(indices)).copy().to_undirected()
+
+                        reactions.append(r)
+                        sub_graphs.append(subg)
+
+                        break
+
+        return reactions, sub_graphs
 
     def reaction_type(self, reactant, product):
         """
@@ -756,6 +785,8 @@ class IntramolSingleBondChangeReaction(Reaction):
             "product": self.p_dicts[0],
             "transition_state": ts,
             "rate_calculator": rc,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -774,7 +805,19 @@ class IntramolSingleBondChangeReaction(Reaction):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        reaction = cls(reactant, product, transition_state=ts)
+        reactants_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["reactants_atom_mapping"]
+        ]
+        products_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["products_atom_mapping"]
+        ]
+        reaction = cls(
+            reactant,
+            product,
+            transition_state=ts,
+            reactant_atom_mapping=reactants_atom_mapping[0],
+            product_atom_mapping=products_atom_mapping[0],
+        )
         reaction.rate_calculator = rate_calculator
         return reaction
 
@@ -804,7 +847,8 @@ class IntermolecularReaction(Reaction):
         reactant: MoleculeEntry,
         product: List[MoleculeEntry],
         transition_state: Optional[MoleculeEntry] = None,
-        parameters: Optional[Dict] = None,
+        reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
+        products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
         """
           Initializes IntermolecularReaction.reactant to be in the form of a
@@ -825,8 +869,17 @@ class IntermolecularReaction(Reaction):
 
         """
 
+        rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
+        prdts_mp = products_atom_mapping if products_atom_mapping is not None else None
+
         self.class_type = "IntermolecularReaction"
-        super().__init__([reactant], product, transition_state=transition_state)
+        super().__init__(
+            [reactant],
+            product,
+            transition_state=transition_state,
+            reactants_atom_mapping=rcts_mp,
+            products_atom_mapping=prdts_mp,
+        )
         self.reaction_type()
         self.rct_ind = reactant.parameters.get("ind")
         self.pro0_ind = product[0].parameters.get("ind")
@@ -855,68 +908,81 @@ class IntermolecularReaction(Reaction):
         reactions = list()
         families = dict()
         templates = list()
+
         for formula in entries:
             for Nbonds in entries[formula]:
-                if Nbonds > 0:
-                    for charge in entries[formula][Nbonds]:
-                        if charge not in families:
-                            families[charge] = dict()
-                        for entry in entries[formula][Nbonds][charge]:
-                            for edge in entry.edges:
-                                bond = [(edge[0], edge[1])]
-                                try:
-                                    frags = entry.mol_graph.split_molecule_subgraphs(
-                                        bond, allow_reverse=True
-                                    )
-                                    formula0 = frags[0].molecule.composition.alphabetical_formula
-                                    Nbonds0 = len(frags[0].graph.edges())
-                                    formula1 = frags[1].molecule.composition.alphabetical_formula
-                                    Nbonds1 = len(frags[1].graph.edges())
-                                    if formula0 in entries and formula1 in entries:
-                                        if (
-                                            Nbonds0 in entries[formula0]
-                                            and Nbonds1 in entries[formula1]
-                                        ):
-                                            for charge0 in entries[formula0][Nbonds0]:
-                                                for entry0 in entries[formula0][Nbonds0][charge0]:
-                                                    if frags[0].isomorphic_to(entry0.mol_graph):
-                                                        charge1 = charge - charge0
-                                                        if charge1 in entries[formula1][Nbonds1]:
-                                                            for entry1 in entries[formula1][
-                                                                Nbonds1
-                                                            ][charge1]:
-                                                                if frags[1].isomorphic_to(
-                                                                    entry1.mol_graph
-                                                                ):
-                                                                    r = cls(
-                                                                        entry, [entry0, entry1,],
-                                                                    )
-                                                                    mg = entry.mol_graph
-                                                                    indices = mg.extract_bond_environment(
-                                                                        [edge]
-                                                                    )
-                                                                    subg = mg.graph.subgraph(
-                                                                        list(indices)
-                                                                    ).copy()
-                                                                    subg = subg.to_undirected()
+                if Nbonds <= 0:
+                    continue
 
-                                                                    (
-                                                                        families,
-                                                                        templates,
-                                                                    ) = categorize(
-                                                                        r,
-                                                                        families,
-                                                                        templates,
-                                                                        subg,
-                                                                        charge,
-                                                                    )
-                                                                    reactions.append(r)
-                                                                    break
-                                                        break
-                                except MolGraphSplitError:
-                                    pass
+                for charge in entries[formula][Nbonds]:
+                    for entry in entries[formula][Nbonds][charge]:
+                        rxns, subgs = cls._generate_one(entry, entries, charge, cls)
+                        reactions.extend(rxns)
+                        for r, g in zip(rxns, subgs):
+                            families, templates = categorize(r, families, templates, g, charge)
 
         return reactions, families
+
+    @staticmethod
+    def _generate_one(entry, entries, charge, cls) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        """
+        Helper function to generate reactions for one molecule entry.
+        """
+        reactions = []
+        sub_graphs = []
+
+        for edge in entry.edges:
+            bond = [(edge[0], edge[1])]
+            try:
+                frags = entry.mol_graph.split_molecule_subgraphs(bond, allow_reverse=True)
+                formula0 = frags[0].molecule.composition.alphabetical_formula
+                Nbonds0 = len(frags[0].graph.edges())
+                formula1 = frags[1].molecule.composition.alphabetical_formula
+                Nbonds1 = len(frags[1].graph.edges())
+
+                if (
+                    formula0 not in entries
+                    or formula1 not in entries
+                    or Nbonds0 not in entries[formula0]
+                    or Nbonds1 not in entries[formula1]
+                ):
+                    continue
+
+                for charge0 in entries[formula0][Nbonds0]:
+                    charge1 = charge - charge0
+                    if charge1 not in entries[formula1][Nbonds1]:
+                        continue
+
+                    for entry0 in entries[formula0][Nbonds0][charge0]:
+                        isomorphic0, _ = is_isomorphic(frags[0].graph, entry0.graph)
+                        if isomorphic0:
+
+                            for entry1 in entries[formula1][Nbonds1][charge1]:
+                                isomorphic1, _ = is_isomorphic(frags[1].graph, entry1.graph)
+                                if isomorphic1:
+                                    rct_mp, prdts_mp = generate_atom_mapping_1_2(
+                                        entry, [entry0, entry1], [edge]
+                                    )
+                                    r = cls(
+                                        entry,
+                                        [entry0, entry1],
+                                        reactant_atom_mapping=rct_mp,
+                                        products_atom_mapping=prdts_mp,
+                                    )
+
+                                    mg = entry.mol_graph
+                                    indices = mg.extract_bond_environment([edge])
+                                    subg = mg.graph.subgraph(list(indices)).copy().to_undirected()
+
+                                    reactions.append(r)
+                                    sub_graphs.append(subg)
+
+                                    break
+                            break
+            except MolGraphSplitError:
+                pass
+
+        return reactions, sub_graphs
 
     def reaction_type(self):
 
@@ -1043,6 +1109,8 @@ class IntermolecularReaction(Reaction):
             "product_1": self.p_dicts[1],
             "transition_state": ts,
             "rate_calculator": rc,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -1062,7 +1130,20 @@ class IntermolecularReaction(Reaction):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        reaction = cls(reactant, [product_0, product_1], transition_state=ts)
+        reactants_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["reactants_atom_mapping"]
+        ]
+        products_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["products_atom_mapping"]
+        ]
+
+        reaction = cls(
+            reactant,
+            [product_0, product_1],
+            transition_state=ts,
+            reactant_atom_mapping=reactants_atom_mapping[0],
+            products_atom_mapping=products_atom_mapping,
+        )
         reaction.rate_calculator = rate_calculator
         return reaction
 
@@ -1093,6 +1174,8 @@ class CoordinationBondChangeReaction(Reaction):
         product: List[MoleculeEntry],
         transition_state: Optional[MoleculeEntry] = None,
         parameters: Optional[Dict] = None,
+        reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
+        products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
         """
             Initilizes CoordinationBondChangeReaction.reactant to be in the
@@ -1113,8 +1196,14 @@ class CoordinationBondChangeReaction(Reaction):
 
         """
         self.class_type = "CoordinationBondChangeReaction"
+        rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
+        prdts_mp = products_atom_mapping if products_atom_mapping is not None else None
         super().__init__(
-            [reactant], product, transition_state=transition_state,
+            [reactant],
+            product,
+            transition_state=transition_state,
+            reactants_atom_mapping=rcts_mp,
+            products_atom_mapping=prdts_mp,
         )
         self.reaction_type()
         self.rct_ind = reactant.parameters.get("ind")
@@ -1140,11 +1229,9 @@ class CoordinationBondChangeReaction(Reaction):
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
-        reactions = list()
+
+        # find metal entries
         M_entries = dict()
-        families = dict()
-        fam = dict()
-        temp = list()
         for formula in entries:
             if formula in ["Li1", "Mg1", "Ca1", "Zn1"]:
                 if formula not in M_entries:
@@ -1152,112 +1239,113 @@ class CoordinationBondChangeReaction(Reaction):
                 for charge in entries[formula][0]:
                     assert len(entries[formula][0][charge]) == 1
                     M_entries[formula][charge] = entries[formula][0][charge][0]
-        if M_entries != dict():
-            for formula in entries:
-                if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
-                    for Nbonds in entries[formula]:
-                        if Nbonds > 2:
-                            for charge in entries[formula][Nbonds]:
-                                if charge not in families:
-                                    families[charge] = dict()
-                                for entry in entries[formula][Nbonds][charge]:
-                                    nosplit_M_bonds = list()
-                                    for edge in entry.edges:
-                                        if (
-                                            str(entry.molecule.sites[edge[0]].species) in M_entries
-                                            or str(entry.molecule.sites[edge[1]].species)
-                                            in M_entries
-                                        ):
-                                            M_bond = (edge[0], edge[1])
-                                            try:
-                                                frags = entry.mol_graph.split_molecule_subgraphs(
-                                                    [M_bond], allow_reverse=True
-                                                )
-                                            except MolGraphSplitError:
-                                                nosplit_M_bonds.append(M_bond)
-                                    bond_pairs = itertools.combinations(nosplit_M_bonds, 2)
-                                    for bond_pair in bond_pairs:
-                                        try:
-                                            frags = entry.mol_graph.split_molecule_subgraphs(
-                                                bond_pair, allow_reverse=True
-                                            )
-                                            M_ind = None
-                                            M_formula = None
-                                            for ii, frag in enumerate(frags):
-                                                frag_formula = (
-                                                    frag.molecule.composition.alphabetical_formula
-                                                )
-                                                if frag_formula in M_entries:
-                                                    M_ind = ii
-                                                    M_formula = frag_formula
-                                                    break
-                                            if M_ind is not None:
-                                                for ii, frag in enumerate(frags):
-                                                    if ii != M_ind:
-                                                        nonM_formula = (
-                                                            frag.molecule.composition.alphabetical_formula
-                                                        )
-                                                        nonM_Nbonds = len(frag.graph.edges())
-                                                        if nonM_formula in entries:
-                                                            if nonM_Nbonds in entries[nonM_formula]:
-                                                                for nonM_charge in entries[
-                                                                    nonM_formula
-                                                                ][nonM_Nbonds]:
-                                                                    M_charge = (
-                                                                        entry.charge - nonM_charge
-                                                                    )
-                                                                    if (
-                                                                        M_charge
-                                                                        in M_entries[M_formula]
-                                                                    ):
-                                                                        for nonM_entry in entries[
-                                                                            nonM_formula
-                                                                        ][nonM_Nbonds][nonM_charge]:
-                                                                            if frag.isomorphic_to(
-                                                                                nonM_entry.mol_graph
-                                                                            ):
-                                                                                this_m = M_entries[
-                                                                                    M_formula
-                                                                                ][M_charge]
-                                                                                r = cls(
-                                                                                    entry,
-                                                                                    [
-                                                                                        nonM_entry,
-                                                                                        this_m,
-                                                                                    ],
-                                                                                )
 
-                                                                                mg = entry.mol_graph
+        reactions = list()
+        families = dict()
+        templates = list()
 
-                                                                                indices = mg.extract_bond_environment(
-                                                                                    list(bond_pair)
-                                                                                )
-                                                                                subg = (
-                                                                                    mg.graph.subgraph(
-                                                                                        list(
-                                                                                            indices
-                                                                                        )
-                                                                                    )
-                                                                                    .copy()
-                                                                                    .to_undirected()
-                                                                                )
+        if not M_entries:
+            return reactions, families
 
-                                                                                (
-                                                                                    fam,
-                                                                                    temp,
-                                                                                ) = categorize(
-                                                                                    r,
-                                                                                    fam,
-                                                                                    temp,
-                                                                                    subg,
-                                                                                    charge,
-                                                                                )
+        for formula in entries:
+            if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
 
-                                                                                reactions.append(r)
-                                                                                break
-                                        except MolGraphSplitError:
-                                            pass
-        return reactions, fam
+                for Nbonds in entries[formula]:
+                    if Nbonds <= 2:
+                        continue
+
+                    for charge in entries[formula][Nbonds]:
+                        for entry in entries[formula][Nbonds][charge]:
+                            rxns, subgs = cls._generate_one(entry, entries, M_entries, cls)
+                            reactions.extend(rxns)
+                            for r, g in zip(rxns, subgs):
+                                families, templates = categorize(r, families, templates, g, charge)
+
+        return reactions, families
+
+    @staticmethod
+    def _generate_one(
+        entry, entries, M_entries, cls
+    ) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        """
+        Helper function to generate reactions for one molecule entry.
+        """
+        reactions = []
+        sub_graphs = []
+
+        nosplit_M_bonds = list()
+
+        for edge in entry.edges:
+            if (
+                str(entry.molecule.sites[edge[0]].species) in M_entries
+                or str(entry.molecule.sites[edge[1]].species) in M_entries
+            ):
+                M_bond = (edge[0], edge[1])
+                try:
+                    entry.mol_graph.split_molecule_subgraphs([M_bond], allow_reverse=True)
+                except MolGraphSplitError:
+                    nosplit_M_bonds.append(M_bond)
+
+        bond_pairs = itertools.combinations(nosplit_M_bonds, 2)
+
+        for bond_pair in bond_pairs:
+            try:
+                frags = entry.mol_graph.split_molecule_subgraphs(bond_pair, allow_reverse=True)
+                M_ind = None
+                M_formula = None
+
+                for ii, frag in enumerate(frags):
+                    frag_formula = frag.molecule.composition.alphabetical_formula
+                    if frag_formula in M_entries:
+                        M_ind = ii
+                        M_formula = frag_formula
+                        break
+
+                if M_ind is None:
+                    continue
+
+                for ii, frag in enumerate(frags):
+                    if ii == M_ind:
+                        continue
+
+                    nonM_formula = frag.molecule.composition.alphabetical_formula
+                    nonM_Nbonds = len(frag.graph.edges())
+                    if nonM_formula not in entries or nonM_Nbonds not in entries[nonM_formula]:
+                        continue
+
+                    for nonM_charge in entries[nonM_formula][nonM_Nbonds]:
+                        M_charge = entry.charge - nonM_charge
+                        if M_charge not in M_entries[M_formula]:
+                            continue
+
+                        for nonM_entry in entries[nonM_formula][nonM_Nbonds][nonM_charge]:
+                            isomorphic, _ = is_isomorphic(frag.graph, nonM_entry.graph)
+                            if isomorphic:
+                                this_m = M_entries[M_formula][M_charge]
+
+                                rct_mp, prdts_mp = generate_atom_mapping_1_2(
+                                    entry, [nonM_entry, this_m], bond_pair
+                                )
+
+                                r = cls(
+                                    entry,
+                                    [nonM_entry, this_m],
+                                    reactant_atom_mapping=rct_mp,
+                                    products_atom_mapping=prdts_mp,
+                                )
+                                mg = entry.mol_graph
+                                indices = mg.extract_bond_environment(list(bond_pair))
+                                subg = mg.graph.subgraph(list(indices)).copy().to_undirected()
+
+                                reactions.append(r)
+                                sub_graphs.append(subg)
+
+                                break
+
+            except MolGraphSplitError:
+                pass
+
+        return reactions, sub_graphs
 
     def reaction_type(self):
         """
@@ -1385,6 +1473,8 @@ class CoordinationBondChangeReaction(Reaction):
             "product_1": self.p_dicts[1],
             "transition_state": ts,
             "rate_calculator": rc,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -1404,7 +1494,21 @@ class CoordinationBondChangeReaction(Reaction):
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
 
-        reaction = cls(reactant, [product_0, product_1], transition_state=ts,)
+        reactants_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["reactants_atom_mapping"]
+        ]
+        products_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["products_atom_mapping"]
+        ]
+
+        reaction = cls(
+            reactant,
+            [product_0, product_1],
+            transition_state=ts,
+            reactant_atom_mapping=reactants_atom_mapping[0],
+            products_atom_mapping=products_atom_mapping,
+        )
+
         reaction.rate_calculator = rate_calculator
         return reaction
 
