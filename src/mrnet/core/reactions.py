@@ -1983,7 +1983,8 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     A method to convert a reaction type object into graph representation. Reaction much be of type 3 reactants -> 2
     products
     Args:
-       :param reaction: (any of the reaction class object, ex. RedoxReaction, IntramolSingleBondChangeReaction, Concerted)
+       :param reaction: (any of the reaction class object, ex. RedoxReaction, IntramolSingleBondChangeReaction,
+                        Concerted)
     """
 
     if len(reaction.reactants) != 3 or len(reaction.products) != 2:

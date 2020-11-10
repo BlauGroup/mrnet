@@ -187,7 +187,7 @@ class ReactionPath(MSONable):
                                 c = int(rxn[1])
                             pool_modified = copy.deepcopy(pool)
                             pool_modified.remove(a)
-                            if PR_b2 == None:
+                            if PR_b2 is None:
                                 if PR_b in pool_modified:
                                     if PR_b in list(min_cost.keys()):
                                         class_instance.cost = (
@@ -450,7 +450,7 @@ class ReactionPath(MSONable):
                     PR_path = None
                     PR_min_cost = float("inf")  # 1000000000000000.0
                     for start in PR_paths[PR]:
-                        if PR_paths[PR][start].path != None:
+                        if PR_paths[PR][start].path is not None:
                             if PR_paths[PR][start].cost < PR_min_cost:
                                 PR_min_cost = PR_paths[PR][start].cost
                                 PR_path = PR_paths[PR][start]
@@ -642,10 +642,17 @@ class ReactionNetwork(MSONable):
                 connected_entries.append(entry)
         print(len(connected_entries), "connected entries")
 
-        get_formula = lambda x: x.formula
-        get_Nbonds = lambda x: x.Nbonds
-        get_charge = lambda x: x.charge
-        get_free_energy = lambda x: x.free_energy(temp=temperature)
+        def get_formula(x):
+            return x.formula
+
+        def get_Nbonds(x):
+            return x.Nbonds
+
+        def get_charge(x):
+            return x.charge
+
+        def get_free_energy(x):
+            return x.free_energy(temp=temperature)
 
         sorted_entries_0 = sorted(connected_entries, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
@@ -952,7 +959,7 @@ class ReactionNetwork(MSONable):
                 for start in PRs[PR]:
                     if PRs[PR][start] == {}:
                         cost_from_start[PR][start] = "no_path"
-                    elif PRs[PR][start].path == None:
+                    elif PRs[PR][start].path is not None:
                         cost_from_start[PR][start] = "no_path"
                     else:
                         cost_from_start[PR][start] = PRs[PR][start].cost
@@ -1328,7 +1335,7 @@ class ReactionNetwork(MSONable):
                 for start in PRs[PR]:
                     if PRs[PR][start].cost == float("inf"):  # 10000000000000000.0:
                         PRs[PR][start] = ReactionPath(None)
-                    if PRs[PR][start].path != None:
+                    if PRs[PR][start].path is not None:
                         path_found = True
                         path_dict_class = ReactionPath.characterize_path_final(
                             PRs[PR][start].path,
@@ -1511,7 +1518,7 @@ class ReactionNetwork(MSONable):
                         heapq.heappush(
                             my_heapq, (path_dict_class2.cost, next(c), path_dict_class2)
                         )
-        except:
+        except Exception:
             print("ind", ind)
         top_path_list = []
         while len(paths) < num_paths and my_heapq:
@@ -1526,7 +1533,7 @@ class ReactionNetwork(MSONable):
             )
             paths.append(
                 path_dict_HP_class.path_dict
-            )  ### ideally just append the class, but for now dict for easy printing
+            )  # ideally just append the class, but for now dict for easy printing
 
         self.paths = paths
         self.top_path_list = top_path_list
@@ -1721,10 +1728,14 @@ class ReactionNetwork(MSONable):
                                     product1 = int(p2)
                                     product2 = int(p1)
                                     glist = [reactant1, reactant2, product1, product2]
-                                if set(glist).issubset(set(mols_to_keep)) and {
-                                    reactant1,
-                                    reactant2,
-                                } != {product1, product2}:
+                                if (
+                                    set(glist).issubset(set(mols_to_keep))
+                                    and {
+                                        reactant1,
+                                        reactant2,
+                                    }
+                                    != {product1, product2}
+                                ):
                                     count = count + 1
                                     # print(glist, set(glist).issubset(set(mols_to_keep)))
                                     reactions.append(
@@ -1737,7 +1748,7 @@ class ReactionNetwork(MSONable):
                             elif "PR" not in in_node and "PR" in out_node:
                                 if (
                                     "+" in in_node
-                                ):  #####want this: 2441,2426''2426+PR_148,3669'
+                                ):  # want this: 2441,2426''2426+PR_148,3669'
                                     start = in_node.split(",")[0]
                                     p1 = list(
                                         map(int, in_node.split(",")[1].split("+"))
@@ -1763,10 +1774,14 @@ class ReactionNetwork(MSONable):
                                     product2 = int(p2)
                                     glist = [reactant1, reactant2, product1, product2]
 
-                                if set(glist).issubset(set(mols_to_keep)) and {
-                                    reactant1,
-                                    reactant2,
-                                } != {product1, product2}:
+                                if (
+                                    set(glist).issubset(set(mols_to_keep))
+                                    and {
+                                        reactant1,
+                                        reactant2,
+                                    }
+                                    != {product1, product2}
+                                ):
                                     count = count + 1
                                     # print(glist, set(glist).issubset(set(mols_to_keep)))
                                     reactions.append(
@@ -1834,7 +1849,7 @@ class ReactionNetwork(MSONable):
                 assert int(reaction[0][1]) in pruned_network_build.graph.nodes
                 assert int(reaction[1][0]) in pruned_network_build.graph.nodes
                 new_node = False
-                if reaction[1][1] == None:
+                if reaction[1][1] is None:
                     new_node = True
                 else:
                     assert int(reaction[1][1]) in pruned_network_build.graph.nodes
