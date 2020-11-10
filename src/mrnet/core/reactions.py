@@ -451,13 +451,16 @@ class RedoxReaction(Reaction):
         """
         entry0 = self.reactant
         entry1 = self.product
-        if entry1.get_free_energy() is not None and entry0.get_free_energy() is not None:
-            free_energy_A = entry1.get_free_energy(temp=temperature) - entry0.get_free_energy(
+        if (
+            entry1.get_free_energy() is not None
+            and entry0.get_free_energy() is not None
+        ):
+            free_energy_A = entry1.get_free_energy(
                 temp=temperature
-            )
-            free_energy_B = entry0.get_free_energy(temp=temperature) - entry1.get_free_energy(
+            ) - entry0.get_free_energy(temp=temperature)
+            free_energy_B = entry0.get_free_energy(
                 temp=temperature
-            )
+            ) - entry1.get_free_energy(temp=temperature)
 
             if self.reaction_type()["rxn_type_A"] == "One electron reduction":
                 free_energy_A += -self.electron_free_energy
@@ -782,13 +785,16 @@ class IntramolSingleBondChangeReaction(Reaction):
         """
         entry0 = self.reactant
         entry1 = self.product
-        if entry1.get_free_energy() is not None and entry0.get_free_energy() is not None:
-            free_energy_A = entry1.get_free_energy(temp=temperature) - entry0.get_free_energy(
+        if (
+            entry1.get_free_energy() is not None
+            and entry0.get_free_energy() is not None
+        ):
+            free_energy_A = entry1.get_free_energy(
                 temp=temperature
-            )
-            free_energy_B = entry0.get_free_energy(temp=temperature) - entry1.get_free_energy(
+            ) - entry0.get_free_energy(temp=temperature)
+            free_energy_B = entry0.get_free_energy(
                 temp=temperature
-            )
+            ) - entry1.get_free_energy(temp=temperature)
         else:
             free_energy_A = None
             free_energy_B = None
@@ -1767,7 +1773,7 @@ class ConcertedReaction(Reaction):
             all_concerted_reactions = loadfn(name + "_concerted_rxns.json")
         else:
             from pymatgen.reaction_network.extract_reactions import (
-                FindConcertedReactions
+                FindConcertedReactions,
             )
 
             FCR = FindConcertedReactions(entries_list, name)
@@ -1834,7 +1840,9 @@ class ConcertedReaction(Reaction):
         cond_rct = all(
             reactant.get_free_energy() is not None for reactant in self.reactants
         )
-        cond_pro = all(product.get_free_energy() is not None for product in self.products)
+        cond_pro = all(
+            product.get_free_energy() is not None for product in self.products
+        )
         if cond_rct and cond_pro:
             reactant_charge = np.sum([item.charge for item in self.reactants])
             product_charge = np.sum([item.charge for item in self.products])
