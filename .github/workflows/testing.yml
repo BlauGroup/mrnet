@@ -3,13 +3,10 @@ name: testing
 on:
   push:
     branches:
-      - master
-    paths-ignore:
-      - 'docs/CHANGELOG.md'
-
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   lint:
@@ -52,7 +49,7 @@ jobs:
       max-parallel: 6
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.6,3.7,3.8]
+        python-version: [3.7]
 
     runs-on: ${{ matrix.os }}
 
@@ -74,7 +71,6 @@ jobs:
       run: |
         pip install -e .
         pytest --cov=mrnet --cov-report=xml
-
     - uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
