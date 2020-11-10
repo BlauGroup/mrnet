@@ -9,7 +9,7 @@ from networkx.readwrite import json_graph
 
 from monty.json import MSONable
 
-from pymatgen.entries.mol_entry import MoleculeEntry
+from mrnet.core.mol_entry import MoleculeEntry
 
 from mrnet.utils.classes import load_class
 
@@ -1728,14 +1728,10 @@ class ReactionNetwork(MSONable):
                                     product1 = int(p2)
                                     product2 = int(p1)
                                     glist = [reactant1, reactant2, product1, product2]
-                                if (
-                                    set(glist).issubset(set(mols_to_keep))
-                                    and {
-                                        reactant1,
-                                        reactant2,
-                                    }
-                                    != {product1, product2}
-                                ):
+                                if set(glist).issubset(set(mols_to_keep)) and {
+                                    reactant1,
+                                    reactant2,
+                                } != {product1, product2}:
                                     count = count + 1
                                     # print(glist, set(glist).issubset(set(mols_to_keep)))
                                     reactions.append(
@@ -1774,14 +1770,10 @@ class ReactionNetwork(MSONable):
                                     product2 = int(p2)
                                     glist = [reactant1, reactant2, product1, product2]
 
-                                if (
-                                    set(glist).issubset(set(mols_to_keep))
-                                    and {
-                                        reactant1,
-                                        reactant2,
-                                    }
-                                    != {product1, product2}
-                                ):
+                                if set(glist).issubset(set(mols_to_keep)) and {
+                                    reactant1,
+                                    reactant2,
+                                } != {product1, product2}:
                                     count = count + 1
                                     # print(glist, set(glist).issubset(set(mols_to_keep)))
                                     reactions.append(

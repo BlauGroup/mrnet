@@ -6,7 +6,8 @@ from scipy.constants import h, k, N_A, pi, epsilon_0, elementary_charge
 from monty.json import MSONable
 
 from pymatgen.core.units import amu_to_kg
-from pymatgen.util.num import product
+
+from mrnet.utils.math import product
 
 
 __author__ = "Evan Spotte-Smith"
@@ -95,8 +96,8 @@ class ReactionRateCalculator(MSONable):
             float: net Gibbs free energy (in eV)
         """
 
-        rct_gibbs = [r.free_energy(temp=temperature) for r in self.reactants]
-        pro_gibbs = [p.free_energy(temp=temperature) for p in self.products]
+        rct_gibbs = [r.get_free_energy(temp=temperature) for r in self.reactants]
+        pro_gibbs = [p.get_free_energy(temp=temperature) for p in self.products]
 
         return sum(pro_gibbs) - sum(rct_gibbs)
 
