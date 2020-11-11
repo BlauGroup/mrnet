@@ -178,14 +178,13 @@ class TestReactionNetwork(PymatgenTest):
                         cls.LiEC_reextended_entries.append(mol_entry)
                 else:
                     cls.LiEC_reextended_entries.append(mol_entry)
-            #dumpfn(cls.LiEC_reextended_entries, "unittest_input_molentries.json")
 
-
+            # dumpfn(cls.LiEC_reextended_entries, "unittest_input_molentries.json")
 
             with open(os.path.join(test_dir,'unittest_RN_build.pkl'), 'rb') as input:
                 cls.RN_build = pickle.load(input)
 
-            with open(os.path.join(test_dir,'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
                 cls.RN_pr_solved = pickle.load(input)
 
 
@@ -299,6 +298,8 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_solve_prerequisites(self):
+        with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            RN_pr_solved = pickle.load(input)
 
         # set up RN
         RN = copy.deepcopy(self.RN_build)
@@ -323,7 +324,7 @@ class TestReactionNetwork(PymatgenTest):
         )
 
         # assert
-        PR_paths = self.RN_pr_solved.PRs
+        PR_paths = RN_pr_solved.PRs
 
         for node in PRs_calc:
             for start in PRs_calc[node]:
@@ -498,9 +499,11 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_final_PR_check(self):
+        with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            RN_pr_solved = pickle.load(input)
 
         # set up RN
-        RN = copy.deepcopy(self.RN_pr_solved)
+        RN = copy.deepcopy(RN_pr_solved)
 
         # perform calc
         old_stdout = sys.stdout
@@ -564,8 +567,10 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_valid_shortest_simple_paths(self):
+        with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            RN_pr_solved = pickle.load(input)
 
-        RN = copy.deepcopy(self.RN_pr_solved)
+        RN = copy.deepcopy(RN_pr_solved)
 
         EC_ind = None
         LEDC_ind = None
@@ -722,9 +727,11 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_find_paths(self):
+        with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            RN_pr_solved = pickle.load(input)
 
         # set up RN
-        RN = copy.deepcopy(self.RN_pr_solved)
+        RN = copy.deepcopy(RN_pr_solved)
 
         # set up input variables
         EC_ind = None
@@ -762,8 +769,10 @@ class TestReactionNetwork(PymatgenTest):
             self.assertTrue(abs(path["cost"] - path["pure_cost"]) < 0.000000001)
 
     def test_mols_w_cuttoff(self):
+        with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            RN_pr_solved = pickle.load(input)
 
-        RN_loaded = copy.deepcopy(self.RN_pr_solved)
+        RN_loaded = copy.deepcopy(RN_pr_solved)
 
         mols_to_keep, pruned_entries_list = ReactionNetwork.mols_w_cuttoff(
             RN_loaded, 0, build_pruned_network=False
@@ -772,9 +781,10 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(len(mols_to_keep), 196)
 
     def test_identify_concerted_rxns_via_intermediates(self):
+        with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            RN_pr_solved = pickle.load(input)
 
-
-        RN_loaded = copy.deepcopy(self.RN_pr_solved)
+        RN_loaded = copy.deepcopy(RN_pr_solved)
 
         with open(
             os.path.join(test_dir, "RN_unittest_pruned_mols_to_keep.json"), "rb"
@@ -788,8 +798,10 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(len(reactions), 2410)
 
     def test_add_concerted_rxns(self):
+        with open(os.path.join(test_dir, 'unittest_RN_pr_solved.pkl'), 'rb') as input:
+            RN_pr_solved = pickle.load(input)
 
-        RN_loaded = copy.deepcopy(self.RN_pr_solved)
+        RN_loaded = copy.deepcopy(RN_pr_solved)
 
         with open(
             os.path.join(test_dir, "RN_unittest_reactions_list.json"), "rb"
