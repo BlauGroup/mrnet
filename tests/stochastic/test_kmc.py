@@ -7,6 +7,8 @@ import math
 import numpy as np
 from scipy.constants import N_A
 
+from monty.serialization import dumpfn
+
 from pymatgen.util.testing import PymatgenTest
 
 from mrnet.stochastic.kmc import (
