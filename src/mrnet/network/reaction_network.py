@@ -959,7 +959,7 @@ class ReactionNetwork(MSONable):
                 for start in PRs[PR]:
                     if PRs[PR][start] == {}:
                         cost_from_start[PR][start] = "no_path"
-                    elif PRs[PR][start].path is not None:
+                    elif PRs[PR][start].path is None:
                         cost_from_start[PR][start] = "no_path"
                     else:
                         cost_from_start[PR][start] = PRs[PR][start].cost
@@ -1784,7 +1784,7 @@ class ReactionNetwork(MSONable):
                                         )
                                     )
                 count_total = count_total + count
-                print(node, entry.formula, count)
+                #print(node, entry.formula, count)
         print("identify_concerted_rxns_via_intermediates end", time.time())
         print("total number of unique concerted reactions:", count_total)
 
