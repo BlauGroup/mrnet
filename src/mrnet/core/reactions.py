@@ -13,7 +13,7 @@ from monty.json import MSONable
 from monty.serialization import loadfn
 
 from pymatgen.analysis.graphs import MolGraphSplitError
-from pymatgen.entries.mol_entry import MoleculeEntry
+from mrnet.core.mol_entry import MoleculeEntry
 
 from mrnet.core.rates import (
     ReactionRateCalculator,
@@ -451,13 +451,16 @@ class RedoxReaction(Reaction):
         """
         entry0 = self.reactant
         entry1 = self.product
-        if entry1.free_energy() is not None and entry0.free_energy() is not None:
-            free_energy_A = entry1.free_energy(temp=temperature) - entry0.free_energy(
+        if (
+            entry1.get_free_energy() is not None
+            and entry0.get_free_energy() is not None
+        ):
+            free_energy_A = entry1.get_free_energy(
                 temp=temperature
-            )
-            free_energy_B = entry0.free_energy(temp=temperature) - entry1.free_energy(
+            ) - entry0.get_free_energy(temp=temperature)
+            free_energy_B = entry0.get_free_energy(
                 temp=temperature
-            )
+            ) - entry1.get_free_energy(temp=temperature)
 
             if self.reaction_type()["rxn_type_A"] == "One electron reduction":
                 free_energy_A += -self.electron_free_energy
@@ -714,9 +717,9 @@ class IntramolSingleBondChangeReaction(Reaction):
         """
         reactions = []
         sub_graphs = []
-        for edge in entry1.edges:
+        for bond in entry1.bonds:
             mg = copy.deepcopy(entry1.mol_graph)
-            mg.break_edge(edge[0], edge[1], allow_reverse=True)
+            mg.break_edge(bond[0], bond[1], allow_reverse=True)
             if nx.is_weakly_connected(mg.graph):
                 for entry0 in entries[formula][Nbonds0][charge]:
                     isomorphic, node_mapping = is_isomorphic(entry0.graph, mg.graph)
@@ -728,7 +731,7 @@ class IntramolSingleBondChangeReaction(Reaction):
                             reactant_atom_mapping=rct_mp,
                             product_atom_mapping=prdt_mp,
                         )
-                        indices = entry1.mol_graph.extract_bond_environment([edge])
+                        indices = entry1.mol_graph.extract_bond_environment([bond])
                         subg = (
                             entry1.graph.subgraph(list(indices)).copy().to_undirected()
                         )
@@ -782,13 +785,16 @@ class IntramolSingleBondChangeReaction(Reaction):
         """
         entry0 = self.reactant
         entry1 = self.product
-        if entry1.free_energy() is not None and entry0.free_energy() is not None:
-            free_energy_A = entry1.free_energy(temp=temperature) - entry0.free_energy(
+        if (
+            entry1.get_free_energy() is not None
+            and entry0.get_free_energy() is not None
+        ):
+            free_energy_A = entry1.get_free_energy(
                 temp=temperature
-            )
-            free_energy_B = entry0.free_energy(temp=temperature) - entry1.free_energy(
+            ) - entry0.get_free_energy(temp=temperature)
+            free_energy_B = entry0.get_free_energy(
                 temp=temperature
-            )
+            ) - entry1.get_free_energy(temp=temperature)
         else:
             free_energy_A = None
             free_energy_B = None
@@ -1014,7 +1020,7 @@ class IntermolecularReaction(Reaction):
         reactions = []
         sub_graphs = []
 
-        for edge in entry.edges:
+        for edge in entry.bonds:
             bond = [(edge[0], edge[1])]
             try:
                 frags = entry.mol_graph.split_molecule_subgraphs(
@@ -1110,9 +1116,9 @@ class IntermolecularReaction(Reaction):
             the reactant and product of the IntermolecularReaction
             object, and the backwards of this reaction would be free_energy_B.
         """
-        g_entry = self.reactant.free_energy
-        g_0 = self.product_0.free_energy
-        g_1 = self.product_1.free_energy
+        g_entry = self.reactant.get_free_energy
+        g_0 = self.product_0.get_free_energy
+        g_1 = self.product_1.get_free_energy
 
         if g_1() is not None and g_0() is not None and g_entry() is not None:
             free_energy_A = (
@@ -1381,12 +1387,12 @@ class CoordinationBondChangeReaction(Reaction):
 
         nosplit_M_bonds = list()
 
-        for edge in entry.edges:
+        for bond in entry.bonds:
             if (
-                str(entry.molecule.sites[edge[0]].species) in M_entries
-                or str(entry.molecule.sites[edge[1]].species) in M_entries
+                str(entry.molecule.sites[bond[0]].species) in M_entries
+                or str(entry.molecule.sites[bond[1]].species) in M_entries
             ):
-                M_bond = (edge[0], edge[1])
+                M_bond = (bond[0], bond[1])
                 try:
                     entry.mol_graph.split_molecule_subgraphs(
                         [M_bond], allow_reverse=True
@@ -1502,9 +1508,9 @@ class CoordinationBondChangeReaction(Reaction):
             on the reactant and product of the CoordinationBondChangeReaction
             object, and the backwards of this reaction would be free_energy_B.
         """
-        g_entry = self.reactant.free_energy
-        g_0 = self.product_0.free_energy
-        g_1 = self.product_1.free_energy
+        g_entry = self.reactant.get_free_energy
+        g_0 = self.product_0.get_free_energy
+        g_1 = self.product_1.get_free_energy
 
         if g_1() is not None and g_0() is not None and g_entry() is not None:
             free_energy_A = (
@@ -1832,17 +1838,19 @@ class ConcertedReaction(Reaction):
             electron_free = self.electron_free_energy
 
         cond_rct = all(
-            reactant.free_energy() is not None for reactant in self.reactants
+            reactant.get_free_energy() is not None for reactant in self.reactants
         )
-        cond_pro = all(product.free_energy() is not None for product in self.products)
+        cond_pro = all(
+            product.get_free_energy() is not None for product in self.products
+        )
         if cond_rct and cond_pro:
             reactant_charge = np.sum([item.charge for item in self.reactants])
             product_charge = np.sum([item.charge for item in self.products])
             reactant_free_energy = np.sum(
-                [item.free_energy(temp=temperature) for item in self.reactants]
+                [item.get_free_energy(temp=temperature) for item in self.reactants]
             )
             product_free_energy = np.sum(
-                [item.free_energy(temp=temperature) for item in self.products]
+                [item.get_free_energy(temp=temperature) for item in self.products]
             )
             total_charge_change = product_charge - reactant_charge
             free_energy_A = (
