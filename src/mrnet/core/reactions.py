@@ -504,7 +504,7 @@ class RedoxReaction(Reaction):
             }
         else:
             rate_constant = dict()
-            free_energy = self.get_free_energy(temperature=temperature)
+            free_energy = self.free_energy(temperature=temperature)
 
             if self.electrode_dist is None:
                 kappa = 1
@@ -844,7 +844,7 @@ class IntramolSingleBondChangeReaction(Reaction):
             }
         else:
             rate_constant = dict()
-            free_energy = self.get_free_energy(temperature=temperature)
+            free_energy = self.free_energy(temperature=temperature)
 
             ga = free_energy["free_energy_A"]
             gb = free_energy["free_energy_B"]
@@ -1187,7 +1187,7 @@ class IntermolecularReaction(Reaction):
             }
         else:
             rate_constant = dict()
-            free_energy = self.get_free_energy(temperature=temperature)
+            free_energy = self.free_energy(temperature=temperature)
 
             ga = free_energy["free_energy_A"]
             gb = free_energy["free_energy_B"]
@@ -1579,7 +1579,7 @@ class CoordinationBondChangeReaction(Reaction):
             }
         else:
             rate_constant = dict()
-            free_energy = self.get_free_energy()
+            free_energy = self.free_energy()
 
             ga = free_energy["free_energy_A"]
             gb = free_energy["free_energy_B"]
@@ -1919,7 +1919,7 @@ class ConcertedReaction(Reaction):
             }
         else:
             rate_constant = dict()
-            free_energy = self.get_free_energy()
+            free_energy = self.free_energy()
 
             ga = free_energy["free_energy_A"]
             gb = free_energy["free_energy_B"]
