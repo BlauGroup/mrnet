@@ -26,9 +26,6 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-testing.txt
     
-    - name: Install OpenBabel
-      run: sudo apt-get install openbabel
-
     - name: Lint with pycodestyle
       run: |
         pip install pycodestyle
@@ -70,6 +67,9 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-testing.txt
 
+    - name: Install OpenBabel
+      run: sudo apt-get install openbabel
+      
     - name: Test with pytest
       run: |
         pip install -e .
