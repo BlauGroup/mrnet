@@ -380,7 +380,7 @@ class RedoxReaction(Reaction):
         for formula in entries:
             families[formula] = dict()
             for Nbonds in entries[formula]:
-                charges = sorted(list(entries[formula][Nbonds].keys()))
+                charges = sorted(entries[formula][Nbonds].keys())
                 for charge in charges:
                     families[formula][charge] = list()
                 if len(charges) > 1:
@@ -679,7 +679,7 @@ class IntramolSingleBondChangeReaction(Reaction):
         families = dict()
         templates = list()
         for formula in entries:
-            Nbonds_list = list(entries[formula].keys())
+            Nbonds_list = sorted(entries[formula].keys())
             if len(Nbonds_list) <= 1:
                 continue
 
@@ -2921,7 +2921,7 @@ def generate_atom_mapping_1_1(
         reactant_atom_mapping: rdkit style atom mapping for the reactant
         product_atom_mapping: rdkit style atom mapping for the product
     """
-    reactant_atom_mapping = node_mapping
+    reactant_atom_mapping = {k: k for k in node_mapping}
     product_atom_mapping = {v: k for k, v in node_mapping.items()}
 
     return reactant_atom_mapping, product_atom_mapping
