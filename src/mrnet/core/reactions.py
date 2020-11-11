@@ -14,6 +14,7 @@ from monty.serialization import loadfn
 
 from pymatgen.analysis.graphs import MolGraphSplitError
 from mrnet.core.mol_entry import MoleculeEntry
+from mrnet.utils.graphs import extract_bond_environment
 
 from mrnet.core.rates import (
     ReactionRateCalculator,
@@ -731,7 +732,7 @@ class IntramolSingleBondChangeReaction(Reaction):
                             reactant_atom_mapping=rct_mp,
                             product_atom_mapping=prdt_mp,
                         )
-                        indices = entry1.mol_graph.extract_bond_environment([bond])
+                        indices = extract_bond_environment(entry1.mol_graph, [tuple(bond)])
                         subg = (
                             entry1.graph.subgraph(list(indices)).copy().to_undirected()
                         )
@@ -1064,7 +1065,7 @@ class IntermolecularReaction(Reaction):
                                     )
 
                                     mg = entry.mol_graph
-                                    indices = mg.extract_bond_environment([edge])
+                                    indices = extract_bond_environment(mg, [tuple(edge)])
                                     subg = (
                                         mg.graph.subgraph(list(indices))
                                         .copy()
@@ -1455,7 +1456,7 @@ class CoordinationBondChangeReaction(Reaction):
                                     products_atom_mapping=prdts_mp,
                                 )
                                 mg = entry.mol_graph
-                                indices = mg.extract_bond_environment(list(bond_pair))
+                                indices = extract_bond_environment(mg, list(bond_pair))
                                 subg = (
                                     mg.graph.subgraph(list(indices))
                                     .copy()
