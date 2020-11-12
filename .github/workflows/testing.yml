@@ -56,13 +56,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2.1.4
+    - name: Set up Conda Python ${{ matrix.python-version }}
+    - uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install OpenBabel
-      run: sudo apt-get install openbabel
+      run: conda install -c openbabel openbabel
 
     - name: Install Python dependencies
       run: |
