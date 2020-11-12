@@ -62,7 +62,7 @@ jobs:
 
     - name: Install OpenBabel
       shell: bash -l {0}
-      run: conda install -c openbabel openbabel
+      run: conda install -c conda-forge openbabel
 
     - name: Install Python dependencies
       shell: bash -l {0}
@@ -76,7 +76,7 @@ jobs:
       run: |
         pip install -e .
         pytest --cov=mrnet --cov-report=xml
-        
+
     - uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
