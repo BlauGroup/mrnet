@@ -27,11 +27,7 @@ except ImportError:
 
 
 test_dir = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "test_files",
-    "reaction_network_files",
+    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
 )
 
 
@@ -459,7 +455,10 @@ class TestIntermolecularReaction(PymatgenTest):
                     and cls.LiEC_RO_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.LiEC_RO_entry is not None:
-                        if cls.LiEC_RO_entry.get_free_energy() >= entry.get_free_energy():
+                        if (
+                            cls.LiEC_RO_entry.get_free_energy()
+                            >= entry.get_free_energy()
+                        ):
                             cls.LiEC_RO_entry = entry
                     else:
                         cls.LiEC_RO_entry = entry
@@ -471,7 +470,10 @@ class TestIntermolecularReaction(PymatgenTest):
                     and cls.C1Li1O3_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.C1Li1O3_entry is not None:
-                        if cls.C1Li1O3_entry.get_free_energy() >= entry.get_free_energy():
+                        if (
+                            cls.C1Li1O3_entry.get_free_energy()
+                            >= entry.get_free_energy()
+                        ):
                             cls.C1Li1O3_entry = entry
                     else:
                         cls.C1Li1O3_entry = entry
@@ -562,7 +564,8 @@ class TestIntermolecularReaction(PymatgenTest):
                         r.products[0].charge == 0 or r.products[1].charge == 0
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == self.C1Li1O3_entry.get_free_energy()
+                        r.products[0].get_free_energy()
+                        == self.C1Li1O3_entry.get_free_energy()
                         or r.products[1].get_free_energy()
                         == self.C1Li1O3_entry.get_free_energy()
                     )
@@ -680,7 +683,10 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                     and cls.EC_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.EC_minus_entry is not None:
-                        if cls.EC_minus_entry.get_free_energy() >= entry.get_free_energy():
+                        if (
+                            cls.EC_minus_entry.get_free_energy()
+                            >= entry.get_free_energy()
+                        ):
                             cls.EC_minus_entry = entry
                     else:
                         cls.EC_minus_entry = entry
@@ -697,7 +703,11 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                     else:
                         cls.LiEC_entry = entry
 
-                if entry.formula == "Li1" and entry.charge == 1 and entry.num_bonds == 0:
+                if (
+                    entry.formula == "Li1"
+                    and entry.charge == 1
+                    and entry.num_bonds == 0
+                ):
                     if cls.Li_entry is not None:
                         if cls.Li_entry.get_free_energy() >= entry.get_free_energy():
                             cls.Li_entry = entry
@@ -783,7 +793,8 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                         or r.products[1].entry_id == self.EC_minus_entry.entry_id
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == self.EC_minus_entry.get_free_energy()
+                        r.products[0].get_free_energy()
+                        == self.EC_minus_entry.get_free_energy()
                         or r.products[1].get_free_energy()
                         == self.EC_minus_entry.get_free_energy()
                     )
