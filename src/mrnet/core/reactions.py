@@ -732,7 +732,9 @@ class IntramolSingleBondChangeReaction(Reaction):
                             reactant_atom_mapping=rct_mp,
                             product_atom_mapping=prdt_mp,
                         )
-                        indices = extract_bond_environment(entry1.mol_graph, [tuple(bond)])
+                        indices = extract_bond_environment(
+                            entry1.mol_graph, [tuple(bond)]
+                        )
                         subg = (
                             entry1.graph.subgraph(list(indices)).copy().to_undirected()
                         )
@@ -1065,7 +1067,9 @@ class IntermolecularReaction(Reaction):
                                     )
 
                                     mg = entry.mol_graph
-                                    indices = extract_bond_environment(mg, [tuple(edge)])
+                                    indices = extract_bond_environment(
+                                        mg, [tuple(edge)]
+                                    )
                                     subg = (
                                         mg.graph.subgraph(list(indices))
                                         .copy()

@@ -363,7 +363,7 @@ class TestReactionNetwork(PymatgenTest):
 
         # set up RN
 
-        with open(os.path.join(test_dir,'unittest_RN_pr_ii_4_before_find_path_cost.pkl'), 'rb') as input:
+        with open(os.path.join(test_dir, 'unittest_RN_pr_ii_4_before_find_path_cost.pkl'), 'rb') as input:
             RN_pr_ii_4 = pickle.load(input)
 
         # set up input variables

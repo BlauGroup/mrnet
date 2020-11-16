@@ -710,7 +710,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
             },
         }
         rxn_correlations = self.analyzer.correlate_reactions([self.rxn_a, self.rxn_b])
-        self.assertDictsAlmostEqual(expected_correlation, rxn_correlations)
+        self.assertDictEqual(expected_correlation, rxn_correlations)
 
 
 if __name__ == "__main__":

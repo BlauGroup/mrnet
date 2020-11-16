@@ -1784,7 +1784,7 @@ class ReactionNetwork(MSONable):
                                         )
                                     )
                 count_total = count_total + count
-                #print(node, entry.formula, count)
+                # print(node, entry.formula, count)
         print("identify_concerted_rxns_via_intermediates end", time.time())
         print("total number of unique concerted reactions:", count_total)
 
