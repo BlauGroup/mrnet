@@ -7,8 +7,6 @@ import math
 import numpy as np
 from scipy.constants import N_A
 
-from monty.serialization import dumpfn
-
 from pymatgen.util.testing import PymatgenTest
 
 from mrnet.stochastic.kmc import (
@@ -44,7 +42,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
         self.concentration = self.num_mols / N_A / self.volume / 1000
 
         if ob:
-            pickle_in = open("h2o_test_network.pickle", "rb")
+            pickle_in = open(os.path.join(test_dir, "h2o_test_network.pickle"), "rb")
             self.reaction_network = pickle.load(pickle_in)
             pickle_in.close()
 
@@ -357,7 +355,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
         self.concentration = self.num_mols / N_A / self.volume / 1000
 
         if ob:
-            pickle_in = open("h2o_test_network.pickle", "rb")
+            pickle_in = open(os.path.join(test_dir, "h2o_test_network.pickle"), "rb")
             self.reaction_network = pickle.load(pickle_in)
             pickle_in.close()
 
@@ -712,7 +710,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
             },
         }
         rxn_correlations = self.analyzer.correlate_reactions([self.rxn_a, self.rxn_b])
-        self.assertDictsAlmostEqual(expected_correlation, rxn_correlations)
+        self.assertDictEqual(expected_correlation, rxn_correlations)
 
 
 if __name__ == "__main__":

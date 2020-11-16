@@ -363,7 +363,7 @@ class TestReactionNetwork(PymatgenTest):
 
         # set up RN
 
-        with open(os.path.join(test_dir,'unittest_RN_pr_ii_4_before_find_path_cost.pkl'), 'rb') as input:
+        with open(os.path.join(test_dir, 'unittest_RN_pr_ii_4_before_find_path_cost.pkl'), 'rb') as input:
             RN_pr_ii_4 = pickle.load(input)
 
         # set up input variables
@@ -380,7 +380,7 @@ class TestReactionNetwork(PymatgenTest):
 
         loaded_cost_from_start_str = loadfn(os.path.join(test_dir,"unittest_find_path_cost_cost_from_start_IN.json"))
 
-        old_solved_PRs = loadfn(os.path.join(test_dir,"unittest_find_path_cost_old_solved_PRs_IN.json"))
+        old_solved_PRs = loadfn(os.path.join(test_dir,"unittest_find_path_cost_old_solved_prs_IN.json"))
 
         loaded_min_cost_str = loadfn(os.path.join(test_dir,"unittest_find_path_cost_min_cost_IN.json"))
 
