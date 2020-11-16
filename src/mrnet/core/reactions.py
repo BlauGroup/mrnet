@@ -37,16 +37,29 @@ Atom_Mapping_Dict = Dict[int, int]
 
 
 class Reaction(MSONable, metaclass=ABCMeta):
-    """
+    """"
     Abstract class for subsequent types of reaction class
 
-    Assumes that the reactants and products will never change post-instantiation
     Args:
-         reactants ([MoleculeEntry]): A list of MoleculeEntry objects of len 1.
-         products ([MoleculeEntry]): A list of MoleculeEntry objects of max len 2.
-         transition_state (MoleculeEntry or None): A MoleculeEntry representing a
-             transition state for the reaction.
-         parameters (dict): Any additional data about this reaction
+        reactants ([MoleculeEntry]): A list of MoleculeEntry objects of len 1.
+        products ([MoleculeEntry]): A list of MoleculeEntry objects of max len 2.
+        transition_state (MoleculeEntry or None): A MoleculeEntry representing a
+            transition state for the reaction.
+        parameters (dict): Any additional data about this reaction
+        reactants_atom_mapping: A list of atom mapping number dicts, each dict for one
+            reactant with the style {atom_index: atom_mapping_number}, which is the
+            same as the rdkit style of atom mapping number. This can be used together
+            with `products_atom_mapping` to determine the correspondence of atoms between
+            the reactants and the products. Atoms with the same `atom_mapping_number`
+            in the reactants and products are the same atom before and after the reaction.
+            For example, `reactants_atom_mapping = [{0:1, 1:3}, {0:2, 1:0}]` and
+            `products_atom_mapping = [{0:2, 1:1, 2:3}, {0:0}]` means that:
+             atom 0 of the first reactant maps to atom 1 of the first product;
+             atom 1 of the first reactant maps to atom 2 of the first product;
+             atom 0 of the second reactant maps to atom 0 of the first product;
+             atom 1 of the second reactant maps to atom 0 of the second product.
+        products_atom_mapping: A list of atom mapping number dicts, each dict for one
+            product. See `reactants_atom_mapping` for more explanation.
     """
 
     def __init__(
@@ -68,6 +81,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
 
         self.reactant_ids = [r.entry_id for r in reactants]
         self.product_ids = [p.entry_id for p in products]
+        self.reactant_indices = [r.parameters.get("ind") for r in reactants]
+        self.product_indices = [p.parameters.get("ind") for p in products]
         self.r_dicts = [r.as_dict() for r in reactants]
         self.p_dicts = [p.as_dict() for p in products]
         self.entry_ids = {e.entry_id for e in reactants}
@@ -866,9 +881,7 @@ class IntermolecularReaction(Reaction):
           transition_state (MoleculeEntry or None): A MoleculeEntry
               representing a transition state for the reaction.
           parameters (dict): Any additional data about this reaction
-
         """
-
         rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
         prdts_mp = products_atom_mapping if products_atom_mapping is not None else None
 
@@ -890,6 +903,12 @@ class IntermolecularReaction(Reaction):
         self.rct_energy = reactant.energy
         self.pro0_energy = product[0].energy
         self.pro1_energy = product[1].energy
+        self.rct_charge = reactant.charge
+        self.pro0_charge = product[0].charge
+        self.pro1_charge = product[1].charge
+        self.rct_formula = reactant.formula
+        self.pro0_formula = product[0].formula
+        self.pro1_formula = product[1].formula
 
     def graph_representation(self) -> nx.DiGraph:
 
@@ -1151,21 +1170,23 @@ class IntermolecularReaction(Reaction):
 class CoordinationBondChangeReaction(Reaction):
     """
     A class to define coordination bond change as follows:
-        Simultaneous formation / breakage of multiple coordination bonds
-        A + M <-> AM aka AM <-> A + M
-        Three entries with:
-            M = Li or Mg
-            comp(AM) = comp(A) + comp(M)
-            charge(AM) = charge(A) + charge(M)
-            removing two M-containing edges in AM yields two disconnected
-            subgraphs that are isomorphic to B and C
+
+    Simultaneous formation / breakage of multiple coordination bonds
+    A + M <-> AM aka AM <-> A + M
+    Three entries with:
+        M = Li, Mg, Ca, or Zn
+        comp(AM) = comp(A) + comp(M)
+        charge(AM) = charge(A) + charge(M)
+        removing two M-containing edges in AM yields two disconnected subgraphs that
+        are isomorphic to A and M
 
     Args:
-        reactant([MoleculeEntry]): list of single molecular entry
-        product([MoleculeEntry]): list of two molecular entries
-        transition_state (MoleculeEntry or None): A MoleculeEntry representing a
-            transition state for the reaction.
-        parameters (dict): Any additional data about this reaction
+        reactant: molecular entry
+        product: list of two molecular entries
+        transition_state: a MoleculeEntry representing a transition state
+        parameters: any additional data about this reaction
+        reactant_atom_mapping: atom mapping number dict for reactant
+        products_atom_mapping: list of atom mapping number dict for products
     """
 
     def __init__(
@@ -1548,8 +1569,6 @@ class ConcertedReaction(Reaction):
             reactant, product, transition_state=transition_state,
         )
         self.reaction_type()
-        self.reactant_indices = [r.parameters.get("ind") for r in reactant]
-        self.product_indices = [p.parameters.get("ind") for p in product]
         self.rct_free_energies = [r.get_free_energy for r in reactant]
         self.pro_free_energies = [p.get_free_energy for p in product]
         self.rct_energies = [r.energy for r in reactant]
@@ -1807,11 +1826,10 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     A method to convert a reaction type object into graph representation. Reaction much be of type 3 reactants -> 2
     products
     Args:
-       :param reaction: (any of the reaction class object, ex. RedoxReaction, IntramolSingleBondChangeReaction,
-                        Concerted)
+       :param reaction: (any of the reaction class object, ex. RedoxReaction, IntramolSingleBondChangeReaction, Concerted)
     """
 
-    if len(reaction.reactants) != 3 or len(reaction.products) != 2:
+    if len(reaction.reactant_ids) != 3 or len(reaction.product_ids) != 2:
         raise ValueError("Must provide reaction with 3 reactants and 2 products for graph_rep_3_2")
 
     # Reactant Data:
@@ -2045,7 +2063,7 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
        IntramolSingleBondChangeReaction, Concerted)
     """
 
-    if len(reaction.reactants) != 2 or len(reaction.products) != 2:
+    if len(reaction.reactant_ids) != 2 or len(reaction.product_ids) != 2:
         raise ValueError("Must provide reaction with 2 reactants and 2 products for graph_rep_2_2")
 
     # Reactant Data:
@@ -2224,13 +2242,13 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
         raise ValueError("Must provide reaction with 1 reactant and 2 products" "for graph_rep_1_2")
 
     # Reactant Parameters:
-    rct_ind = reaction.rct_ind
+    rct_ind = reaction.reactant_indices[0]
     rct_id = reaction.reactant_ids[0]
 
     # Product Parameters:
-    pro0_ind = reaction.pro0_ind
+    pro0_ind = reaction.product_indices[0]
     pro0_id = reaction.product_ids[0]
-    pro1_ind = reaction.pro1_ind
+    pro1_ind = reaction.product_indices[1]
     pro1_id = reaction.product_ids[1]
 
     graph = nx.DiGraph()
@@ -2346,11 +2364,11 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
 
     graph = nx.DiGraph()
     # Reactant Data:
-    reactant_params = reaction.rct_ind
+    reactant_params = reaction.reactant_indices[0]
     reactant_eid = str(reaction.reactant_ids[0])
 
     # Product Data:
-    product_params = reaction.pro_ind
+    product_params = reaction.product_indices[0]
     product_eid = str(reaction.product_ids[0])
 
     # Param Updates
