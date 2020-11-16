@@ -4,7 +4,6 @@ import unittest
 
 from pymatgen.util.testing import PymatgenTest
 from pymatgen.core.structure import Molecule
-from pymatgen.entries.mol_entry import MoleculeEntry
 from pymatgen.analysis.graphs import MoleculeGraph
 from pymatgen.analysis.local_env import OpenBabelNN
 from pymatgen.analysis.fragmenter import metal_edge_extender
@@ -16,6 +15,7 @@ from mrnet.core.reactions import (
     CoordinationBondChangeReaction,
 )
 from mrnet.core.reactions import bucket_mol_entries, unbucket_mol_entries
+from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.network.reaction_network import ReactionNetwork
 
 from monty.serialization import loadfn
@@ -65,21 +65,21 @@ class TestRedoxReaction(PymatgenTest):
                 if (
                     entry.formula == "C3 H4 O3"
                     and entry.charge == 0
-                    and entry.Nbonds == 10
+                    and entry.num_bonds == 10
                     and cls.EC_mg.isomorphic_to(entry.mol_graph)
                 ):
                     cls.EC_0_entry = entry
                 elif (
                     entry.formula == "C3 H4 O3"
                     and entry.charge == -1
-                    and entry.Nbonds == 10
+                    and entry.num_bonds == 10
                     and cls.EC_mg.isomorphic_to(entry.mol_graph)
                 ):
                     cls.EC_minus_entry = entry
                 elif (
                     entry.formula == "C3 H4 O3"
                     and entry.charge == 1
-                    and entry.Nbonds == 10
+                    and entry.num_bonds == 10
                     and cls.EC_mg.isomorphic_to(entry.mol_graph)
                 ):
                     cls.EC_1_entry = entry
@@ -226,14 +226,14 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
                 if (
                     entry.formula == "C3 H4 Li1 O3"
                     and entry.charge == 0
-                    and entry.Nbonds == 12
+                    and entry.num_bonds == 12
                     and cls.LiEC_mg.isomorphic_to(entry.mol_graph)
                 ):
                     cls.LiEC_entry = entry
                 elif (
                     entry.formula == "C3 H4 Li1 O3"
                     and entry.charge == 0
-                    and entry.Nbonds == 11
+                    and entry.num_bonds == 11
                     and cls.LiEC_RO_mg.isomorphic_to(entry.mol_graph)
                 ):
                     cls.LiEC_RO_entry = entry
@@ -399,11 +399,11 @@ class TestIntermolecularReaction(PymatgenTest):
                 if (
                     entry.formula == "C2 H4"
                     and entry.charge == 0
-                    and entry.Nbonds == 5
+                    and entry.num_bonds == 5
                     and cls.C2H4_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.C2H4_entry is not None:
-                        if cls.C2H4_entry.free_energy() >= entry.free_energy():
+                        if cls.C2H4_entry.get_free_energy() >= entry.get_free_energy():
                             cls.C2H4_entry = entry
                     else:
                         cls.C2H4_entry = entry
@@ -411,11 +411,11 @@ class TestIntermolecularReaction(PymatgenTest):
                 if (
                     entry.formula == "C3 H4 Li1 O3"
                     and entry.charge == 0
-                    and entry.Nbonds == 11
+                    and entry.num_bonds == 11
                     and cls.LiEC_RO_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.LiEC_RO_entry is not None:
-                        if cls.LiEC_RO_entry.free_energy() >= entry.free_energy():
+                        if cls.LiEC_RO_entry.get_free_energy() >= entry.get_free_energy():
                             cls.LiEC_RO_entry = entry
                     else:
                         cls.LiEC_RO_entry = entry
@@ -423,11 +423,11 @@ class TestIntermolecularReaction(PymatgenTest):
                 if (
                     entry.formula == "C1 Li1 O3"
                     and entry.charge == 0
-                    and entry.Nbonds == 5
+                    and entry.num_bonds == 5
                     and cls.C1Li1O3_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.C1Li1O3_entry is not None:
-                        if cls.C1Li1O3_entry.free_energy() >= entry.free_energy():
+                        if cls.C1Li1O3_entry.get_free_energy() >= entry.get_free_energy():
                             cls.C1Li1O3_entry = entry
                     else:
                         cls.C1Li1O3_entry = entry
@@ -501,20 +501,19 @@ class TestIntermolecularReaction(PymatgenTest):
         self.assertEqual(len(reactions), 3673)
 
         for r in reactions:
-            # if r.reactant.entry_id == self.LiEC_RO_entry.entry_id:
-            #    if (
-            #        r.products[0].entry_id == self.C2H4_entry.entry_id
-            #        or r.products[1].entry_id == self.C2H4_entry.entry_id
-            #    ):
-            #        self.assertTrue(
-            #            r.products[0].formula == "C1 Li1 O3" or r.products[1].formula == "C1 Li1 O3"
-            #        )
-            #        self.assertTrue(r.products[0].charge == 0 or r.products[1].charge == 0)
-            #        self.assertTrue(
-            #            r.products[0].free_energy() == self.C1Li1O3_entry.free_energy()
-            #            or r.products[1].free_energy() == self.C1Li1O3_entry.free_energy()
-            #        )
-            pass
+            if r.reactant.entry_id == self.LiEC_RO_entry.entry_id:
+                if (
+                    r.products[0].entry_id == self.C2H4_entry.entry_id
+                    or r.products[1].entry_id == self.C2H4_entry.entry_id
+                ):
+                    self.assertTrue(
+                        r.products[0].formula == "C1 Li1 O3" or r.products[1].formula == "C1 Li1 O3"
+                    )
+                    self.assertTrue(r.products[0].charge == 0 or r.products[1].charge == 0)
+                    self.assertTrue(
+                        r.products[0].free_energy() == self.C1Li1O3_entry.free_energy()
+                        or r.products[1].free_energy() == self.C1Li1O3_entry.free_energy()
+                    )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_atom_mapping(self):
@@ -602,11 +601,11 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                 if (
                     entry.formula == "C3 H4 O3"
                     and entry.charge == -1
-                    and entry.Nbonds == 10
+                    and entry.num_bonds == 10
                     and cls.EC_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.EC_minus_entry is not None:
-                        if cls.EC_minus_entry.free_energy() >= entry.free_energy():
+                        if cls.EC_minus_entry.get_free_energy() >= entry.get_free_energy():
                             cls.EC_minus_entry = entry
                     else:
                         cls.EC_minus_entry = entry
@@ -614,18 +613,18 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                 if (
                     entry.formula == "C3 H4 Li1 O3"
                     and entry.charge == 0
-                    and entry.Nbonds == 12
+                    and entry.num_bonds == 12
                     and cls.LiEC_mg.isomorphic_to(entry.mol_graph)
                 ):
                     if cls.LiEC_entry is not None:
-                        if cls.LiEC_entry.free_energy() >= entry.free_energy():
+                        if cls.LiEC_entry.get_free_energy() >= entry.get_free_energy():
                             cls.LiEC_entry = entry
                     else:
                         cls.LiEC_entry = entry
 
-                if entry.formula == "Li1" and entry.charge == 1 and entry.Nbonds == 0:
+                if entry.formula == "Li1" and entry.charge == 1 and entry.num_bonds == 0:
                     if cls.Li_entry is not None:
-                        if cls.Li_entry.free_energy() >= entry.free_energy():
+                        if cls.Li_entry.get_free_energy() >= entry.get_free_energy():
                             cls.Li_entry = entry
                     else:
                         cls.Li_entry = entry

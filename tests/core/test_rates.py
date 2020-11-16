@@ -10,8 +10,8 @@ import numpy as np
 from scipy.constants import h, k
 
 from pymatgen.core.structure import Molecule
-from pymatgen.entries.mol_entry import MoleculeEntry
 
+from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.core.rates import (
     ReactionRateCalculator,
     BEPRateCalculator,
@@ -101,12 +101,12 @@ class ReactionRateCalculatorTest(unittest.TestCase):
             * 0.0000433641,
         )
 
-        gibbs_300 = self.pro.free_energy(300) - (
-            self.rct_1.free_energy(300) + self.rct_2.free_energy(300)
+        gibbs_300 = self.pro.get_free_energy(300) - (
+            self.rct_1.get_free_energy(300) + self.rct_2.get_free_energy(300)
         )
         self.assertEqual(self.calc.calculate_net_gibbs(300), gibbs_300)
-        gibbs_100 = self.pro.free_energy(100) - (
-            self.rct_1.free_energy(100) + self.rct_2.free_energy(100)
+        gibbs_100 = self.pro.get_free_energy(100) - (
+            self.rct_1.get_free_energy(100) + self.rct_2.get_free_energy(100)
         )
         self.assertEqual(self.calc.calculate_net_gibbs(100.00), gibbs_100)
 

@@ -9,8 +9,9 @@ from networkx.readwrite import json_graph
 
 from monty.json import MSONable
 
-from pymatgen.entries.mol_entry import MoleculeEntry
-from pymatgen.util.classes import load_class
+from mrnet.core.mol_entry import MoleculeEntry
+
+from mrnet.utils.classes import load_class
 
 # TODO (mjwen) remove imports that is not used in this file
 # Import everything used to be in this file but moved to reaction.py in case somebody
@@ -407,7 +408,7 @@ class ReactionPath(MSONable):
                     PR_path = None
                     PR_min_cost = float("inf")  # 1000000000000000.0
                     for start in PR_paths[PR]:
-                        if PR_paths[PR][start].path != None:
+                        if PR_paths[PR][start].path is not None:
                             if PR_paths[PR][start].cost < PR_min_cost:
                                 PR_min_cost = PR_paths[PR][start].cost
                                 PR_path = PR_paths[PR][start]
@@ -596,10 +597,17 @@ class ReactionNetwork(MSONable):
                 connected_entries.append(entry)
         print(len(connected_entries), "connected entries")
 
-        get_formula = lambda x: x.formula
-        get_Nbonds = lambda x: x.Nbonds
-        get_charge = lambda x: x.charge
-        get_free_energy = lambda x: x.free_energy(temp=temperature)
+        def get_formula(x):
+            return x.formula
+
+        def get_Nbonds(x):
+            return x.Nbonds
+
+        def get_charge(x):
+            return x.charge
+
+        def get_free_energy(x):
+            return x.free_energy(temp=temperature)
 
         sorted_entries_0 = sorted(connected_entries, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
@@ -899,7 +907,7 @@ class ReactionNetwork(MSONable):
                 for start in PRs[PR]:
                     if PRs[PR][start] == {}:
                         cost_from_start[PR][start] = "no_path"
-                    elif PRs[PR][start].path == None:
+                    elif PRs[PR][start].path is None:
                         cost_from_start[PR][start] = "no_path"
                     else:
                         cost_from_start[PR][start] = PRs[PR][start].cost
@@ -1254,7 +1262,7 @@ class ReactionNetwork(MSONable):
                 for start in PRs[PR]:
                     if PRs[PR][start].cost == float("inf"):  # 10000000000000000.0:
                         PRs[PR][start] = ReactionPath(None)
-                    if PRs[PR][start].path != None:
+                    if PRs[PR][start].path is not None:
                         path_found = True
                         path_dict_class = ReactionPath.characterize_path_final(
                             PRs[PR][start].path,
@@ -1430,7 +1438,7 @@ class ReactionNetwork(MSONable):
                             PR_paths=self.PRs,
                         )
                         heapq.heappush(my_heapq, (path_dict_class2.cost, next(c), path_dict_class2))
-        except:
+        except Exception:
             print("ind", ind)
         top_path_list = []
         while len(paths) < num_paths and my_heapq:
@@ -1445,7 +1453,7 @@ class ReactionNetwork(MSONable):
             )
             paths.append(
                 path_dict_HP_class.path_dict
-            )  ### ideally just append the class, but for now dict for easy printing
+            )  # ideally just append the class, but for now dict for easy printing
 
         self.paths = paths
         self.top_path_list = top_path_list
@@ -1665,7 +1673,7 @@ class ReactionNetwork(MSONable):
                                         )
                                     )
                 count_total = count_total + count
-                print(node, entry.formula, count)
+                # print(node, entry.formula, count)
         print("identify_concerted_rxns_via_intermediates end", time.time())
         print("total number of unique concerted reactions:", count_total)
 
@@ -1722,7 +1730,7 @@ class ReactionNetwork(MSONable):
                 assert int(reaction[0][1]) in pruned_network_build.graph.nodes
                 assert int(reaction[1][0]) in pruned_network_build.graph.nodes
                 new_node = False
-                if reaction[1][1] == None:
+                if reaction[1][1] is None:
                     new_node = True
                 else:
                     assert int(reaction[1][1]) in pruned_network_build.graph.nodes
