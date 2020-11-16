@@ -81,6 +81,10 @@ class Reaction(MSONable, metaclass=ABCMeta):
 
         self.reactant_ids = [r.entry_id for r in reactants]
         self.product_ids = [p.entry_id for p in products]
+<<<<<<< HEAD
+        self.parameters = parameters
+=======
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         self.reactant_indices = [r.parameters.get("ind") for r in reactants]
         self.product_indices = [p.parameters.get("ind") for p in products]
         self.r_dicts = [r.as_dict() for r in reactants]
@@ -240,6 +244,8 @@ class RedoxReaction(Reaction):
         reactant_atom_mapping: Atom_Mapping_Dict = None,
         product_atom_mapping: Atom_Mapping_Dict = None,
     ):
+<<<<<<< HEAD
+=======
         """
           Initilizes RedoxReaction.reactant to be in the form of a MoleculeEntry,
           RedoxReaction.product to be in the form of MoleculeEntry,
@@ -260,6 +266,7 @@ class RedoxReaction(Reaction):
           parameters (dict): Any additional data about this reaction
 
         """
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
         prdts_mp = [product_atom_mapping] if product_atom_mapping is not None else None
         super().__init__(
@@ -268,6 +275,7 @@ class RedoxReaction(Reaction):
             transition_state=None,
             reactants_atom_mapping=rcts_mp,
             products_atom_mapping=prdts_mp,
+            parameters=parameters,
         )
         self.class_type = "RedoxReaction"
         self.inner_reorganization_energy = inner_reorganization_energy
@@ -304,9 +312,12 @@ class RedoxReaction(Reaction):
         self.pro_energy = product.energy
         self.num_rct = 1
         self.num_pro = 1
+<<<<<<< HEAD
+=======
 
         self.rct_ind = reactant.parameters.get("ind")
         self.pro_ind = product.parameters.get("ind")
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -385,7 +396,11 @@ class RedoxReaction(Reaction):
                                         families[formula][charge0].append(r)
         return reactions, families
 
+<<<<<<< HEAD
+    def reaction_type(self, reactant, product) -> Mapping_ReactionType_Dict:
+=======
     def reaction_type(self, reactant, product):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to identify type of redox reaction (oxidation or reduction)
 
@@ -400,7 +415,15 @@ class RedoxReaction(Reaction):
         self.rxn_type_A = types[int(product.charge < reactant.charge)]
         self.rxn_type_B = types[1 - int(product.charge < reactant.charge)]
 
+<<<<<<< HEAD
+        types = ["One electron oxidation", "One electron reduction"]
+        self.rxn_type_A = types[int(product.charge < reactant.charge)]
+        self.rxn_type_B = types[1 - int(product.charge < reactant.charge)]
+
+    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+=======
     def free_energy(self, temperature=298.15):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to determine the free energy of the redox reaction. Note to
         set RedoxReaction.eletron_free_energy a value.
@@ -492,8 +515,11 @@ class RedoxReaction(Reaction):
         d = {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
+<<<<<<< HEAD
+=======
             "reactants": self.r_dicts,
             "products": self.p_dicts,
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
             "reactant": self.r_dicts[0],
             "product": self.p_dicts[0],
             "inner_reorganization_energy": self.inner_reorganization_energy,
@@ -571,6 +597,8 @@ class IntramolSingleBondChangeReaction(Reaction):
         reactant_atom_mapping: Atom_Mapping_Dict = None,
         product_atom_mapping: Atom_Mapping_Dict = None,
     ):
+<<<<<<< HEAD
+=======
         """
           Initializes IntramolSingleBondChangeReaction.reactant to be in the form of a MoleculeEntry,
           IntramolSingleBondChangeReaction.product to be in the form of MoleculeEntry,
@@ -586,6 +614,7 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         """
 
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
         prdts_mp = [product_atom_mapping] if product_atom_mapping is not None else None
         self.class_type = "IntramolSingleBondChangeReaction"
@@ -595,6 +624,7 @@ class IntramolSingleBondChangeReaction(Reaction):
             transition_state=transition_state,
             reactants_atom_mapping=rcts_mp,
             products_atom_mapping=prdts_mp,
+            parameters=parameters,
         )
 
         self.reaction_type(reactant, product)
@@ -681,7 +711,11 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         return reactions, sub_graphs
 
+<<<<<<< HEAD
+    def reaction_type(self, reactant, product) -> Mapping_ReactionType_Dict:
+=======
     def reaction_type(self, reactant, product):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to identify type of intramolecular single bond change
         reaction (bond breakage or formation)
@@ -733,7 +767,10 @@ class IntramolSingleBondChangeReaction(Reaction):
            reactant and product of the IntramolSingleBondChangeReaction
            object, and the backwards of this reaction would be energy_B.
         """
+<<<<<<< HEAD
+=======
 
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         if self.pro_energy is not None and self.rct_energy is not None:
             self.energy_A = self.pro_energy - self.rct_energy
             self.energy_B = 0 - self.energy_A
@@ -759,7 +796,11 @@ class IntramolSingleBondChangeReaction(Reaction):
             }
         else:
             rate_constant = dict()
+<<<<<<< HEAD
+            self.free_energy()
+=======
             self.free_energy(temperature=temperature)
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
 
             ga = self.free_energy_A
             gb = self.free_energy_B
@@ -794,8 +835,11 @@ class IntramolSingleBondChangeReaction(Reaction):
         d = {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
+<<<<<<< HEAD
+=======
             "reactants": self.r_dicts,
             "products": self.p_dicts,
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
             "reactant": self.r_dicts[0],
             "product": self.p_dicts[0],
             "transition_state": ts,
@@ -865,6 +909,8 @@ class IntermolecularReaction(Reaction):
         reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
         products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
+<<<<<<< HEAD
+=======
         """
           Initializes IntermolecularReaction.reactant to be in the form of a
           MoleculeEntry,
@@ -882,6 +928,7 @@ class IntermolecularReaction(Reaction):
               representing a transition state for the reaction.
           parameters (dict): Any additional data about this reaction
         """
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
         prdts_mp = products_atom_mapping if products_atom_mapping is not None else None
 
@@ -892,6 +939,7 @@ class IntermolecularReaction(Reaction):
             transition_state=transition_state,
             reactants_atom_mapping=rcts_mp,
             products_atom_mapping=prdts_mp,
+            parameters=parameters,
         )
         self.reaction_type()
         self.rct_ind = reactant.parameters.get("ind")
@@ -1019,7 +1067,11 @@ class IntermolecularReaction(Reaction):
         self.rxn_type_A = "Molecular decomposition breaking one bond A -> B+C"
         self.rxn_type_B = "Molecular formation from one new bond A+B -> C"
 
+<<<<<<< HEAD
+    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+=======
     def free_energy(self, temperature=298.15):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to determine the free energy of the intermolecular reaction
 
@@ -1046,7 +1098,11 @@ class IntermolecularReaction(Reaction):
             self.free_energy_A = None
             self.free_energy_B = None
 
+<<<<<<< HEAD
+    def energy(self) -> Mapping_Energy_Dict:
+=======
     def energy(self):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to determine the energy of the intermolecular reaction
 
@@ -1086,7 +1142,11 @@ class IntermolecularReaction(Reaction):
             }
         else:
             rate_constant = dict()
+<<<<<<< HEAD
+            self.free_energy()
+=======
             self.free_energy(temperature=temperature)
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
 
             ga = self.free_energy_A
             gb = self.free_energy_B
@@ -1121,8 +1181,11 @@ class IntermolecularReaction(Reaction):
         d = {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
+<<<<<<< HEAD
+=======
             "reactants": self.r_dicts,
             "products": self.p_dicts,
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
             "reactant": self.r_dicts[0],
             "product_0": self.p_dicts[0],
             "product_1": self.p_dicts[1],
@@ -1198,6 +1261,8 @@ class CoordinationBondChangeReaction(Reaction):
         reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
         products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
+<<<<<<< HEAD
+=======
         """
             Initilizes CoordinationBondChangeReaction.reactant to be in the
             form of a MoleculeEntry,
@@ -1216,6 +1281,7 @@ class CoordinationBondChangeReaction(Reaction):
             parameters (dict): Any additional data about this reaction
 
         """
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         self.class_type = "CoordinationBondChangeReaction"
         rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
         prdts_mp = products_atom_mapping if products_atom_mapping is not None else None
@@ -1225,6 +1291,7 @@ class CoordinationBondChangeReaction(Reaction):
             transition_state=transition_state,
             reactants_atom_mapping=rcts_mp,
             products_atom_mapping=prdts_mp,
+            parameters=parameters,
         )
         self.reaction_type()
         self.rct_ind = reactant.parameters.get("ind")
@@ -1381,11 +1448,18 @@ class CoordinationBondChangeReaction(Reaction):
            reactant and product of the CoordinationBondChangeReaction
            object, and the backwards of this reaction would be rnx_type_B
         """
+<<<<<<< HEAD
+        self.rxn_type_A = "Coordination bond breaking AM -> A+M"
+        self.rxn_type_B = "Coordination bond forming A+M -> AM"
+
+    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+=======
 
         self.rxn_type_A = "Coordination bond breaking AM -> A+M"
         self.rxn_type_B = "Coordination bond forming A+M -> AM"
 
     def free_energy(self, temperature=298.15):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to determine the free energy of the coordination bond
           change reaction
@@ -1411,7 +1485,11 @@ class CoordinationBondChangeReaction(Reaction):
             self.free_energy_A = None
             self.free_energy_B = None
 
+<<<<<<< HEAD
+    def energy(self) -> Mapping_Energy_Dict:
+=======
     def energy(self):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to determine the energy of the coordination bond change
         reaction
@@ -1453,7 +1531,10 @@ class CoordinationBondChangeReaction(Reaction):
         else:
             rate_constant = dict()
             self.free_energy()
+<<<<<<< HEAD
+=======
 
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
             ga = self.free_energy_A
             gb = self.free_energy_B
 
@@ -1487,8 +1568,11 @@ class CoordinationBondChangeReaction(Reaction):
         d = {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
+<<<<<<< HEAD
+=======
             "reactants": self.r_dicts,
             "products": self.p_dicts,
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
             "reactant": self.r_dicts[0],
             "product_0": self.p_dicts[0],
             "product_1": self.p_dicts[1],
@@ -1562,6 +1646,25 @@ class ConcertedReaction(Reaction):
         electron_free_energy: Optional[float] = None,
         parameters: Optional[Dict] = None,
     ):
+<<<<<<< HEAD
+        """
+          Initilizes IntermolecularReaction.reactant to be in the form of a
+              MoleculeEntry,
+          IntermolecularReaction.product to be in the form of [MoleculeEntry_0,
+                                                               MoleculeEntry_1],
+          Reaction.reactant to be in the form of a of a list of MoleculeEntry
+              of length 1
+          Reaction.products to be in the form of a of a list of MoleculeEntry
+              of length 2
+        Args:
+          reactant: MoleculeEntry object
+          product: list of MoleculeEntry object of length 2
+          transition_state: MoleculeEntry representing the TS for the reaction
+
+        """
+
+=======
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         self.electron_free_energy = electron_free_energy
         self.electron_energy = None
         self.class_type = "ConcertedReaction"
@@ -1670,10 +1773,16 @@ class ConcertedReaction(Reaction):
            reactant and product of the IntermolecularReaction
            object, and the backwards of this reaction would be rnx_type_B
         """
+<<<<<<< HEAD
+        self.rxn_type_A = self.rxn_type_B = "Concerted"
+
+    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+=======
 
         self.rxn_type_A = self.rxn_type_B = "Concerted"
 
     def free_energy(self, temperature=298.15):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to determine the free energy of the concerted reaction
         Args:
@@ -1714,7 +1823,11 @@ class ConcertedReaction(Reaction):
         self.free_energy_A = free_energy_A
         self.free_energy_B = free_energy_B
 
+<<<<<<< HEAD
+    def energy(self) -> Mapping_Energy_Dict:
+=======
     def energy(self):
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
         """
         A method to determine the energy of the concerted reaction
         Args:
@@ -1760,7 +1873,10 @@ class ConcertedReaction(Reaction):
         else:
             rate_constant = dict()
             self.free_energy()
+<<<<<<< HEAD
+=======
 
+>>>>>>> 32c2ce0bb876c345e5e990b5778d21d5c4631b27
             ga = self.free_energy_A
             gb = self.free_energy_B
 
