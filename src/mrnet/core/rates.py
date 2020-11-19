@@ -47,8 +47,8 @@ class ReactionRateCalculator(MSONable):
 
         # Assume rate law is first-order in terms of each reactant/product
         self.rate_law = {
-            "reactants": np.ones((len(reactants),), dtype=int)
-            "prodcuts": np.ones((len(products),), dtype=int)
+            "reactants": np.ones((len(reactants),), dtype=int),
+            "products": np.ones((len(products),), dtype=int),
         }
 
         # Store relevant information from reactants, products, rather than storing obj
@@ -69,7 +69,7 @@ class ReactionRateCalculator(MSONable):
         self.net_enthalpy = (self.pro_enthalpy - self.rct_enthalpy) * 0.0433641
         self.net_entropy = (self.pro_entropy - self.rct_entropy) * 0.0000433641
 
-    def calculate_net_gibbs(self, temperature=298.0):
+    def calculate_net_gibbs(self, temperature=298.0, reverse=False):
         """
         Update net reaction Gibbs free energy at a given temperature.
 
@@ -78,11 +78,12 @@ class ReactionRateCalculator(MSONable):
         Args:
             temperature (float): absolute temperature in Kelvin (default 298 K)
 
-        Returns:
+        Returns: None (assigns net_gibbs attr)
         """
         rct_gibbs = [r_free_nrg(temp=temperature) for r_free_nrg in self.rct_free_energy_methods]
         pro_gibbs = [p_free_nrg(temp=temperature) for p_free_nrg in self.pro_free_energy_methods]
         self.net_gibbs = sum(pro_gibbs) - sum(rct_gibbs)
+        return self.net_gibbs
 
     def calculate_act_energy(self, reverse=False):
         """
@@ -171,10 +172,10 @@ class ReactionRateCalculator(MSONable):
         Returns:
             act_thermo: dict with relevant activation thermodynamic variables
         """
-        self.act_energy = (self.calculate_act_energy(reverse=reverse),)
-        self.act_enthalpy = (self.calculate_act_enthalpy(reverse=reverse),)
-        self.act_entropy = (self.calculate_act_entropy(reverse=reverse),)
-        self.act_gibbs = (self.calculate_act_gibbs(reverse=reverse),)
+        self.act_energy = self.calculate_act_energy(reverse=reverse)
+        self.act_enthalpy = self.calculate_act_enthalpy(reverse=reverse)
+        self.act_entropy = self.calculate_act_entropy(reverse=reverse)
+        self.act_gibbs = self.calculate_act_gibbs(reverse=reverse)
 
     def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=1.0):
         """
@@ -272,6 +273,9 @@ class BEPRateCalculator(ReactionRateCalculator):
         self.delta_h_reference = delta_h_reference
         self.alpha = alpha
 
+        self.pro_mols = [p.mol_graph.molecule for p in products]
+        self.rct_mols = [r.mol_graph.molecule for r in reactants]
+
         super().__init__(reactants, products, None)
 
     def calculate_act_energy(self, reverse=False):
@@ -287,12 +291,9 @@ class BEPRateCalculator(ReactionRateCalculator):
         """
 
         if reverse:
-            enthalpy = -self.net_enthalpy
+            return self.ea_reference + self.alpha * (-self.net_enthalpy - self.delta_h_reference)
         else:
-            enthalpy = self.net_enthalpy
-
-        ea = self.ea_reference + self.alpha * (enthalpy - self.delta_h_reference)
-        return ea
+            return self.ea_reference + self.alpha * (self.net_enthalpy - self.delta_h_reference)
 
     def calculate_act_enthalpy(self, reverse=False):
         raise NotImplementedError(
@@ -327,11 +328,8 @@ class BEPRateCalculator(ReactionRateCalculator):
         Returns:
             k_rate (float): temperature-dependent rate constant
         """
-
         ea = self.calculate_act_energy(reverse=reverse)
-
         k_rate = np.exp(-ea / (8.617333262 * 10 ** -5 * temperature))
-
         return k_rate
 
     def calculate_rate(self, concentrations, temperature=298.0, reverse=False, kappa=1.0):
@@ -350,15 +348,14 @@ class BEPRateCalculator(ReactionRateCalculator):
         Returns:
             rate (float): reaction rate, based on the stoichiometric rate law and the rate constant
         """
-
         k_rate = self.calculate_rate_constant(temperature=temperature, reverse=reverse)
 
         if reverse:
-            exponents = np.array(list(self.rate_law["products"].values()))
-            mols = [p.mol_graph.molecule for p in self.products]
+            exponents = self.rate_law["products"]
+            mols = self.pro_mols
         else:
-            exponents = np.array(list(self.rate_law["reactants"].values()))
-            mols = [r.mol_graph.molecule for r in self.reactants]
+            exponents = self.rate_law["reactants"]
+            mols = self.rct_mols
 
         masses = [m.composition.weight for m in mols]
 
@@ -370,7 +367,7 @@ class BEPRateCalculator(ReactionRateCalculator):
         if radius_factor == 0:
             radius_factor = 1
 
-        total_exponent = sum(exponents)
+        total_exponent = np.sum(exponents)
         number_prefactor = (1000 * N_A) ** total_exponent
         concentration_factor = product(np.array(concentrations) ** exponents)
         mass_factor = product(masses) / sum(masses) * amu_to_kg
@@ -484,11 +481,8 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
         Returns:
             delta_ga (float): Gibbs free energy of activation (in kcal/mol)
         """
-
-        if reverse:
-            delta_g = -self.calculate_net_gibbs(temperature)
-        else:
-            delta_g = self.calculate_net_gibbs(temperature)
+        self.calculate_net_gibbs(temperature=temperature, reverse=reverse)
+        delta_g = self.net_gibbs
 
         delta_g_ref = (
             self.delta_e_reference + self.delta_h_reference - temperature * self.delta_s_reference
@@ -619,6 +613,8 @@ class RedoxRateCalculator(ReactionRateCalculator):
         self.electrode_distance = electrode_distance
 
         super().__init__(reactants, products, None)
+        self.pro_charge = sum([p.charge for p in products])
+        self.rct_charge = sum([r.charge for r in reactants])
 
     def calculate_act_energy(self, reverse=False):
         raise NotImplementedError(
@@ -668,15 +664,12 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
         lambda_total = self.lambda_inner + self.calculate_outer_reorganization_energy()
 
-        charge_rct = sum([r.charge for r in self.reactants])
-        charge_pro = sum([p.charge for p in self.products])
-
         if reverse:
             delta_g = -1 * self.calculate_net_gibbs(temperature=temperature)
-            delta_g += self.electron_free_energy * (charge_rct - charge_pro)
+            delta_g += self.electron_free_energy * (self.rct_charge - self.pro_charge)
         else:
             delta_g = self.calculate_net_gibbs(temperature=temperature)
-            delta_g += self.electron_free_energy * (charge_pro - charge_rct)
+            delta_g += self.electron_free_energy * (self.pro_charge - self.rct_charge)
 
         delta_ga = lambda_total / 4 * (1 + delta_g / lambda_total) ** 2
 
