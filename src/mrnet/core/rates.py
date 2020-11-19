@@ -41,85 +41,48 @@ class ReactionRateCalculator(MSONable):
 
     def __init__(self, reactants, products, transition_state):
 
-        self.reactants = reactants
-        self.products = products
+        reactants = reactants
+        products = products
         self.transition_state = transition_state
 
         # Assume rate law is first-order in terms of each reactant/product
-        rate_law = {
-            "reactants": {ii: 1 for ii in range(len(self.reactants))},
-            "products": {jj: 1 for jj in range(len(self.products))},
+        self.rate_law = {
+            "reactants": np.ones((len(reactants),), dtype=int)
+            "prodcuts": np.ones((len(products),), dtype=int)
         }
 
-        self.rate_law = rate_law
+        # Store relevant information from reactants, products, rather than storing obj
+        # Here, they are stored as np arrays, which have a smaller footprint
+        self.pro_energy = sum([p.energy for p in products])
+        self.rct_energy = sum([r.energy for r in reactants])
+        self.pro_enthalpy = sum([p.enthalpy for p in products])
+        self.rct_enthalpy = sum([r.enthalpy for r in reactants])
+        self.pro_entropy = sum([p.entropy for p in products])
+        self.rct_entropy = sum([r.entropy for r in reactants])
+        self.rct_free_energy_methods = [r.get_free_energy for r in reactants]
+        self.pro_free_energy_methods = [p.get_free_energy for p in products]
+        self.rct_str = " + ".join([r.molecule.composition.alphabetical_formula for r in reactants])
+        self.pro_str = " + ".join([p.molecule.composition.alphabetical_formula for p in products])
 
-    @property
-    def net_energy(self):
-        """
-        Calculate net reaction energy (in eV).
-        """
-        rct_energies = [r.energy for r in self.reactants]
-        pro_energies = [p.energy for p in self.products]
-
-        return (sum(pro_energies) - sum(rct_energies)) * 27.2116
-
-    @property
-    def net_enthalpy(self):
-        """
-        Calculate net reaction enthalpy (in eV).
-        """
-        rct_enthalpies = [r.enthalpy for r in self.reactants]
-        pro_enthalpies = [p.enthalpy for p in self.products]
-
-        return (sum(pro_enthalpies) - sum(rct_enthalpies)) * 0.0433641
-
-    @property
-    def net_entropy(self):
-        """
-        Calculate net reaction entropy (in eV/K).
-        """
-        rct_entropies = [r.entropy for r in self.reactants]
-        pro_entropies = [p.entropy for p in self.products]
-
-        return (sum(pro_entropies) - sum(rct_entropies)) * 0.0000433641
+        # Compute net values for the reaction
+        self.net_energy = (self.pro_energy - self.rct_energy) * 27.2116
+        self.net_enthalpy = (self.pro_enthalpy - self.rct_enthalpy) * 0.0433641
+        self.net_entropy = (self.pro_entropy - self.rct_entropy) * 0.0000433641
 
     def calculate_net_gibbs(self, temperature=298.0):
         """
-        Calculate net reaction Gibbs free energy at a given temperature.
+        Update net reaction Gibbs free energy at a given temperature.
 
         ΔG = ΔH - T ΔS
 
         Args:
-            temperature (float): absolute temperature in Kelvin
+            temperature (float): absolute temperature in Kelvin (default 298 K)
 
         Returns:
-            float: net Gibbs free energy (in eV)
         """
-
-        rct_gibbs = [r.get_free_energy(temp=temperature) for r in self.reactants]
-        pro_gibbs = [p.get_free_energy(temp=temperature) for p in self.products]
-
-        return sum(pro_gibbs) - sum(rct_gibbs)
-
-    def calculate_net_thermo(self, temperature=298.0):
-        """
-        Calculate net energy, enthalpy, and entropy for the reaction.
-
-        Args:
-            temperature (float): absolute temperature in Kelvin (default 300.0K)
-
-        Returns:
-            net_thermo: dict with relevant net thermodynamic variables
-        """
-
-        net_thermo = {
-            "energy": self.net_energy,
-            "enthalpy": self.net_enthalpy,
-            "entropy": self.net_entropy,
-            "gibbs": self.calculate_net_gibbs(temperature),
-        }
-
-        return net_thermo
+        rct_gibbs = [r_free_nrg(temp=temperature) for r_free_nrg in self.rct_free_energy_methods]
+        pro_gibbs = [p_free_nrg(temp=temperature) for p_free_nrg in self.pro_free_energy_methods]
+        self.net_gibbs = sum(pro_gibbs) - sum(rct_gibbs)
 
     def calculate_act_energy(self, reverse=False):
         """
@@ -133,15 +96,11 @@ class ReactionRateCalculator(MSONable):
             float: energy of activation (in eV)
 
         """
-
         trans_energy = self.transition_state.energy
-
         if reverse:
-            pro_energies = [p.energy for p in self.products]
-            return (trans_energy - sum(pro_energies)) * 27.2116
+            return (trans_energy - self.pro_energy) * 27.2116
         else:
-            rct_energies = [r.energy for r in self.reactants]
-            return (trans_energy - sum(rct_energies)) * 27.2116
+            return (trans_energy - self.rct_energy) * 27.2116
 
     def calculate_act_enthalpy(self, reverse=False):
         """
@@ -155,15 +114,11 @@ class ReactionRateCalculator(MSONable):
             float: enthalpy of activation (in eV)
 
         """
-
         trans_enthalpy = self.transition_state.enthalpy
-
         if reverse:
-            pro_enthalpies = [p.enthalpy for p in self.products]
-            return (trans_enthalpy - sum(pro_enthalpies)) * 0.0433641
+            return (trans_enthalpy - self.pro_enthalpy) * 0.0433641
         else:
-            rct_enthalpies = [r.enthalpy for r in self.reactants]
-            return (trans_enthalpy - sum(rct_enthalpies)) * 0.0433641
+            return (trans_enthalpy - self.rct_enthalpy) * 0.0433641
 
     def calculate_act_entropy(self, reverse=False):
         """
@@ -177,15 +132,11 @@ class ReactionRateCalculator(MSONable):
             float: entropy of activation (in eV/K)
 
         """
-
         trans_entropy = self.transition_state.entropy
-
         if reverse:
-            pro_entropies = [p.entropy for p in self.products]
-            return (trans_entropy - sum(pro_entropies)) * 0.0000433641
+            return (trans_entropy - self.pro_entropy) * 0.0000433641
         else:
-            rct_entropies = [r.entropy for r in self.reactants]
-            return (trans_entropy - sum(rct_entropies)) * 0.0000433641
+            return (trans_entropy - self.rct_entropy) * 0.0000433641
 
     def calculate_act_gibbs(self, temperature=298.0, reverse=False):
         """
@@ -220,15 +171,10 @@ class ReactionRateCalculator(MSONable):
         Returns:
             act_thermo: dict with relevant activation thermodynamic variables
         """
-
-        act_thermo = {
-            "energy": self.calculate_act_energy(reverse=reverse),
-            "enthalpy": self.calculate_act_enthalpy(reverse=reverse),
-            "entropy": self.calculate_act_entropy(reverse=reverse),
-            "gibbs": self.calculate_act_gibbs(temperature, reverse=reverse),
-        }
-
-        return act_thermo
+        self.act_energy = (self.calculate_act_energy(reverse=reverse),)
+        self.act_enthalpy = (self.calculate_act_enthalpy(reverse=reverse),)
+        self.act_entropy = (self.calculate_act_entropy(reverse=reverse),)
+        self.act_gibbs = (self.calculate_act_gibbs(reverse=reverse),)
 
     def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=1.0):
         """
@@ -248,17 +194,11 @@ class ReactionRateCalculator(MSONable):
         gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
 
         k_rate = (
-            kappa
-            * k
-            * temperature
-            / h
-            * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
+            kappa * k * temperature / h * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
         )
         return k_rate
 
-    def calculate_rate(
-        self, concentrations, temperature=298.0, reverse=False, kappa=1.0
-    ):
+    def calculate_rate(self, concentrations, temperature=298.0, reverse=False, kappa=1.0):
         """
         Calculate the based on the reaction stoichiometry.
 
@@ -276,28 +216,20 @@ class ReactionRateCalculator(MSONable):
         Returns:
             rate (float): reaction rate, based on the stoichiometric rate law and the rate constant
         """
-
         rate_constant = self.calculate_rate_constant(
             temperature=temperature, reverse=reverse, kappa=kappa
         )
 
         if reverse:
-            exponents = np.array(list(self.rate_law["products"].values()))
+            exponents = self.rate_law["products"]
         else:
-            exponents = np.array(list(self.rate_law["reactants"].values()))
+            exponents = self.rate_law["reactants"]
 
         rate = rate_constant * product(np.array(concentrations) ** exponents)
-
         return rate
 
     def __repr__(self):
-        rct_str = " + ".join(
-            [r.molecule.composition.alphabetical_formula for r in self.reactants]
-        )
-        pro_str = " + ".join(
-            [p.molecule.composition.alphabetical_formula for p in self.products]
-        )
-        return "Rate Calculator for: {} --> {}".format(rct_str, pro_str)
+        return "Rate Calculator for: {} --> {}".format(self.rct_str, self.pro_str)
 
     def __str__(self):
         return self.__repr__()
@@ -402,9 +334,7 @@ class BEPRateCalculator(ReactionRateCalculator):
 
         return k_rate
 
-    def calculate_rate(
-        self, concentrations, temperature=298.0, reverse=False, kappa=1.0
-    ):
+    def calculate_rate(self, concentrations, temperature=298.0, reverse=False, kappa=1.0):
         """
         Calculate the rate using collision theory.
 
@@ -434,9 +364,7 @@ class BEPRateCalculator(ReactionRateCalculator):
 
         # Convert from Angstrom to m
         radius_factor = (
-            pi
-            * sum([(np.max(mol.distance_matrix) * (10 ** -10) / 2) for mol in mols])
-            ** 2
+            pi * sum([(np.max(mol.distance_matrix) * (10 ** -10) / 2) for mol in mols]) ** 2
         )
         # Radius factor will be 0 for single atoms
         if radius_factor == 0:
@@ -534,8 +462,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
 
     def calculate_act_enthalpy(self, reverse=False):
         raise NotImplementedError(
-            "Method calculate_act_enthalpy is not valid for "
-            "ExpandedBEPRateCalculator,"
+            "Method calculate_act_enthalpy is not valid for " "ExpandedBEPRateCalculator,"
         )
 
     def calculate_act_entropy(self, reverse=False):
@@ -564,9 +491,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
             delta_g = self.calculate_net_gibbs(temperature)
 
         delta_g_ref = (
-            self.delta_e_reference
-            + self.delta_h_reference
-            - temperature * self.delta_s_reference
+            self.delta_e_reference + self.delta_h_reference - temperature * self.delta_s_reference
         )
         delta_ga_ref = (
             self.delta_ea_reference
@@ -580,8 +505,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
 
     def calculate_activation_thermo(self, temperature=298.0, reverse=False):
         raise NotImplementedError(
-            "Method calculate_activation_thermo is not valid for "
-            "ExpandedBEPRateCalculator,"
+            "Method calculate_activation_thermo is not valid for " "ExpandedBEPRateCalculator,"
         )
 
     def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=1.0):
@@ -602,11 +526,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
         gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
 
         k_rate = (
-            kappa
-            * k
-            * temperature
-            / h
-            * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
+            kappa * k * temperature / h * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
         )
         return k_rate
 
@@ -764,8 +684,7 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
     def calculate_activation_thermo(self, temperature=298.0, reverse=False):
         raise NotImplementedError(
-            "Method calculate_activation_thermo is not valid for "
-            "RedoxRateCalculator,"
+            "Method calculate_activation_thermo is not valid for " "RedoxRateCalculator,"
         )
 
     def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=1.0):
@@ -787,11 +706,7 @@ class RedoxRateCalculator(ReactionRateCalculator):
         kappa = np.exp(-1.2 * self.electrode_distance)
 
         k_rate = (
-            kappa
-            * k
-            * temperature
-            / h
-            * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
+            kappa * k * temperature / h * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
         )
 
         return k_rate
