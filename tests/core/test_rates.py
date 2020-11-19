@@ -102,11 +102,11 @@ class ReactionRateCalculatorTest(unittest.TestCase):
             self.rct_1.get_free_energy(300) + self.rct_2.get_free_energy(300)
         )
         self.calc.calculate_net_gibbs(300)
-        self.assertEqual(self.calc.net_gibbs, gibbs_300)
+        self.assertEqual(self.calc.calculate_net_gibbs(300), gibbs_300)
         gibbs_100 = self.pro.get_free_energy(100) - (
             self.rct_1.get_free_energy(100) + self.rct_2.get_free_energy(100)
         )
-        self.assertEqual(self.calc.net_gibbs, gibbs_100)
+        self.assertEqual(self.calc.calculate_net_gibbs(100), gibbs_100)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_act_properties(self):
@@ -163,7 +163,6 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         self.assertEqual(self.calc.calculate_act_gibbs(100), gibbs_100)
 
         # Check appropriate updating of attrs
-        self.calc.calculate_act_thermo(temperature=300.00),
         self.assertEqual(self.calc.act_energy, self.calc.calculate_act_energy())
         self.assertEqual(self.calc.act_enthalpy, self.calc.calculate_act_enthalpy())
         self.assertEqual(self.calc.act_entropy, self.calc.calculate_act_entropy())
@@ -337,8 +336,7 @@ class ExpandedBEPReactionRateCalculatorTest(unittest.TestCase):
             + self.calc.delta_h_reference
             - 300 * self.calc.delta_s_reference
         )
-        self.calc.calculate_net_gibbs(300)
-        delta_g = self.calc.net_gibbs
+        delta_g = self.calc.calculate_net_gibbs(300)
         delta_g_rev = -delta_g
 
         delta_g_ref_600 = (
@@ -346,8 +344,7 @@ class ExpandedBEPReactionRateCalculatorTest(unittest.TestCase):
             + self.calc.delta_h_reference
             - 600 * self.calc.delta_s_reference
         )
-        self.calc.calculate_net_gibbs(600)
-        delta_g_600 = self.calc.net_gibbs
+        delta_g_600 = self.calc.calculate_net_gibbs(600)
 
         delta_ga_ref_300 = self.calc.delta_ea_reference + (
             self.calc.delta_ha_reference - 300 * self.calc.delta_sa_reference

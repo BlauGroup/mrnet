@@ -41,14 +41,14 @@ class ReactionRateCalculator(MSONable):
 
     def __init__(self, reactants, products, transition_state):
 
-        reactants = reactants
-        products = products
+        self.reactants = reactants
+        self.products = products
         self.transition_state = transition_state
 
         # Assume rate law is first-order in terms of each reactant/product
         self.rate_law = {
-            "reactants": np.ones((len(reactants),), dtype=int),
-            "products": np.ones((len(products),), dtype=int),
+            "reactants": [1 for ii in range(len(reactants))],
+            "products": [1 for ii in range(len(products))],
         }
 
         # Store relevant information from reactants, products, rather than storing obj
@@ -82,8 +82,7 @@ class ReactionRateCalculator(MSONable):
         """
         rct_gibbs = [r_free_nrg(temp=temperature) for r_free_nrg in self.rct_free_energy_methods]
         pro_gibbs = [p_free_nrg(temp=temperature) for p_free_nrg in self.pro_free_energy_methods]
-        self.net_gibbs = sum(pro_gibbs) - sum(rct_gibbs)
-        return self.net_gibbs
+        return sum(pro_gibbs) - sum(rct_gibbs)
 
     def calculate_act_energy(self, reverse=False):
         """
@@ -97,11 +96,17 @@ class ReactionRateCalculator(MSONable):
             float: energy of activation (in eV)
 
         """
+
         trans_energy = self.transition_state.energy
+
         if reverse:
-            return (trans_energy - self.pro_energy) * 27.2116
+            pro_energies = [p.energy for p in self.products]
+            self.act_energy = (trans_energy - sum(pro_energies)) * 27.2116
+            return (trans_energy - sum(pro_energies)) * 27.2116
         else:
-            return (trans_energy - self.rct_energy) * 27.2116
+            rct_energies = [r.energy for r in self.reactants]
+            self.act_energy = (trans_energy - sum(rct_energies)) * 27.2116
+            return (trans_energy - sum(rct_energies)) * 27.2116
 
     def calculate_act_enthalpy(self, reverse=False):
         """
@@ -115,11 +120,17 @@ class ReactionRateCalculator(MSONable):
             float: enthalpy of activation (in eV)
 
         """
+
         trans_enthalpy = self.transition_state.enthalpy
+
         if reverse:
-            return (trans_enthalpy - self.pro_enthalpy) * 0.0433641
+            pro_enthalpies = [p.enthalpy for p in self.products]
+            self.act_enthalpy = (trans_enthalpy - sum(pro_enthalpies)) * 0.0433641
+            return (trans_enthalpy - sum(pro_enthalpies)) * 0.0433641
         else:
-            return (trans_enthalpy - self.rct_enthalpy) * 0.0433641
+            rct_enthalpies = [r.enthalpy for r in self.reactants]
+            self.act_enthalpy = (trans_enthalpy - sum(rct_enthalpies)) * 0.0433641
+            return (trans_enthalpy - sum(rct_enthalpies)) * 0.0433641
 
     def calculate_act_entropy(self, reverse=False):
         """
@@ -133,11 +144,17 @@ class ReactionRateCalculator(MSONable):
             float: entropy of activation (in eV/K)
 
         """
+
         trans_entropy = self.transition_state.entropy
+
         if reverse:
-            return (trans_entropy - self.pro_entropy) * 0.0000433641
+            pro_entropies = [p.entropy for p in self.products]
+            self.act_entropy = (trans_entropy - sum(pro_entropies)) * 0.0000433641
+            return (trans_entropy - sum(pro_entropies)) * 0.0000433641
         else:
-            return (trans_entropy - self.rct_entropy) * 0.0000433641
+            rct_entropies = [r.entropy for r in self.reactants]
+            self.act_entropy = (trans_entropy - sum(rct_entropies)) * 0.0000433641
+            return (trans_entropy - sum(rct_entropies)) * 0.0000433641
 
     def calculate_act_gibbs(self, temperature=298.0, reverse=False):
         """
@@ -157,7 +174,7 @@ class ReactionRateCalculator(MSONable):
         act_energy = self.calculate_act_energy(reverse=reverse)
         act_enthalpy = self.calculate_act_enthalpy(reverse=reverse)
         act_entropy = self.calculate_act_entropy(reverse=reverse)
-
+        self.act_gibbs = act_energy + act_enthalpy - temperature * act_entropy
         return act_energy + act_enthalpy - temperature * act_entropy
 
     def calculate_act_thermo(self, temperature=298.0, reverse=False):
@@ -481,8 +498,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
         Returns:
             delta_ga (float): Gibbs free energy of activation (in kcal/mol)
         """
-        self.calculate_net_gibbs(temperature=temperature, reverse=reverse)
-        delta_g = self.net_gibbs
+        delta_g = self.calculate_net_gibbs(temperature=temperature, reverse=reverse)
 
         delta_g_ref = (
             self.delta_e_reference + self.delta_h_reference - temperature * self.delta_s_reference
