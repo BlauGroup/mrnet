@@ -101,11 +101,11 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         gibbs_300 = self.pro.get_free_energy(300) - (
             self.rct_1.get_free_energy(300) + self.rct_2.get_free_energy(300)
         )
-        self.assertEqual(self.calc.calculate_net_gibbs(300), gibbs_300)
+        self.assertAlmostEqual(self.calc.calculate_net_gibbs(300), gibbs_300, 10)
         gibbs_100 = self.pro.get_free_energy(100) - (
             self.rct_1.get_free_energy(100) + self.rct_2.get_free_energy(100)
         )
-        self.assertEqual(self.calc.calculate_net_gibbs(100.00), gibbs_100)
+        self.assertAlmostEqual(self.calc.calculate_net_gibbs(100.00), gibbs_100, 10)
         self.assertDictEqual(
             self.calc.calculate_net_thermo(),
             {
