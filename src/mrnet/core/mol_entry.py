@@ -40,12 +40,9 @@ class MoleculeEntry(MSONable):
             a particular label for the entry, or else ... Used for further
             analysis and plotting purposes. An attribute can be anything
             but must be MSONable.
-        mol_doc: MongoDB document that contains information of the molecule.
         mol_graph: MoleculeGraph of the molecule.
     """
 
-    # TODO (mjwen) remove mol_doc from __init__ and self.mol_doc (large dict).
-    #  `from_molecule_document` provides the functionality for initialization.
     def __init__(
         self,
         molecule: Molecule,
@@ -56,7 +53,6 @@ class MoleculeEntry(MSONable):
         parameters: Optional[Dict] = None,
         entry_id: Optional[Any] = None,
         attribute=None,
-        mol_doc: Optional[Dict] = None,
         mol_graph: Optional[MoleculeGraph] = None,
     ):
 
@@ -67,26 +63,13 @@ class MoleculeEntry(MSONable):
         self.parameters = parameters if parameters else {}
         self.entry_id = entry_id
         self.attribute = attribute
-        self.mol_doc = mol_doc if mol_doc else {}
         self.mol_graph = mol_graph
 
-        if self.mol_doc != {}:
+        if self.mol_graph is None:
+            mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
+            self.mol_graph = metal_edge_extender(mol_graph)
 
-            self.enthalpy = self.mol_doc["enthalpy_kcal/mol"]
-            self.entropy = self.mol_doc["entropy_cal/molK"]
-            self.entry_id = self.mol_doc["task_id"]
-            if "mol_graph" in self.mol_doc:
-                if isinstance(self.mol_doc["mol_graph"], MoleculeGraph):
-                    self.mol_graph = self.mol_doc["mol_graph"]
-                else:
-                    self.mol_graph = MoleculeGraph.from_dict(self.mol_doc["mol_graph"])
-            else:
-                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
-                self.mol_graph = metal_edge_extender(mol_graph)
-        else:
-            if self.mol_graph is None:
-                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
-                self.mol_graph = metal_edge_extender(mol_graph)
+
 
     @classmethod
     def from_molecule_document(
@@ -133,8 +116,7 @@ class MoleculeEntry(MSONable):
             else:
                 mol_graph = MoleculeGraph.from_dict(mol_doc["mol_graph"])
         else:
-            mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
-            mol_graph = metal_edge_extender(mol_graph)
+            mol_graph = None
 
         return cls(
             molecule=molecule,
@@ -183,12 +165,6 @@ class MoleculeEntry(MSONable):
     @property
     def num_bonds(self) -> int:
         return len(self.bonds)
-
-    #
-    # @property
-    # @deprecated(message="`edges` is replaced by `bonds`. This will be removed shortly.")
-    # def edges(self) -> List[Tuple[int, int]]:
-    #     return self.bonds
 
     @property
     def coords(self) -> np.ndarray:
