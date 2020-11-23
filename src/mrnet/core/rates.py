@@ -69,15 +69,6 @@ class ReactionRateCalculator(MSONable):
         self.net_enthalpy = (self.pro_enthalpy - self.rct_enthalpy) * 0.0433641
         self.net_entropy = (self.pro_entropy - self.rct_entropy) * 0.0000433641
 
-    def update(self, reference, transition_state=None):
-        for k in reference.keys():
-            setattr(self, k, reference.get(k))
-        if transition_state is not None:
-            self.ts_enthalpy = transition_state.enthalpy
-            self.ts_energy = transition_state.energy
-            self.ts_entropy = transition_state.entropy
-        return
-
     def calculate_net_gibbs(self, temperature=298.0):
         """
         Calculate net reaction Gibbs free energy at a given temperature.
@@ -686,6 +677,11 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
         self.rct_charge = sum([r.charge for r in reactants])
         self.pro_charge = sum([p.charge for p in products])
+
+    def update_calc(self, reference):
+        """Update the rate calculator with a baseline reference values."""
+        for key in reference.keys():
+            setattr(self, k, reference.get(k))
 
     def calculate_act_energy(self, reverse=False):
         raise NotImplementedError(

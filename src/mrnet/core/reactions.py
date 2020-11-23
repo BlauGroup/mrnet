@@ -125,9 +125,20 @@ class Reaction(MSONable, metaclass=ABCMeta):
             if reference is None:
                 pass
             else:
-                self.rate_calculator.update(reference)
+                self.rate_calculator = ExpandedBEPRateCalculator(
+                    reactants=self.reactants,
+                    products=self.products,
+                    delta_ea_reference=reference["delta_ea"],
+                    delta_ha_reference=reference["delta_ha"],
+                    delta_sa_reference=reference["delta_sa"],
+                    delta_e_reference=reference["delta_e"],
+                    delta_h_reference=reference["delta_h"],
+                    delta_s_reference=reference["delta_s"],
+                )
         else:
-            self.rate_calculator.update(reference, transition_state=transition_state)
+            self.rate_calculator = ReactionRateCalculator(
+                self.reactants, self.products, transition_state
+            )
 
     @classmethod
     @abstractmethod
@@ -334,16 +345,7 @@ class RedoxReaction(Reaction):
         if reference is None:
             pass
         else:
-            self.rate_calculator = RedoxRateCalculator(
-                [self.reactant],
-                [self.product],
-                reference["lambda_inner"],
-                reference["dielectric"],
-                reference["refractive"],
-                reference["electron_free_energy"],
-                reference["radius"],
-                reference["electrode_dist"],
-            )
+            self.rate_calculator.update_calc(reference)
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
@@ -2542,8 +2544,9 @@ def categorize(reaction, families, templates, environment, charge):
     nm = iso.categorical_node_match("specie", "ERROR")
 
     match = False
+    bucket_templates = copy.deepcopy(templates)
 
-    for e, template in enumerate(templates):
+    for e, template in enumerate(bucket_templates):
         if nx.is_isomorphic(environment, template, node_match=nm):
             match = True
             label = e
@@ -2740,7 +2743,7 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     Returns:
         Nested dictionary of molecule entry bucketed according to keys.
     """
-    keys = ["formula", "Nbonds", "charge"] if keys is None else keys
+    keys = ["formula", "num_bonds", "charge"] if keys is None else keys
 
     num_keys = len(keys)
     buckets = {}
