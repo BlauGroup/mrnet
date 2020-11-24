@@ -31,7 +31,6 @@ __status__ = "Alpha"
 
 MappingDict = Dict[str, Dict[int, Dict[int, List[MoleculeEntry]]]]
 Mapping_Energy_Dict = Dict[str, float]
-Mapping_ReactionType_Dict = Dict[str, str]
 Mapping_Record_Dict = Dict[str, List[str]]
 Atom_Mapping_Dict = Dict[int, int]
 
@@ -72,7 +71,9 @@ class Reaction(MSONable, metaclass=ABCMeta):
         products: List[MoleculeEntry],
         transition_state: Optional[MoleculeEntry] = None,
         parameters: Optional[Dict] = None,
-        reactants_atom_mapping: List[Atom_Mapping_Dict] = None,
+        reactants_atom_mapping: List[
+            Atom_Mapping_Dict
+        ] = None,  # atom mapping argument may not be necessary
         products_atom_mapping: List[Atom_Mapping_Dict] = None,
     ):
         self.reactants = reactants
@@ -150,7 +151,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def reaction_type(self) -> Mapping_ReactionType_Dict:
+    def reaction_type(self):
         pass
 
     @abstractmethod
@@ -182,9 +183,9 @@ class Reaction(MSONable, metaclass=ABCMeta):
             "reactants": [r.as_dict() for r in self.reactants],
             "products": [p.as_dict() for p in self.products],
             "transition_state": ts,
-            "rate_calculator": rc,
+            "rate_calculator": rc,  # consider writing as_dict/from_dict methods
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "reactants_atom_mapping": self.reactants_atom_mapping,  # may end up removing
             "products_atom_mapping": self.products_atom_mapping,
         }
 
@@ -311,6 +312,9 @@ class RedoxReaction(Reaction):
                 self.electrode_dist,
             )
 
+        # Call helper methods to set relevant instance attrs
+        self.reaction_type(reactant, product)
+
     def graph_representation(self) -> nx.DiGraph:
         """
         A method to convert a RedoxReaction class object into graph representation
@@ -390,31 +394,26 @@ class RedoxReaction(Reaction):
 
         return reactions, families
 
-    def reaction_type(self) -> Mapping_ReactionType_Dict:
+    def reaction_type(self, reactant, product):
         """
         A method to identify type of redox reaction (oxidation or reduction)
+        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the
+        primary type of the reaction based on the reactant and product of the
+        RedoxReaction object, and rxn_type_B is the reverse.
 
-        Returns:
-           Dictionary of the form
-           {"class": "RedoxReaction", "rxn_type_A": rxn_type_A, "rxn_type_B": rxn_type_B},
-           where rnx_type_A is the primary type of the reaction based on the reactant
-           and product of the RedoxReaction object, and the backwards of this reaction
-           would be rnx_type_B.
+        Args:
+           reactant:
+           product:
+
+        Returns: None
         """
-
-        if self.product.charge < self.reactant.charge:
-            rxn_type_A = "One electron reduction"
-            rxn_type_B = "One electron oxidation"
+        if product.charge < reactant.charge:
+            self.rxn_type_A = "One electron reduction"
+            self.rxn_type_B = "One electron oxidation"
         else:
-            rxn_type_A = "One electron oxidation"
-            rxn_type_B = "One electron reduction"
-
-        reaction_type = {
-            "class": "RedoxReaction",
-            "rxn_type_A": rxn_type_A,
-            "rxn_type_B": rxn_type_B,
-        }
-        return reaction_type
+            self.rxn_type_A = "One electron oxidation"
+            self.rxn_type_B = "One electron reduction"
+        return
 
     def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
         """
@@ -441,7 +440,7 @@ class RedoxReaction(Reaction):
                 temp=temperature
             )
 
-            if self.reaction_type()["rxn_type_A"] == "One electron reduction":
+            if self.rxn_type_A == "One electron reduction":
                 free_energy_A += -self.electron_free_energy
                 free_energy_B += self.electron_free_energy
             else:
@@ -621,6 +620,9 @@ class IntramolSingleBondChangeReaction(Reaction):
             products_atom_mapping=prdts_mp,
         )
 
+        # Call helper methods to set relevant instance attrs
+        self.reaction_type(reactant, product)
+
     def graph_representation(self) -> nx.DiGraph:
         """
         A method to convert a IntramolSingleBondChangeReaction class object into
@@ -696,31 +698,27 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         return reactions, sub_graphs
 
-    def reaction_type(self) -> Mapping_ReactionType_Dict:
+    def reaction_type(self, reactant, product):
         """
-        A method to identify type of intramolecular single bond change
-        reaction (bond breakage or formation)
+        A method to identify type of Intramolecular Single Bond change reaction
+        (bond breakage or formation).
+        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the
+        primary type of the reaction based on the reactant and product of the
+        IntramolSingleBondChangeReaction object, and rxn_type_B is the reverse.
 
-        Returns:
-            Dictionary of the form {"class": "IntramolSingleBondChangeReaction",
-            "rxn_type_A": rxn_type_A, "rxn_type_B": rxn_type_B}
-            where rnx_type_A is the primary type of the reaction based on the
-            reactant and product of the IntramolSingleBondChangeReaction
-            object, and the backwards of this reaction would be rnx_type_B
+        Args:
+           reactant:
+           product:
+
+        Returns: None
         """
-        if self.product.charge < self.reactant.charge:
-            rxn_type_A = "Intramolecular single bond breakage"
-            rxn_type_B = "Intramolecular single bond formation"
+        if product.charge < reactant.charge:
+            self.rxn_type_A = "Intramolecular single bond breakage"
+            self.rxn_type_B = "Intramolecular single bond formation"
         else:
-            rxn_type_A = "Intramolecular single bond formation"
-            rxn_type_B = "Intramolecular single bond breakage"
-
-        reaction_type = {
-            "class": "IntramolSingleBondChangeReaction",
-            "rxn_type_A": rxn_type_A,
-            "rxn_type_B": rxn_type_B,
-        }
-        return reaction_type
+            self.rxn_type_A = "Intramolecular single bond formation"
+            self.rxn_type_B = "Intramolecular single bond breakage"
+        return
 
     def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
         """
@@ -918,6 +916,9 @@ class IntermolecularReaction(Reaction):
             products_atom_mapping=prdts_mp,
         )
 
+        # Call helper methods to set relevant instance attrs
+        self.reaction_type()
+
     def graph_representation(self) -> nx.DiGraph:
         """
         A method to convert a IntermolecularReaction class object into graph
@@ -1011,27 +1012,20 @@ class IntermolecularReaction(Reaction):
 
         return reactions, sub_graphs
 
-    def reaction_type(self) -> Mapping_ReactionType_Dict:
+    def reaction_type(self):
         """
-        A method to identify type of intermoleular reaction (bond
-        decomposition from one to two or formation from two to one molecules)
+        A method to identify type of intermolecular reaction (bond decomposition 
+        from one to two or formation from two to one molecules)
 
-        Returns:
-            Dictionary of the form {"class": "IntermolecularReaction",
-            "rxn_type_A": rxn_type_A, "rxn_type_B": rxn_type_B},
-            where rnx_type_A is the primary type of the reaction based on the
-            reactant and product of the IntermolecularReaction
-            object, and the backwards of this reaction would be rnx_type_B
+        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the
+        primary type of the reaction based on the reactant and product of the
+        IntermolecularReaction object, and rxn_type_B is the reverse.
+
+        Returns: None
         """
-        rxn_type_A = "Molecular decomposition breaking one bond A -> B+C"
-        rxn_type_B = "Molecular formation from one new bond A+B -> C"
-
-        reaction_type = {
-            "class": "IntermolecularReaction",
-            "rxn_type_A": rxn_type_A,
-            "rxn_type_B": rxn_type_B,
-        }
-        return reaction_type
+        self.rxn_type_A = "Molecular decomposition breaking one bond A -> B+C"
+        self.rxn_type_B = "Molecular formation from one new bond A+B -> C"
+        return
 
     def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
         """
@@ -1236,6 +1230,9 @@ class CoordinationBondChangeReaction(Reaction):
             products_atom_mapping=prdts_mp,
         )
 
+        # Call helper methods to set relevant instance attrs
+        self.reaction_type()
+
     def graph_representation(self) -> nx.DiGraph:
         """
         A method to convert a CoordinationBondChangeReaction class object into graph
@@ -1369,28 +1366,19 @@ class CoordinationBondChangeReaction(Reaction):
 
         return reactions, sub_graphs
 
-    def reaction_type(self) -> Mapping_ReactionType_Dict:
+    def reaction_type(self):
         """
         A method to identify type of coordination bond change reaction (bond breaking
         from one to two or forming from two to one molecules)
+        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the primary type of the reaction based on the
+        reactant and product of the CoordinationBondChangeReaction
+        object, and rxn_type_B is the reverse.
 
-        Returns:
-            Dictionary of the form {"class": "CoordinationBondChangeReaction",
-                                    "rxn_type_A": rxn_type_A, "rxn_type_B": rxn_type_B}
-            where rnx_type_A is the primary type of the reaction based on the
-            reactant and product of the CoordinationBondChangeReaction
-            object, and the backwards of this reaction would be rnx_type_B
+        Returns: None
         """
-
-        rxn_type_A = "Coordination bond breaking AM -> A+M"
-        rxn_type_B = "Coordination bond forming A+M -> AM"
-
-        reaction_type = {
-            "class": "CoordinationBondChangeReaction",
-            "rxn_type_A": rxn_type_A,
-            "rxn_type_B": rxn_type_B,
-        }
-        return reaction_type
+        self.rxn_type_A = "Coordination bond breaking AM -> A+M"
+        self.rxn_type_B = "Coordination bond forming A+M -> AM"
+        return
 
     def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
         """
@@ -1398,7 +1386,6 @@ class CoordinationBondChangeReaction(Reaction):
 
         Args:
             temperature:
-
         Returns:
             Dictionary of the form {"free_energy_A": energy_A, "free_energy_B": energy_B}
             where free_energy_A is the primary type of the reaction based
@@ -1599,6 +1586,9 @@ class ConcertedReaction(Reaction):
             reactant, product, transition_state=transition_state, parameters=parameters
         )
 
+        # Call helper methods to set relevant instance attrs
+        self.reaction_type()
+
     def graph_representation(self,) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
 
         """
@@ -1677,28 +1667,20 @@ class ConcertedReaction(Reaction):
         # with multiple reactants and multiple products
         return reactions, dict()
 
-    def reaction_type(self) -> Mapping_ReactionType_Dict:
-
+    def reaction_type(self):
         """
-        A method to identify type of intermoleular reaction (bond decomposition
-        from one to two or formation from two to one molecules)
-        Args:
-           :return dictionary of the form {"class": "IntermolecularReaction",
-           "rxn_type_A": rxn_type_A, "rxn_type_B": rxn_type_B}
-           where rnx_type_A is the primary type of the reaction based on the
-           reactant and product of the IntermolecularReaction
-           object, and the backwards of this reaction would be rnx_type_B
+        A method to set type of reaction as Concerted.
+        Sets attributes rxn_type_A and rxn_type_B, 
+        where rxn_type_A is the primary type of the reaction based on the
+        reactant and product of the ConcertedReaction object,
+        and rxn_type_B is the reverse.
+
+        Returns: None
         """
 
-        rxn_type_A = "Concerted"
-        rxn_type_B = "Concerted"
-
-        reaction_type = {
-            "class": "ConcertedReaction",
-            "rxn_type_A": rxn_type_A,
-            "rxn_type_B": rxn_type_B,
-        }
-        return reaction_type
+        self.rxn_type_A = "Concerted"
+        self.rxn_type_B = "Concerted"
+        return
 
     def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
         """
@@ -2007,8 +1989,8 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     entry_ids_name_B0 = two_prod_entry_ids0 + "," + reactants_name_entry_ids
     entry_ids_name_B1 = two_prod_entry_ids1 + "," + reactants_name_entry_ids
 
-    rxn_type_A = reaction.reaction_type()["rxn_type_A"]
-    rxn_type_B = reaction.reaction_type()["rxn_type_B"]
+    rxn_type_A = reaction.rxn_type_A
+    rxn_type_B = reaction.rxn_type_B
     energy_A = reaction.energy()["energy_A"]
     energy_B = reaction.energy()["energy_B"]
     free_energy_A = reaction.free_energy()["free_energy_A"]
@@ -2202,8 +2184,8 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     entry_ids_name_B0 = two_prod_entry_ids0 + "," + two_reac_name_entry_ids
     entry_ids_name_B1 = two_prod_entry_ids1 + "," + two_reac_name_entry_ids
 
-    rxn_type_A = reaction.reaction_type()["rxn_type_A"]
-    rxn_type_B = reaction.reaction_type()["rxn_type_B"]
+    rxn_type_A = reaction.rxn_type_A
+    rxn_type_B = reaction.rxn_type_B
     energy_A = reaction.energy()["energy_A"]
     energy_B = reaction.energy()["energy_B"]
     free_energy_A = reaction.free_energy()["free_energy_A"]
@@ -2369,8 +2351,8 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     entry_ids_name_B0 = two_mol_entry_ids0 + "," + str(reactant_0.entry_id)
     entry_ids_name_B1 = two_mol_entry_ids1 + "," + str(reactant_0.entry_id)
 
-    rxn_type_A = reaction.reaction_type()["rxn_type_A"]
-    rxn_type_B = reaction.reaction_type()["rxn_type_B"]
+    rxn_type_A = reaction.rxn_type_A
+    rxn_type_B = reaction.rxn_type_B
     energy_A = reaction.energy()["energy_A"]
     energy_B = reaction.energy()["energy_B"]
     free_energy_A = reaction.free_energy()["free_energy_A"]
@@ -2472,8 +2454,8 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
     graph = nx.DiGraph()
     node_name_A = str(reactant_0.parameters["ind"]) + "," + str(product_0.parameters["ind"])
     node_name_B = str(product_0.parameters["ind"]) + "," + str(reactant_0.parameters["ind"])
-    rxn_type_A = reaction.reaction_type()["rxn_type_A"]
-    rxn_type_B = reaction.reaction_type()["rxn_type_B"]
+    rxn_type_A = reaction.rxn_type_A
+    rxn_type_B = reaction.rxn_type_B
     energy_A = reaction.energy()["energy_A"]
     energy_B = reaction.energy()["energy_B"]
     free_energy_A = reaction.free_energy()["free_energy_A"]

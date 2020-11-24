@@ -746,20 +746,20 @@ class ReactionNetwork(MSONable):
 
         for ii, r in enumerate(self.reactions):
             r.parameters["ind"] = ii
-            if r.reaction_type()["class"] == "RedoxReaction":
+            if r.__class__.__name__ == "RedoxReaction":
                 redox_c += 1
                 r.electron_free_energy = self.electron_free_energy
-            elif r.reaction_type()["class"] == "IntramolSingleBondChangeReaction":
+            elif r.__class__.__name__ == "IntramolSingleBondChangeReaction":
                 intra_c += 1
-            elif r.reaction_type()["class"] == "IntermolecularReaction":
+            elif r.__class__.__name__ == "IntermolecularReaction":
                 inter_c += 1
-            elif r.reaction_type()["class"] == "CoordinationBondChangeReaction":
+            elif r.__class__.__name__ == "CoordinationBondChangeReaction":
                 coord_c += 1
             self.add_reaction(r.graph_representation())
 
             # TODO: concerted reactions?
 
-            this_class = r.reaction_type()["class"]
+            this_class = r.__class__.__name__
             for layer1, class1 in raw_families[this_class].items():
                 for layer2, class2 in class1.items():
                     for rxn in class2:
