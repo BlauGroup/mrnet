@@ -31,7 +31,6 @@ __status__ = "Alpha"
 
 
 MappingDict = Dict[str, Dict[int, Dict[int, List[MoleculeEntry]]]]
-Mapping_Energy_Dict = Dict[str, float]
 Mapping_Record_Dict = Dict[str, List[str]]
 Atom_Mapping_Dict = Dict[int, int]
 
@@ -156,15 +155,15 @@ class Reaction(MSONable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def energy(self) -> Mapping_Energy_Dict:
+    def free_energy(self, temperature=298.15):
         pass
 
     @abstractmethod
-    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def energy(self):
         pass
 
     @abstractmethod
-    def rate_constant(self) -> Mapping_Energy_Dict:
+    def rate_constant(self):
         pass
 
     def as_dict(self) -> dict:
@@ -325,6 +324,7 @@ class RedoxReaction(Reaction):
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type(reactant, product)
+        self.energy()
         # These store the free energy at 298.15 K.
         # Initialized to none, generally overwritten by self.free_energy()
         self.base_free_energy_A = None
@@ -432,7 +432,7 @@ class RedoxReaction(Reaction):
             self.rxn_type_B = "One electron reduction"
         return
 
-    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the redox reaction. Note to
         set RedoxReaction.electron_free_energy a value.
@@ -481,26 +481,25 @@ class RedoxReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self) -> Mapping_Energy_Dict:
+    def energy(self):
         """
         A method to determine the energy of the redox reaction
+        Sets energy_A and energy_B
+        where energy_A is the primary type of the reaction based on the reactant and
+        product of the RedoxReaction object, and the backwards of this reaction would
+        be energy_B.
 
         Returns:
-            Dictionary of the form {"energy_A": energy_A, "energy_B": energy_B}
-            where energy_A is the primary type of the reaction based on the reactant and
-            product of the RedoxReaction object, and the backwards of this reaction would
-            be energy_B.
+            None
         """
-        if self.product.energy is not None and self.reactant.energy is not None:
-            energy_A = self.product.energy - self.reactant.energy
-            energy_B = self.reactant.energy - self.product.energy
+        if self.pro_energy is not None and self.rct_energy is not None:
+            self.energy_A = self.pro_energy - self.rct_energy
+            self.energy_B = self.rct_energy - self.pro_energy
         else:
-            energy_A = None
-            energy_B = None
+            self.energy_A = None
+            self.energy_B = None
 
-        return {"energy_A": energy_A, "energy_B": energy_B}
-
-    def rate_constant(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, RedoxRateCalculator):
             return {
                 "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
@@ -662,6 +661,7 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type(reactant, product)
+        self.energy()
         # These store the free energy at 298.15 K.
         # Initialized to none, generally overwritten by self.free_energy()
         self.base_free_energy_A = None
@@ -765,7 +765,7 @@ class IntramolSingleBondChangeReaction(Reaction):
             self.rxn_type_B = "Intramolecular single bond breakage"
         return
 
-    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the intramolecular single bond change
         reaction. Sets free_energy_A and free_energy_B
@@ -808,29 +808,28 @@ class IntramolSingleBondChangeReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self) -> Mapping_Energy_Dict:
+    def energy(self):
         """
         A method to determine the energy of the intramolecular single bond change
         reaction.
+        Sets energy_A and energy_B
+        where energy_A is the primary type of the reaction based on
+        the reactant and product of the IntramolSingleBondChangeReaction object,
+        and the backwards of this reaction would be energy_B.
 
         Returns:
             Dictionary of the form {"energy_A": energy_A, "energy_B": energy_B}
-            where energy_A is the primary type of the reaction based on
-            the reactant and product of the IntramolSingleBondChangeReaction object,
-            and the backwards of this reaction would be energy_B.
         """
 
-        if self.product.energy is not None and self.reactant.energy is not None:
-            energy_A = self.product.energy - self.reactant.energy
-            energy_B = self.reactant.energy - self.product.energy
+        if self.pro_energy is not None and self.rct_energy is not None:
+            self.energy_A = self.pro_energy - self.rct_energy
+            self.energy_B = self.rct_energy - self.pro_energy
 
         else:
-            energy_A = None
-            energy_B = None
+            self.energy_A = None
+            self.energy_B = None
 
-        return {"energy_A": energy_A, "energy_B": energy_B}
-
-    def rate_constant(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator):
             return {
                 "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
@@ -990,6 +989,7 @@ class IntermolecularReaction(Reaction):
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type()
+        self.energy()
         # These store the free energy at 298.15 K.
         # Initialized to none, generally overwritten by self.free_energy()
         self.base_free_energy_A = None
@@ -1104,7 +1104,7 @@ class IntermolecularReaction(Reaction):
         self.rxn_type_B = "Molecular formation from one new bond A+B -> C"
         return
 
-    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the intermolecular reaction.
         Sets free_energy_A and free_energy_B
@@ -1154,31 +1154,27 @@ class IntermolecularReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self) -> Mapping_Energy_Dict:
+    def energy(self):
         """
         A method to determine the energy of the intermolecular reaction.
-
-        Returns:
-            Dictionary of the form {"energy_A": energy_A, "energy_B": energy_B}
-            where energy_A is the primary type of the reaction based on the
-            reactant and product of the IntermolecularReaction
-            object, and the backwards of this reaction would be energy_B.
+        Sets energy_A and energy_B
+        where energy_A is the primary type of the reaction based on the
+        reactant and product of the IntermolecularReaction
+        object, and the backwards of this reaction would be energy_B.
         """
         if (
-            self.product_1.energy is not None
-            and self.product_0.energy is not None
-            and self.reactant.energy is not None
+            self.pro1_energy is not None
+            and self.pro0_energy is not None
+            and self.rct_energy is not None
         ):
-            energy_A = self.product_0.energy + self.product_1.energy - self.reactant.energy
-            energy_B = self.reactant.energy - self.product_0.energy - self.product_1.energy
+            self.energy_A = self.pro0_energy + self.pro1_energy - self.rct_energy
+            self.energy_B = self.rct_energy - self.pro0_energy - self.pro1_energy
 
         else:
-            energy_A = None
-            energy_B = None
+            self.energy_A = None
+            self.energy_B = None
 
-        return {"energy_A": energy_A, "energy_B": energy_B}
-
-    def rate_constant(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator):
             return {
                 "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
@@ -1341,6 +1337,7 @@ class CoordinationBondChangeReaction(Reaction):
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type()
+        self.energy()
         # These store the free energy at 298.15 K.
         # Initialized to none, generally overwritten by self.free_energy()
         self.base_free_energy_A = None
@@ -1494,17 +1491,16 @@ class CoordinationBondChangeReaction(Reaction):
         self.rxn_type_B = "Coordination bond forming A+M -> AM"
         return
 
-    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the coordination bond change reaction
+        Sets free_energy_A and free_energy_B
+        where free_energy_A is the primary type of the reaction based
+        on the reactant and product of the CoordinationBondChangeReaction
+        object, and the backwards of this reaction would be free_energy_B.
 
         Args:
             temperature:
-        Returns:
-            Dictionary of the form {"free_energy_A": energy_A, "free_energy_B": energy_B}
-            where free_energy_A is the primary type of the reaction based
-            on the reactant and product of the CoordinationBondChangeReaction
-            object, and the backwards of this reaction would be free_energy_B.
         """
 
         set_base = False
@@ -1542,31 +1538,30 @@ class CoordinationBondChangeReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self) -> Mapping_Energy_Dict:
+    def energy(self):
         """
         A method to determine the energy of the coordination bond change reaction
+        Sets energy_A and energy_B
+        where energy_A is the primary type of the reaction based on the
+        reactant and product of the CoordinationBondChangeReaction
+        object, and the backwards of this reaction would be energy_B.
 
         Returns:
-            Dictionary of the form {"energy_A": energy_A, "energy_B": energy_B}
-            where energy_A is the primary type of the reaction based on the
-            reactant and product of the CoordinationBondChangeReaction
-            object, and the backwards of this reaction would be energy_B.
+            None
         """
         if (
-            self.product_1.energy is not None
-            and self.product_0.energy is not None
-            and self.reactant.energy is not None
+            self.pro1_energy is not None
+            and self.pro0_energy is not None
+            and self.rct_energy is not None
         ):
-            energy_A = self.product_0.energy + self.product_1.energy - self.reactant.energy
-            energy_B = self.reactant.energy - self.product_0.energy - self.product_1.energy
+            self.energy_A = self.pro0_energy + self.pro1_energy - self.rct_energy
+            self.energy_B = self.rct_energy - self.pro0_energy - self.pro1_energy
 
         else:
-            energy_A = None
-            energy_B = None
+            self.energy_A = None
+            self.energy_B = None
 
-        return {"energy_A": energy_A, "energy_B": energy_B}
-
-    def rate_constant(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator):
             return {
                 "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
@@ -1731,6 +1726,7 @@ class ConcertedReaction(Reaction):
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type()
+        self.energy()
         # These store the free energy at 298.15 K.
         # Initialized to none, generally overwritten by self.free_energy()
         self.base_free_energy_A = None
@@ -1840,7 +1836,7 @@ class ConcertedReaction(Reaction):
         self.rxn_type_B = "Concerted"
         return
 
-    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the concerted reaction
         Sets free_energy_A and free_energy_B,
@@ -1903,35 +1899,32 @@ class ConcertedReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self) -> Mapping_Energy_Dict:
+    def energy(self):
         """
         A method to determine the energy of the concerted reaction
-        Args:
-           :return dictionary of the form {"energy_A": energy_A,
-                                           "energy_B": energy_B}
-           where energy_A is the primary type of the reaction based on the
-           reactant and product of the ConcertedReaction
-           object, and the backwards of this reaction would be energy_B.
-           Electron electronic energy set to 0 for now.
+        Sets energy_A and energy_B
+        where energy_A is the primary type of the reaction based on the
+        reactant and product of the ConcertedReaction
+        object, and the backwards of this reaction would be energy_B.
+        Electron electronic energy set to 0 for now.
+        Returns:
+            None
         """
-        if all(reactant.energy is None for reactant in self.reactants) and all(
-            product.energy is None for product in self.products
+        if all(nrg is None for nrg in self.rct_energy) and all(
+            nrg is None for nrg in self.pro_energy
         ):
-            reactant_total_charge = np.sum([item.charge for item in self.reactants])
-            product_total_charge = np.sum([item.charge for item in self.products])
-            reactant_total_energy = np.sum([item.energy for item in self.reactants])
-            product_total_energy = np.sum([item.energy for item in self.products])
-            # total_charge_change = product_total_charge - reactant_total_charge
-            energy_A = product_total_energy - reactant_total_energy
-            energy_B = reactant_total_energy - product_total_energy
+            reactant_total_charge = self.rct_charge
+            product_total_charge = self.pro_charge
+            reactant_total_energy = np.sum([nrg for nrg in self.rct_energy])
+            product_total_energy = np.sum([nrg for nrg in self.pro_energy])
+            self.energy_A = product_total_energy - reactant_total_energy
+            self.energy_B = reactant_total_energy - product_total_energy
 
         else:
-            energy_A = None
-            energy_B = None
+            self.energy_A = None
+            self.energy_B = None
 
-        return {"energy_A": energy_A, "energy_B": energy_B}
-
-    def rate_constant(self, temperature=298.15) -> Mapping_Energy_Dict:
+    def rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator):
             return {
                 "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
@@ -2171,8 +2164,8 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
 
     rxn_type_A = reaction.rxn_type_A
     rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy()["energy_A"]
-    energy_B = reaction.energy()["energy_B"]
+    energy_A = reaction.energy_A
+    energy_B = reaction.energy_B
     reaction.free_energy()
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B
@@ -2366,8 +2359,8 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
 
     rxn_type_A = reaction.rxn_type_A
     rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy()["energy_A"]
-    energy_B = reaction.energy()["energy_B"]
+    energy_A = reaction.energy_A
+    energy_B = reaction.energy_B
     reaction.free_energy()
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B
@@ -2534,8 +2527,8 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
 
     rxn_type_A = reaction.rxn_type_A
     rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy()["energy_A"]
-    energy_B = reaction.energy()["energy_B"]
+    energy_A = reaction.energy_A
+    energy_B = reaction.energy_B
     reaction.free_energy()
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B
@@ -2638,8 +2631,8 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
     node_name_B = str(product_0.parameters["ind"]) + "," + str(reactant_0.parameters["ind"])
     rxn_type_A = reaction.rxn_type_A
     rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy()["energy_A"]
-    energy_B = reaction.energy()["energy_B"]
+    energy_A = reaction.energy_A
+    energy_B = reaction.energy_B
     reaction.free_energy()
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B

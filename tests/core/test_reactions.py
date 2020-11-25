@@ -176,10 +176,9 @@ class TestRedoxReaction(PymatgenTest):
 
         reaction = RedoxReaction(self.EC_0_entry, self.EC_1_entry)
         reaction.electron_free_energy = -2.15
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": 0.3149076465170424, "energy_B": -0.3149076465170424},
-        )
+        reaction.energy()
+        self.assertEqual(reaction.energy_A, 0.3149076465170424)
+        self.assertEqual(reaction.energy_B, -0.3149076465170424)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
@@ -343,10 +342,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_energy(self):
 
         reaction = IntramolSingleBondChangeReaction(self.LiEC_entry, self.LiEC_RO_entry)
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": -0.03746218086303088, "energy_B": 0.03746218086303088},
-        )
+        reaction.energy()
+        self.assertEqual(reaction.energy_A, -0.03746218086303088)
+        self.assertEqual(reaction.energy_B, 0.03746218086303088)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
@@ -552,10 +550,9 @@ class TestIntermolecularReaction(PymatgenTest):
     def test_energy(self):
 
         reaction = IntermolecularReaction(self.LiEC_RO_entry, [self.C1Li1O3_entry, self.C2H4_entry])
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": 0.035409666514283344, "energy_B": -0.035409666514283344},
-        )
+        reaction.energy()
+        self.assertEqual(reaction.energy_A, 0.035409666514283344)
+        self.assertEqual(reaction.energy_B, -0.035409666514283344)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
@@ -754,10 +751,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reaction = CoordinationBondChangeReaction(
             self.LiEC_entry, [self.EC_minus_entry, self.Li_entry]
         )
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": 0.08317397598398202, "energy_B": -0.08317397598399001},
-        )
+        reaction.energy()
+        self.assertEqual(reaction.energy_A, 0.08317397598398202)
+        self.assertEqual(reaction.energy_B, -0.08317397598399001)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
