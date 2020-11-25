@@ -167,11 +167,9 @@ class TestRedoxReaction(PymatgenTest):
 
         reaction = RedoxReaction(self.EC_0_entry, self.EC_1_entry)
         reaction.electron_free_energy = -2.15
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": 6.231346035181195, "free_energy_B": -6.231346035181195},
-        )
+        reaction.free_energy()
+        self.assertEqual(reaction.free_energy_A, 6.231346035181195)
+        self.assertEqual(reaction.free_energy_B, -6.231346035181195)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
@@ -337,11 +335,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_free_energy(self):
 
         reaction = IntramolSingleBondChangeReaction(self.LiEC_entry, self.LiEC_RO_entry)
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": -1.1988634269218892, "free_energy_B": 1.1988634269218892},
-        )
+        reaction.free_energy()
+        self.assertEqual(reaction.free_energy_A, -1.1988634269218892)
+        self.assertEqual(reaction.free_energy_B, 1.1988634269218892)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
@@ -548,11 +544,9 @@ class TestIntermolecularReaction(PymatgenTest):
     def test_free_energy(self):
 
         reaction = IntermolecularReaction(self.LiEC_RO_entry, [self.C1Li1O3_entry, self.C2H4_entry])
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": 0.37075842588456, "free_energy_B": -0.37075842588410524},
-        )
+        reaction.free_energy()
+        self.assertEqual(reaction.free_energy_A, 0.37075842588456)
+        self.assertEqual(reaction.free_energy_B, -0.37075842588410524)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
@@ -750,11 +744,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reaction = CoordinationBondChangeReaction(
             self.LiEC_entry, [self.EC_minus_entry, self.Li_entry]
         )
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": 1.857340187929367, "free_energy_B": -1.8573401879297649},
-        )
+        reaction.free_energy()
+        self.assertEqual(reaction.free_energy_A, 1.857340187929367)
+        self.assertEqual(reaction.free_energy_B, -1.8573401879297649)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
