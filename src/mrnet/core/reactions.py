@@ -501,16 +501,12 @@ class RedoxReaction(Reaction):
 
     def rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, RedoxRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
+            self.k_A = self.rate_calculator.calculate_rate_constant(temperature=temperature)
+            self.k_B = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature, reverse=True
+            )
         else:
-            rate_constant = dict()
             self.free_energy(temperature=temperature)
-
             if self.electrode_dist is None:
                 kappa = 1
             else:
@@ -524,17 +520,17 @@ class RedoxReaction(Reaction):
                 delta_g_a = lam_reorg / 4 * (1 + self.free_energy_A / lam_reorg) ** 2
                 delta_g_b = lam_reorg / 4 * (1 + self.free_energy_B / lam_reorg) ** 2
 
-            if self.inner_reorganization_energy is None and free_energy["free_energy_A"] < 0:
-                rate_constant["k_A"] = kappa * k * temperature / h
+            if self.inner_reorganization_energy is None and self.free_energy_A < 0:
+                self.k_A = kappa * k * temperature / h
             else:
-                rate_constant["k_A"] = (
+                self.k_A = (
                     kappa * k * temperature / h * np.exp(-96487 * delta_g_a / (R * temperature))
                 )
 
-            if self.inner_reorganization_energy is None and free_energy["free_energy_B"] < 0:
-                rate_constant["k_B"] = kappa * k * temperature / h
+            if self.inner_reorganization_energy is None and self.free_energy_B < 0:
+                self.k_B = kappa * k * temperature / h
             else:
-                rate_constant["k_B"] = (
+                self.k_B = (
                     kappa * k * temperature / h * np.exp(-96487 * delta_g_b / (R * temperature))
                 )
 
@@ -830,20 +826,13 @@ class IntramolSingleBondChangeReaction(Reaction):
             self.energy_B = None
 
     def rate_constant(self, temperature=298.15):
-        if isinstance(self.rate_calculator, ReactionRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
-        elif isinstance(self.rate_calculator, ExpandedBEPRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
+        if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
+            self.rate_calculator, ExpandedBEPRateCalculator
+        ):
+            self.k_A = (self.rate_calculator.calculate_rate_constant(temperature=temperature),)
+            self.k_B = (
+                self.rate_calculator.calculate_rate_constant(temperature=temperature, reverse=True),
+            )
         else:
             rate_constant = dict()
             self.free_energy(temperature=temperature)
@@ -852,18 +841,14 @@ class IntramolSingleBondChangeReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                rate_constant["k_A"] = k * temperature / h
+                self.k_A = k * temperature / h
             else:
-                rate_constant["k_A"] = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
-                )
+                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
 
             if gb < 0:
-                rate_constant["k_B"] = k * temperature / h
+                self.k_B = k * temperature / h
             else:
-                rate_constant["k_B"] = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-                )
+                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
 
             return rate_constant
 
@@ -1175,20 +1160,13 @@ class IntermolecularReaction(Reaction):
             self.energy_B = None
 
     def rate_constant(self, temperature=298.15):
-        if isinstance(self.rate_calculator, ReactionRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
-        elif isinstance(self.rate_calculator, ExpandedBEPRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
+        if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
+            self.rate_calculator, ExpandedBEPRateCalculator
+        ):
+            self.k_A = (self.rate_calculator.calculate_rate_constant(temperature=temperature),)
+            self.k_B = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature, reverse=True
+            )
         else:
             rate_constant = dict()
             self.free_energy(temperature=temperature)
@@ -1197,18 +1175,14 @@ class IntermolecularReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                rate_constant["k_A"] = k * temperature / h
+                self.k_A = k * temperature / h
             else:
-                rate_constant["k_A"] = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
-                )
+                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
 
             if gb < 0:
-                rate_constant["k_B"] = k * temperature / h
+                self.k_B = k * temperature / h
             else:
-                rate_constant["k_B"] = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-                )
+                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
 
             return rate_constant
 
@@ -1562,20 +1536,13 @@ class CoordinationBondChangeReaction(Reaction):
             self.energy_B = None
 
     def rate_constant(self, temperature=298.15):
-        if isinstance(self.rate_calculator, ReactionRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
-        elif isinstance(self.rate_calculator, ExpandedBEPRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
+        if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
+            self.rate_calculator, ExpandedBEPRateCalculator
+        ):
+            self.k_A: self.rate_calculator.calculate_rate_constant(temperature=temperature)
+            self.k_B: self.rate_calculator.calculate_rate_constant(
+                temperature=temperature, reverse=True
+            )
         else:
             rate_constant = dict()
             self.free_energy(temperature=temperature)
@@ -1584,18 +1551,14 @@ class CoordinationBondChangeReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                rate_constant["k_A"] = k * temperature / h
+                self.k_A = k * temperature / h
             else:
-                rate_constant["k_A"] = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
-                )
+                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
 
             if gb < 0:
-                rate_constant["k_B"] = k * temperature / h
+                self.k_B = k * temperature / h
             else:
-                rate_constant["k_B"] = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-                )
+                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
 
             return rate_constant
 
@@ -1925,20 +1888,13 @@ class ConcertedReaction(Reaction):
             self.energy_B = None
 
     def rate_constant(self, temperature=298.15):
-        if isinstance(self.rate_calculator, ReactionRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
-        elif isinstance(self.rate_calculator, ExpandedBEPRateCalculator):
-            return {
-                "k_A": self.rate_calculator.calculate_rate_constant(temperature=temperature),
-                "k_B": self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
-            }
+        if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
+            self.rate_calculator, ExpandedBEPRateCalculator
+        ):
+            self.k_A = (self.rate_calculator.calculate_rate_constant(temperature=temperature),)
+            self.k_B = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature, reverse=True
+            )
         else:
             rate_constant = dict()
             self.free_energy()
@@ -1947,18 +1903,14 @@ class ConcertedReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                rate_constant["k_A"] = k * temperature / h
+                self.k_A = k * temperature / h
             else:
-                rate_constant["k_A"] = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
-                )
+                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
 
             if gb < 0:
-                rate_constant["k_B"] = k * temperature / h
+                self.k_B = k * temperature / h
             else:
-                rate_constant["k_B"] = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-                )
+                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
 
             return rate_constant
 
