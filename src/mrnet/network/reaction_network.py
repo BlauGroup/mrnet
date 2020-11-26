@@ -764,8 +764,8 @@ class ReactionNetwork(MSONable):
                 for layer2, class2 in class1.items():
                     for rxn in class2:
                         # Reactions identical - link by index
-                        cond_rct = sorted(r.reactant_ids) == sorted(rxn.reactant_ids)
-                        cond_pro = sorted(r.product_ids) == sorted(rxn.product_ids)
+                        cond_rct = sorted(r.rct_ids) == sorted(rxn.rct_ids)
+                        cond_pro = sorted(r.pro_ids) == sorted(rxn.pro_ids)
                         if cond_rct and cond_pro:
                             self.families[this_class][layer1][layer2].add(ii)
 

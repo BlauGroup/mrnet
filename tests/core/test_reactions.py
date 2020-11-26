@@ -154,12 +154,10 @@ class TestRedoxReaction(PymatgenTest):
 
         for r in reactions:
             self.assertEqual(
-                r.reactants_atom_mapping,
-                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
+                r.rct_atom_mapping, [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
             self.assertEqual(
-                r.products_atom_mapping,
-                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
+                r.pro_atom_mapping, [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -322,11 +320,11 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
         self.assertEqual(rxn.product.entry_id, self.LiEC_entry.entry_id)
 
         self.assertEqual(
-            rxn.reactants_atom_mapping,
+            rxn.rct_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
         self.assertEqual(
-            rxn.products_atom_mapping,
+            rxn.pro_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
 
@@ -530,11 +528,11 @@ class TestIntermolecularReaction(PymatgenTest):
         self.assertEqual(rxn.product_1.entry_id, self.C1Li1O3_entry.entry_id)
 
         self.assertEqual(
-            rxn.reactants_atom_mapping,
+            rxn.rct_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
         self.assertEqual(
-            rxn.products_atom_mapping,
+            rxn.pro_atom_mapping,
             [{0: 0, 1: 1, 2: 7, 3: 8, 4: 9, 5: 10}, {0: 2, 1: 3, 2: 4, 3: 5, 4: 6}],
         )
 
@@ -726,12 +724,12 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         self.assertEqual(rxn.product_1.entry_id, self.Li_entry.entry_id)
 
         self.assertEqual(
-            rxn.reactants_atom_mapping,
+            rxn.rct_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
 
         self.assertEqual(
-            rxn.products_atom_mapping,
+            rxn.pro_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 7, 7: 8, 8: 9, 9: 10}, {0: 6}],
         )
 
