@@ -59,8 +59,9 @@ class MoleculeEntry(MSONable):
         attribute=None,
         mol_doc: Optional[Dict] = None,
         mol_graph: Optional[MoleculeGraph] = None,
+        dummy: Optional[bool] = False,
     ):
-
+        self.dummy = dummy
         self.uncorrected_energy = energy
         self.correction = correction
         self.enthalpy = enthalpy
@@ -82,16 +83,22 @@ class MoleculeEntry(MSONable):
                 else:
                     self.mol_graph = MoleculeGraph.from_dict(self.mol_doc["mol_graph"])
             else:
-                mol_graph = MoleculeGraph.with_local_env_strategy(
-                    molecule, OpenBabelNN()
-                )
+                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
                 self.mol_graph = metal_edge_extender(mol_graph)
         else:
             if self.mol_graph is None:
-                mol_graph = MoleculeGraph.with_local_env_strategy(
-                    molecule, OpenBabelNN()
-                )
+                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
                 self.mol_graph = metal_edge_extender(mol_graph)
+
+    def zip_dict(self):
+        return {
+            "enthalpy": self.enthalpy,
+            "entropy": self.entropy,
+            "energy": self.energy,
+            "entry_id": self.entry_id,
+            "charge": self.charge,
+            "parameters": self.parameters,
+        }
 
     @classmethod
     def from_molecule_document(
@@ -191,9 +198,7 @@ class MoleculeEntry(MSONable):
         return [tuple(sorted(e)) for e in self.graph.edges()]
 
     @property
-    @deprecated(
-        message="`Nbonds` is replaced by `num_bonds`. This will be removed shortly."
-    )
+    @deprecated(message="`Nbonds` is replaced by `num_bonds`. This will be removed shortly.")
     def Nbonds(self) -> int:
         return self.num_bonds
 
