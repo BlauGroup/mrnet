@@ -334,6 +334,7 @@ class RedoxReaction(Reaction):
         self.base_free_energy_B = None
         if self.electron_free_energy is not None:
             self.free_energy()
+            self.rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -537,8 +538,6 @@ class RedoxReaction(Reaction):
                     kappa * k * temperature / h * np.exp(-96487 * delta_g_b / (R * temperature))
                 )
 
-            return rate_constant
-
     def as_dict(self) -> dict:
         if self.rate_calculator is None:
             rc = None
@@ -664,6 +663,7 @@ class IntramolSingleBondChangeReaction(Reaction):
         self.base_free_energy_A = None
         self.base_free_energy_B = None
         self.free_energy()
+        self.rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -835,7 +835,6 @@ class IntramolSingleBondChangeReaction(Reaction):
                 self.rate_calculator.calculate_rate_constant(temperature=temperature, reverse=True),
             )
         else:
-            rate_constant = dict()
             self.free_energy(temperature=temperature)
 
             ga = self.free_energy_A
@@ -850,8 +849,6 @@ class IntramolSingleBondChangeReaction(Reaction):
                 self.k_B = k * temperature / h
             else:
                 self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-
-            return rate_constant
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -981,6 +978,7 @@ class IntermolecularReaction(Reaction):
         self.base_free_energy_A = None
         self.base_free_energy_B = None
         self.free_energy()
+        self.rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -1164,12 +1162,11 @@ class IntermolecularReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A = (self.rate_calculator.calculate_rate_constant(temperature=temperature),)
+            self.k_A = self.rate_calculator.calculate_rate_constant(temperature=temperature)
             self.k_B = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True
             )
         else:
-            rate_constant = dict()
             self.free_energy(temperature=temperature)
 
             ga = self.free_energy_A
@@ -1184,8 +1181,6 @@ class IntermolecularReaction(Reaction):
                 self.k_B = k * temperature / h
             else:
                 self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-
-            return rate_constant
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -1318,6 +1313,7 @@ class CoordinationBondChangeReaction(Reaction):
         self.base_free_energy_A = None
         self.base_free_energy_B = None
         self.free_energy()
+        self.rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -1545,7 +1541,6 @@ class CoordinationBondChangeReaction(Reaction):
                 temperature=temperature, reverse=True
             )
         else:
-            rate_constant = dict()
             self.free_energy(temperature=temperature)
 
             ga = self.free_energy_A
@@ -1560,8 +1555,6 @@ class CoordinationBondChangeReaction(Reaction):
                 self.k_B = k * temperature / h
             else:
                 self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-
-            return rate_constant
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -1695,6 +1688,8 @@ class ConcertedReaction(Reaction):
         # Initialized to none, generally overwritten by self.free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
+        self.free_energy()
+        self.rate_constant()
 
     def graph_representation(self,) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
 
@@ -1900,7 +1895,6 @@ class ConcertedReaction(Reaction):
                 temperature=temperature, reverse=True
             )
         else:
-            rate_constant = dict()
             self.free_energy()
 
             ga = self.free_energy_A
@@ -1915,8 +1909,6 @@ class ConcertedReaction(Reaction):
                 self.k_B = k * temperature / h
             else:
                 self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
-
-            return rate_constant
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
