@@ -2331,6 +2331,123 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     if len(reaction.rct_ids) != 1 or len(reaction.pro_ids) != 2:
         raise ValueError("Must provide reaction with 1 reactant and 2 products" "for graph_rep_1_2")
 
+    # Create the graph object, and define/call appropriate data
+    graph = nx.DiGraph()
+    rxn_type_A = reaction.rxn_type_A
+    rxn_type_B = reaction.rxn_type_B
+    energy_A = reaction.energy_A
+    energy_B = reaction.energy_B
+    reaction.free_energy()
+    free_energy_A = reaction.free_energy_A
+    free_energy_B = reaction.free_energy_B
+
+    # Here, create the 'base' names for products and reactants
+    pro_sorted_indices = np.argsort(reaction.pro_indices)
+    rct_sorted_indices = np.argsort(reaction.rct_indices)
+
+    base_pro_name = "+".join([str(reaction.pro_indices[i]) for i in pro_sorted_indices])
+    base_pro_eids = "+".join([str(reaction.pro_ids[i]) for i in pro_sorted_indices])
+
+    base_rct_name = "+".join([str(reaction.rct_indices[i]) for i in rct_sorted_indices])
+    base_rct_eids = "+".join([str(reaction.rct_ids[i]) for i in rct_sorted_indices])
+
+    # This will give the "PR" part of the name for the products and reactants
+    pro_names_PR = [
+        "+PR_".join([str(index) for index in permutation])
+        for permutation in itertools.permutations(reaction.pro_indices)
+    ]
+
+    rct_names_PR = [
+        "+PR_".join([str(index) for index in permutation])
+        for permutation in itertools.permutations(reaction.rct_indices)
+    ]
+
+    # This will give the full names for the products and reactants (used in the graph)
+    rct_node_names = [",".join([name, base_pro_name]) for name in rct_names_PR]
+    pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
+
+    pro_eids_PR = [
+        "+PR_".join([str(index) for index in permutation])
+        for permutation in itertools.permutations(reaction.pro_ids)
+    ]
+
+    rct_eids_PR = [
+        "+PR_".join([str(index) for index in permutation])
+        for permutation in itertools.permutations(reaction.rct_ids)
+    ]
+
+    # This will give the full ids for the products and reactants (used in the graph)
+    rct_node_eids = [",".join([name, base_pro_eids]) for name in rct_eids_PR]
+    pro_node_eids = [",".join([name, base_rct_eids]) for name in pro_eids_PR]
+
+    for node_ind in range(len(rct_node_names)):
+        # Add a reactant node
+        graph.add_node(
+            rct_node_names[node_ind],
+            rxn_type=rxn_type_A,
+            bipartite=1,
+            energy=energy_A,
+            free_energy=free_energy_A,
+            entry_ids=rct_node_eids[node_ind],
+        )
+        # Add an edge from the reactant node to its "reactant"
+        graph.add_edge(
+            int(reaction.rct_indices[node_ind]),
+            rct_node_names[node_ind],
+            softplus=softplus(free_energy_A),
+            exponent=exponent(free_energy_A),
+            rexp=rexp(free_energy_A),
+            weight=1.0,
+        )
+
+        # Add edges from the reactant node to the products
+        for p_ind in reaction.pro_indices:
+            graph.add_edge(
+                rct_node_names[node_ind],
+                int(p_ind),
+                softplus=0.0,
+                exponent=0.0,
+                rexp=0.0,
+                weight=1.0,
+            )
+
+    for node_ind in range(len(pro_node_names)):
+        # Add a product node
+        graph.add_node(
+            pro_node_names[node_ind],
+            rxn_type=rxn_type_B,
+            bipartite=1,
+            energy=energy_B,
+            free_energy=free_energy_B,
+            entry_ids=pro_node_eids[node_ind],
+        )
+
+        # Add an edge from the product node to its corresponding "product"
+        graph.add_edge(
+            int(reaction.pro_indices[node_ind]),
+            pro_node_names[node_ind],
+            softplus=softplus(free_energy_B),
+            exponent=exponent(free_energy_B),
+            rexp=rexp(free_energy_B),
+            weight=1.0,
+        )
+        for r_ind in reaction.rct_indices:
+            # Add an edge from the product node to the reactants
+            graph.add_edge(
+                pro_node_names[node_ind],
+                int(r_ind),
+                softplus=0.0,
+                exponent=0.0,
+                rexp=0.0,
+                weight=1.0,
+            )
+
+    return graph
+
+
+# OLD 1_2
+def graph_rep_1_x(reaction: Reaction) -> nx.DiGraph:
+
     graph = nx.DiGraph()
     rct_ind = int(reaction.rct_indices[0])
     pro0_ind = int(reaction.pro_indices[0])
@@ -2430,6 +2547,7 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     return graph
 
 
+# OLD 1_1
 def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
     """
     A method to convert a reaction type object into graph representation.
