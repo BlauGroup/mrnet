@@ -1962,248 +1962,14 @@ class ConcertedReaction(Reaction):
         return reaction
 
 
-def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
+def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     """
-    A method to convert a reaction type object into graph representation. Reaction much be of type 3 reactants -> 2
-    products
+    A method to convert a reaction type object into a general graph representation.
+    Can handle reactions with arbitrary numbers of reactants and products
     Args:
-       :param reaction: (any of the reaction class object, ex. RedoxReaction, IntramolSingleBondChangeReaction,
-                        Concerted)
+       :param reaction:(any of the reaction class object, ex. RedoxReaction,
+       IntramolSingleBondChangeReaction)
     """
-
-    if len(reaction.rct_ids) != 3 or len(reaction.pro_ids) != 2:
-        raise ValueError("Must provide reaction with 3 reactants and 2 products for graph_rep_3_2")
-
-    graph = nx.DiGraph()
-
-    rct0_ind = int(reaction.rct_indices[0])
-    rct1_ind = int(reaction.rct_indices[1])
-    rct2_ind = int(reaction.rct_indices[2])
-    pro0_ind = int(reaction.pro_indices[0])
-    pro1_ind = int(reaction.pro_indices[1])
-
-    rct0_id = reaction.rct_ids[0]
-    rct1_id = reaction.rct_ids[1]
-    rct2_id = reaction.rct_ids[2]
-    pro0_id = reaction.pro_ids[0]
-    pro1_id = reaction.pro_ids[1]
-
-    if pro0_ind <= pro1_ind:
-        two_prod_name = str(pro0_ind) + "+" + str(pro1_ind)
-        two_prod_name_entry_ids = str(pro0_id) + "+" + str(pro1_id)
-    else:
-        two_prod_name = str(pro1_ind) + "+" + str(pro0_ind)
-        two_prod_name_entry_ids = str(pro1_id) + "+" + str(pro0_id)
-
-    reactants_ind_list = reaction.rct_indices[0:3]
-    reactant_inds = np.argsort(reactants_ind_list)
-    reactants_ind_list = np.sort(reactants_ind_list)
-
-    reactants_name = (
-        str(reactants_ind_list[0])
-        + "+"
-        + str(reactants_ind_list[1])
-        + "+"
-        + str(reactants_ind_list[2])
-    )
-    reactants_name_entry_ids = (
-        str(reactants_ind_list[reactant_inds[0]])
-        + "+"
-        + str(reactants_ind_list[reactant_inds[1]])
-        + "+"
-        + str(reactants_ind_list[reactant_inds[2]])
-    )
-
-    two_prod_name0 = str(pro0_ind) + "+PR_" + str(pro1_ind)
-    two_prod_name1 = str(pro1_ind) + "+PR_" + str(pro0_ind)
-
-    if rct1_ind <= rct2_ind:
-        three_reac_name0 = str(rct0_ind) + "+PR_" + str(rct1_ind) + "+PR_" + str(rct2_ind)
-        three_reac_entry_ids0 = str(rct0_id) + "+PR_" + str(rct1_id) + "+PR_" + str(rct2_id)
-    else:
-        three_reac_name0 = str(rct0_ind) + "+PR_" + str(rct2_ind) + "+PR_" + str(rct1_ind)
-        three_reac_entry_ids0 = str(rct0_id) + "+PR_" + str(rct2_id) + "+PR_" + str(rct1_id)
-    if rct0_ind <= rct2_ind:
-        three_reac_name1 = str(rct1_ind) + "+PR_" + str(rct0_ind) + "+PR_" + str(rct2_ind)
-        three_reac_entry_ids1 = str(rct1_id) + "+PR_" + str(rct0_id) + "+PR_" + str(rct2_id)
-    else:
-        three_reac_name1 = str(rct1_ind) + "+PR_" + str(rct2_ind) + "+PR_" + str(rct0_ind)
-        three_reac_entry_ids1 = str(rct1_id) + "+PR_" + str(rct2_id) + "+PR_" + str(rct0_id)
-    if rct0_ind <= rct1_ind:
-        three_reac_name2 = str(rct2_ind) + "+PR_" + str(rct0_ind) + "+PR_" + str(rct1_ind)
-        three_reac_entry_ids2 = str(rct2_id) + "+PR_" + str(rct0_id) + "+PR_" + str(rct1_id)
-    else:
-        three_reac_name2 = str(rct2_ind) + "+PR_" + str(rct1_ind) + "+PR_" + str(rct0_ind)
-        three_reac_entry_ids2 = str(rct2_id) + "+PR_" + str(rct1_id) + "+PR_" + str(rct0_id)
-
-    node_name_A0 = three_reac_name0 + "," + two_prod_name
-    node_name_A1 = three_reac_name1 + "," + two_prod_name
-    node_name_A2 = three_reac_name2 + "," + two_prod_name
-    node_name_B0 = two_prod_name0 + "," + reactants_name
-    node_name_B1 = two_prod_name1 + "," + reactants_name
-
-    two_prod_entry_ids0 = str(pro0_id) + "+PR_" + str(pro1_id)
-    two_prod_entry_ids1 = str(pro1_id) + "+PR_" + str(pro0_id)
-
-    entry_ids_name_A0 = three_reac_entry_ids0 + "," + two_prod_name_entry_ids
-    entry_ids_name_A1 = three_reac_entry_ids1 + "," + two_prod_name_entry_ids
-    entry_ids_name_A2 = three_reac_entry_ids2 + "," + two_prod_name_entry_ids
-    entry_ids_name_B0 = two_prod_entry_ids0 + "," + reactants_name_entry_ids
-    entry_ids_name_B1 = two_prod_entry_ids1 + "," + reactants_name_entry_ids
-
-    rxn_type_A = reaction.rxn_type_A
-    rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy_A
-    energy_B = reaction.energy_B
-    reaction.free_energy()
-    free_energy_A = reaction.free_energy_A
-    free_energy_B = reaction.free_energy_B
-
-    graph.add_node(
-        node_name_A0,
-        rxn_type=rxn_type_A,
-        bipartite=1,
-        energy=energy_A,
-        free_energy=free_energy_A,
-        entry_ids=entry_ids_name_A0,
-    )
-
-    graph.add_edge(
-        rct0_ind,
-        node_name_A0,
-        softplus=softplus(free_energy_A),
-        exponent=exponent(free_energy_A),
-        rexp=rexp(free_energy_A),
-        weight=1.0,
-    )
-
-    graph.add_edge(
-        node_name_A0, pro0_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-    graph.add_edge(
-        node_name_A0, pro1_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-
-    graph.add_node(
-        node_name_A1,
-        rxn_type=rxn_type_A,
-        bipartite=1,
-        energy=energy_A,
-        free_energy=free_energy_A,
-        entry_ids=entry_ids_name_A1,
-    )
-
-    graph.add_edge(
-        rct1_ind,
-        node_name_A1,
-        softplus=softplus(free_energy_A),
-        exponent=exponent(free_energy_A),
-        rexp=rexp(free_energy_A),
-        weight=1.0,
-    )
-
-    graph.add_edge(
-        node_name_A1, pro0_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-    graph.add_edge(
-        node_name_A1, pro1_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-
-    graph.add_node(
-        node_name_A2,
-        rxn_type=rxn_type_A,
-        bipartite=1,
-        energy=energy_A,
-        free_energy=free_energy_A,
-        entry_ids=entry_ids_name_A2,
-    )
-
-    graph.add_edge(
-        rct2_ind,
-        node_name_A2,
-        softplus=softplus(free_energy_A),
-        exponent=exponent(free_energy_A),
-        rexp=rexp(free_energy_A),
-        weight=1.0,
-    )
-
-    graph.add_edge(
-        node_name_A1, pro0_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-    graph.add_edge(
-        node_name_A1, pro1_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-
-    graph.add_node(
-        node_name_B0,
-        rxn_type=rxn_type_B,
-        bipartite=1,
-        energy=energy_B,
-        free_energy=free_energy_B,
-        entry_ids=entry_ids_name_B0,
-    )
-
-    graph.add_edge(
-        pro0_ind,
-        node_name_B0,
-        softplus=softplus(free_energy_B),
-        exponent=exponent(free_energy_B),
-        rexp=rexp(free_energy_A),
-        weight=1.0,
-    )
-
-    graph.add_edge(
-        node_name_B0, rct0_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-    graph.add_edge(
-        node_name_B0, rct1_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-    graph.add_edge(
-        node_name_B0, rct2_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-
-    graph.add_node(
-        node_name_B1,
-        rxn_type=rxn_type_B,
-        bipartite=1,
-        energy=energy_B,
-        free_energy=free_energy_B,
-        entry_ids=entry_ids_name_B1,
-    )
-
-    graph.add_edge(
-        pro1_ind,
-        node_name_B1,
-        softplus=softplus(free_energy_B),
-        exponent=exponent(free_energy_B),
-        rexp=rexp(free_energy_A),
-        weight=1.0,
-    )
-
-    graph.add_edge(
-        node_name_B1, rct0_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-    graph.add_edge(
-        node_name_B1, rct1_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-    graph.add_edge(
-        node_name_B1, rct2_ind, softplus=0.0, exponent=0.0, weight=1.0,
-    )
-
-    return graph
-
-
-def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
-    """
-    A method to convert a reaction type object into graph representation.
-    Reaction much be of type 2 reactants -> 2 products
-    Args:
-       :param reaction: (any of the reaction class object, ex. RedoxReaction,
-       IntramolSingleBondChangeReaction, Concerted)
-    """
-    if len(reaction.rct_ids) != 2 or len(reaction.pro_ids) != 2:
-        raise ValueError("Must provide reaction with 2 reactants and 2 products for graph_rep_2_2")
-
     # Create the graph object, and define/call appropriate data
     graph = nx.DiGraph()
     rxn_type_A = reaction.rxn_type_A
@@ -2214,10 +1980,18 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B
 
-    # Here, create the 'base' names for products and reactants
     pro_sorted_indices = np.argsort(reaction.pro_indices)
     rct_sorted_indices = np.argsort(reaction.rct_indices)
 
+    pro_node_indices = [
+        [index] + [i for i in pro_sorted_indices if i != index]
+        for index in range(len(reaction.pro_indices))
+    ]
+    rct_node_indices = [
+        [index] + [i for i in rct_sorted_indices if i != index]
+        for index in range(len(reaction.rct_indices))
+    ]
+    # Here, create the 'base' names for products and reactants
     base_pro_name = "+".join([str(reaction.pro_indices[i]) for i in pro_sorted_indices])
     base_pro_eids = "+".join([str(reaction.pro_ids[i]) for i in pro_sorted_indices])
 
@@ -2226,28 +2000,19 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
 
     # This will give the "PR" part of the name for the products and reactants
     pro_names_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.pro_indices)
+        "+PR_".join([str(reaction.pro_indices[i]) for i in el]) for el in pro_node_indices
     ]
-
     rct_names_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.rct_indices)
+        "+PR_".join([str(reaction.rct_indices[i]) for i in el]) for el in rct_node_indices
     ]
 
     # This will give the full names for the products and reactants (used in the graph)
     rct_node_names = [",".join([name, base_pro_name]) for name in rct_names_PR]
     pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
 
-    pro_eids_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.pro_ids)
-    ]
-
-    rct_eids_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.rct_ids)
-    ]
+    # This will give the "PR" part of the id for the products and reactants
+    pro_eids_PR = ["+PR_".join([str(reaction.pro_ids[i]) for i in el]) for el in pro_node_indices]
+    rct_eids_PR = ["+PR_".join([str(reaction.rct_ids[i]) for i in el]) for el in rct_node_indices]
 
     # This will give the full ids for the products and reactants (used in the graph)
     rct_node_eids = [",".join([name, base_pro_eids]) for name in rct_eids_PR]
@@ -2316,6 +2081,35 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
             )
 
     return graph
+
+
+def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
+    """
+    A method to convert a reaction type object into graph representation. Reaction much be of type 3 reactants -> 2
+    products
+    Args:
+       :param reaction: (any of the reaction class object, ex. RedoxReaction, IntramolSingleBondChangeReaction,
+                        Concerted)
+    """
+
+    if len(reaction.rct_ids) != 3 or len(reaction.pro_ids) != 2:
+        raise ValueError("Must provide reaction with 3 reactants and 2 products for graph_rep_3_2")
+    else:
+        return general_graph_rep(reaction)
+
+
+def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
+    """
+    A method to convert a reaction type object into graph representation.
+    Reaction much be of type 2 reactants -> 2 products
+    Args:
+       :param reaction: (any of the reaction class object, ex. RedoxReaction,
+       IntramolSingleBondChangeReaction, Concerted)
+    """
+    if len(reaction.rct_ids) != 2 or len(reaction.pro_ids) != 2:
+        raise ValueError("Must provide reaction with 2 reactants and 2 products for graph_rep_2_2")
+    else:
+        return general_graph_rep(reaction)
 
 
 def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
@@ -2330,224 +2124,10 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
 
     if len(reaction.rct_ids) != 1 or len(reaction.pro_ids) != 2:
         raise ValueError("Must provide reaction with 1 reactant and 2 products" "for graph_rep_1_2")
-
-    # Create the graph object, and define/call appropriate data
-    graph = nx.DiGraph()
-    rxn_type_A = reaction.rxn_type_A
-    rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy_A
-    energy_B = reaction.energy_B
-    reaction.free_energy()
-    free_energy_A = reaction.free_energy_A
-    free_energy_B = reaction.free_energy_B
-
-    # Here, create the 'base' names for products and reactants
-    pro_sorted_indices = np.argsort(reaction.pro_indices)
-    rct_sorted_indices = np.argsort(reaction.rct_indices)
-
-    base_pro_name = "+".join([str(reaction.pro_indices[i]) for i in pro_sorted_indices])
-    base_pro_eids = "+".join([str(reaction.pro_ids[i]) for i in pro_sorted_indices])
-
-    base_rct_name = "+".join([str(reaction.rct_indices[i]) for i in rct_sorted_indices])
-    base_rct_eids = "+".join([str(reaction.rct_ids[i]) for i in rct_sorted_indices])
-
-    # This will give the "PR" part of the name for the products and reactants
-    pro_names_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.pro_indices)
-    ]
-
-    rct_names_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.rct_indices)
-    ]
-
-    # This will give the full names for the products and reactants (used in the graph)
-    rct_node_names = [",".join([name, base_pro_name]) for name in rct_names_PR]
-    pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
-
-    pro_eids_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.pro_ids)
-    ]
-
-    rct_eids_PR = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.rct_ids)
-    ]
-
-    # This will give the full ids for the products and reactants (used in the graph)
-    rct_node_eids = [",".join([name, base_pro_eids]) for name in rct_eids_PR]
-    pro_node_eids = [",".join([name, base_rct_eids]) for name in pro_eids_PR]
-
-    for node_ind in range(len(rct_node_names)):
-        # Add a reactant node
-        graph.add_node(
-            rct_node_names[node_ind],
-            rxn_type=rxn_type_A,
-            bipartite=1,
-            energy=energy_A,
-            free_energy=free_energy_A,
-            entry_ids=rct_node_eids[node_ind],
-        )
-        # Add an edge from the reactant node to its "reactant"
-        graph.add_edge(
-            int(reaction.rct_indices[node_ind]),
-            rct_node_names[node_ind],
-            softplus=softplus(free_energy_A),
-            exponent=exponent(free_energy_A),
-            rexp=rexp(free_energy_A),
-            weight=1.0,
-        )
-
-        # Add edges from the reactant node to the products
-        for p_ind in reaction.pro_indices:
-            graph.add_edge(
-                rct_node_names[node_ind],
-                int(p_ind),
-                softplus=0.0,
-                exponent=0.0,
-                rexp=0.0,
-                weight=1.0,
-            )
-
-    for node_ind in range(len(pro_node_names)):
-        # Add a product node
-        graph.add_node(
-            pro_node_names[node_ind],
-            rxn_type=rxn_type_B,
-            bipartite=1,
-            energy=energy_B,
-            free_energy=free_energy_B,
-            entry_ids=pro_node_eids[node_ind],
-        )
-
-        # Add an edge from the product node to its corresponding "product"
-        graph.add_edge(
-            int(reaction.pro_indices[node_ind]),
-            pro_node_names[node_ind],
-            softplus=softplus(free_energy_B),
-            exponent=exponent(free_energy_B),
-            rexp=rexp(free_energy_B),
-            weight=1.0,
-        )
-        for r_ind in reaction.rct_indices:
-            # Add an edge from the product node to the reactants
-            graph.add_edge(
-                pro_node_names[node_ind],
-                int(r_ind),
-                softplus=0.0,
-                exponent=0.0,
-                rexp=0.0,
-                weight=1.0,
-            )
-
-    return graph
+    else:
+        return general_graph_rep(reaction)
 
 
-# OLD 1_2
-def graph_rep_1_x(reaction: Reaction) -> nx.DiGraph:
-
-    graph = nx.DiGraph()
-    rct_ind = int(reaction.rct_indices[0])
-    pro0_ind = int(reaction.pro_indices[0])
-    pro1_ind = int(reaction.pro_indices[1])
-
-    rct_id = reaction.rct_ids[0]
-    pro0_id = reaction.pro_ids[0]
-    pro1_id = reaction.pro_ids[1]
-
-    # Set up product mol names
-    pro_sorted_indices = np.argsort(reaction.pro_indices)
-    two_mol_name = "+".join([str(reaction.pro_indices[i]) for i in pro_sorted_indices])
-    two_mol_name_entry_ids = "+".join([str(reaction.pro_ids[i]) for i in pro_sorted_indices])
-
-    two_mol_names = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.pro_indices)
-    ]
-    two_mol_name0 = two_mol_names[0]
-    two_mol_name1 = two_mol_names[1]
-    # two_mol_name0 = str(pro0_ind) + "+PR_" + str(pro1_ind)
-    # two_mol_name1 = str(pro1_ind) + "+PR_" + str(pro0_ind)
-    product_node_names = [",".join([name, str(rct_ind)]) for name in two_mol_names]
-    assert len(product_node_names) == 2
-    node_name_A = str(rct_ind) + "," + two_mol_name
-    # node_name_B0 = two_mol_name0 + "," + str(rct_ind)
-    # node_name_B1 = two_mol_name1 + "," + str(rct_ind)
-    node_name_B0 = product_node_names[0]
-    node_name_B1 = product_node_names[1]
-
-    two_mol_entry_ids = [
-        "+PR_".join([str(index) for index in permutation])
-        for permutation in itertools.permutations(reaction.pro_ids)
-    ]
-
-    two_mol_entry_ids0 = two_mol_entry_ids[0]
-    two_mol_entry_ids1 = two_mol_entry_ids[1]
-    # two_mol_entry_ids0 = str(pro0_id) + "+PR_" + str(pro1_id)
-    # two_mol_entry_ids1 = str(pro1_id) + "+PR_" + str(pro0_id)
-    product_entry_ids_name = [",".join([eid, str(rct_id)]) for eid in two_mol_entry_ids]
-    entry_ids_name_A = str(rct_id) + "," + two_mol_name_entry_ids
-    entry_ids_name_B0 = product_entry_ids_name[0]
-    entry_ids_name_B1 = product_entry_ids_name[1]
-    # entry_ids_name_B0 = two_mol_entry_ids0 + "," + str(rct_id)
-    # entry_ids_name_B1 = two_mol_entry_ids1 + "," + str(rct_id)
-
-    # Compute relevant reaction properties
-    rxn_type_A = reaction.rxn_type_A
-    rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy_A
-    energy_B = reaction.energy_B
-    reaction.free_energy()
-    free_energy_A = reaction.free_energy_A
-    free_energy_B = reaction.free_energy_B
-
-    graph.add_node(
-        node_name_A,
-        rxn_type=rxn_type_A,
-        bipartite=1,
-        energy=energy_A,
-        free_energy=free_energy_A,
-        entry_ids=entry_ids_name_A,
-    )
-
-    graph.add_edge(
-        rct_ind,
-        node_name_A,
-        softplus=softplus(free_energy_A),
-        exponent=exponent(free_energy_A),
-        rexp=rexp(free_energy_A),
-        weight=1.0,
-    )
-
-    graph.add_edge(node_name_A, pro0_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0)
-    graph.add_edge(node_name_A, pro1_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0)
-
-    for node_ind in range(len(product_node_names)):
-        graph.add_node(
-            product_node_names[node_ind],
-            rxn_type=rxn_type_B,
-            bipartite=1,
-            energy=energy_B,
-            free_energy=free_energy_B,
-            entry_ids=product_entry_ids_name[node_ind],
-        )
-        graph.add_edge(
-            product_node_names[node_ind], rct_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
-        )
-        graph.add_edge(
-            reaction.pro_indices[node_ind],
-            product_node_names[node_ind],
-            softplus=softplus(free_energy_B),
-            exponent=exponent(free_energy_B),
-            rexp=rexp(free_energy_B),
-            weight=1.0,
-        )
-    return graph
-
-
-# OLD 1_1
 def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
     """
     A method to convert a reaction type object into graph representation.
@@ -2560,58 +2140,8 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
 
     if len(reaction.rct_indices) != 1 or len(reaction.pro_indices) != 1:
         raise ValueError("Must provide reaction with 1 reactant and product" "for graph_rep_1_1")
-
-    graph = nx.DiGraph()
-
-    rct_ind = int(reaction.rct_indices[0])
-    pro0_ind = int(reaction.pro_indices[0])
-    node_name_A = str(rct_ind) + "," + str(pro0_ind)
-    node_name_B = str(pro0_ind) + "," + str(rct_ind)
-    rxn_type_A = reaction.rxn_type_A
-    rxn_type_B = reaction.rxn_type_B
-    energy_A = reaction.energy_A
-    energy_B = reaction.energy_B
-    reaction.free_energy()
-    free_energy_A = reaction.free_energy_A
-    free_energy_B = reaction.free_energy_B
-    entry_ids_A = str(reaction.rct_ids[0]) + "," + str(reaction.pro_ids[0])
-    entry_ids_B = str(reaction.pro_ids[0]) + "," + str(reaction.rct_ids[0])
-
-    graph.add_node(
-        node_name_A,
-        rxn_type=rxn_type_A,
-        bipartite=1,
-        energy=energy_A,
-        free_energy=free_energy_A,
-        entry_ids=entry_ids_A,
-    )
-    graph.add_edge(
-        rct_ind,
-        node_name_A,
-        softplus=softplus(free_energy_A),
-        exponent=exponent(free_energy_A),
-        rexp=rexp(free_energy_A),
-        weight=1.0,
-    )
-    graph.add_edge(node_name_A, pro0_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0)
-    graph.add_node(
-        node_name_B,
-        rxn_type=rxn_type_B,
-        bipartite=1,
-        energy=energy_B,
-        free_energy=free_energy_B,
-        entry_ids=entry_ids_B,
-    )
-    graph.add_edge(
-        pro0_ind,
-        node_name_B,
-        softplus=softplus(free_energy_B),
-        exponent=exponent(free_energy_B),
-        rexp=rexp(free_energy_B),
-        weight=1.0,
-    )
-    graph.add_edge(node_name_B, rct_ind, softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0)
-    return graph
+    else:
+        return general_graph_rep(reaction)
 
 
 def categorize(reaction, families, templates, environment, charge):
