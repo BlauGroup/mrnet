@@ -1513,7 +1513,6 @@ class ReactionNetwork(MSONable):
         :return: list of reactions
         """
 
-        flag = True
         print("identify_concerted_rxns_via_intermediates start", time.time())
         mols_to_keep.append(None)
         count_total = 0
@@ -1542,7 +1541,6 @@ class ReactionNetwork(MSONable):
                         rxn1_dG = RN_pr_solved.graph.nodes[in_node]["free_energy"]
                         total_dG = rxn1_dG + RN_pr_solved.graph.nodes[out_node]["free_energy"]
                         if rxn1_dG > 0 and total_dG < 0:
-                            # if flag:
                             if "PR" in out_node and "PR" in in_node:
                                 pass
                             elif "PR" not in out_node and "PR" not in in_node:
@@ -1555,7 +1553,6 @@ class ReactionNetwork(MSONable):
                                         in_mol = in_node.split(",")[0]
                                         out_mol = out_node.split(",")[1]
                                         glist = [int(in_mol), int(out_mol)]
-                                        gnode = in_mol + "," + out_mol
                                         reactant = int(in_mol)
                                         product = int(out_mol)
                                         glist = [reactant, product]

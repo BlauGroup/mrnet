@@ -440,7 +440,7 @@ class RedoxReaction(Reaction):
         """
         A method to determine the free energy of the redox reaction. Note to
         set RedoxReaction.electron_free_energy a value.
-        Sets free_energy_A and free_energy_B, 
+        Sets free_energy_A and free_energy_B,
         where free_energy_A is the primary type of the reaction based on the reactant
         and product of the RedoxReaction object, and the backwards of this reaction
         would be free_energy_B.
@@ -1075,7 +1075,7 @@ class IntermolecularReaction(Reaction):
 
     def reaction_type(self):
         """
-        A method to identify type of intermolecular reaction (bond decomposition 
+        A method to identify type of intermolecular reaction (bond decomposition
         from one to two or formation from two to one molecules)
 
         Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the
@@ -1786,7 +1786,7 @@ class ConcertedReaction(Reaction):
     def reaction_type(self):
         """
         A method to set type of reaction as Concerted.
-        Sets attributes rxn_type_A and rxn_type_B, 
+        Sets attributes rxn_type_A and rxn_type_B,
         where rxn_type_A is the primary type of the reaction based on the
         reactant and product of the ConcertedReaction object,
         and rxn_type_B is the reverse.
@@ -1875,8 +1875,6 @@ class ConcertedReaction(Reaction):
         if all(nrg is None for nrg in self.rct_energy) and all(
             nrg is None for nrg in self.pro_energy
         ):
-            reactant_total_charge = self.rct_charge
-            product_total_charge = self.pro_charge
             reactant_total_energy = np.sum([nrg for nrg in self.rct_energy])
             product_total_energy = np.sum([nrg for nrg in self.pro_energy])
             self.energy_A = product_total_energy - reactant_total_energy
@@ -2362,8 +2360,8 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     buckets = {}
     for m in entries:
         b = buckets
-        for i, k in enumerate(keys):
-            v = getattr(m, k)
+        for i, j in enumerate(keys):
+            v = getattr(m, j)
             if i == num_keys - 1:
                 b.setdefault(v, []).append(m)
             else:
@@ -2388,7 +2386,7 @@ def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
     """
 
     def unbucket(d):
-        for k, v in d.items():
+        for key, v in d.items():
             if isinstance(v, dict):
                 unbucket(v)
             elif isinstance(v, Iterable):
