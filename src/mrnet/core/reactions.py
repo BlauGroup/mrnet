@@ -87,20 +87,19 @@ class Reaction(MSONable, metaclass=ABCMeta):
                 reactants, products, self.transition_state
             )
 
-        self.rct_ids = np.array([e.entry_id for e in reactants])
-        self.pro_ids = np.array([e.entry_id for e in products])
-        self.entry_ids = {e.entry_id for e in self.reactants + self.products}
+        self.reactant_eids = np.array([e.entry_id for e in reactants])
+        self.product_eids = np.array([e.entry_id for e in products])
 
-        self.rct_indices = np.array([r.parameters.get("ind") for r in reactants])
-        self.pro_indices = np.array([p.parameters.get("ind") for p in products])
+        self.reactant_indices = np.array([r.parameters.get("ind") for r in reactants])
+        self.product_indices = np.array([p.parameters.get("ind") for p in products])
 
         self.parameters = parameters or dict()
 
-        self.rct_atom_mapping = reactants_atom_mapping
-        self.pro_atom_mapping = products_atom_mapping
+        self.reactant_atom_mapping = reactants_atom_mapping
+        self.product_atom_mapping = products_atom_mapping
 
     def __in__(self, entry: MoleculeEntry):
-        return entry.entry_id in self.entry_ids
+        return entry.entry_id in self.reactant_eids or entry.entry_id in self.product_eids
 
     def update_calculator(
         self, transition_state: Optional[MoleculeEntry] = None, reference: Optional[Dict] = None,
@@ -188,8 +187,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
             "transition_state": ts,
             "rate_calculator": rc,  # consider writing as_dict/from_dict methods
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.rct_atom_mapping,  # may end up removing
-            "products_atom_mapping": self.pro_atom_mapping,
+            "reactants_atom_mapping": self.reactant_atom_mapping,  # may end up removing
+            "products_atom_mapping": self.product_atom_mapping,
         }
 
         return d
@@ -316,14 +315,14 @@ class RedoxReaction(Reaction):
             )
 
         # Store necessary mol_entry attributes
-        self.rct_energy = reactant.energy
-        self.pro_energy = product.energy
+        self.reactant_energy = reactant.energy
+        self.product_energy = product.energy
 
-        self.rct_enthalpy = reactant.enthalpy
-        self.pro_enthalpy = product.enthalpy
+        self.reactant_enthalpy = reactant.enthalpy
+        self.product_enthalpy = product.enthalpy
 
-        self.rct_entropy = reactant.entropy
-        self.pro_entropy = product.entropy
+        self.reactant_entropy = reactant.entropy
+        self.product_entropy = product.entropy
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type(reactant, product)
@@ -460,10 +459,10 @@ class RedoxReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.rct_energy, self.rct_enthalpy, self.rct_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
         )
         pro_free_energy = mol_free_energy(
-            self.pro_energy, self.pro_enthalpy, self.pro_entropy, temp=temperature
+            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature
         )
 
         if rct_free_energy is not None and pro_free_energy is not None:
@@ -496,9 +495,9 @@ class RedoxReaction(Reaction):
         Returns:
             None
         """
-        if self.pro_energy is not None and self.rct_energy is not None:
-            self.energy_A = self.pro_energy - self.rct_energy
-            self.energy_B = self.rct_energy - self.pro_energy
+        if self.product_energy is not None and self.reactant_energy is not None:
+            self.energy_A = self.product_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.product_energy
         else:
             self.energy_A = None
             self.energy_B = None
@@ -557,8 +556,8 @@ class RedoxReaction(Reaction):
             "electrode_dist": self.electrode_dist,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.rct_atom_mapping,
-            "products_atom_mapping": self.pro_atom_mapping,
+            "reactants_atom_mapping": self.reactant_atom_mapping,
+            "products_atom_mapping": self.product_atom_mapping,
         }
 
         return d
@@ -646,14 +645,14 @@ class IntramolSingleBondChangeReaction(Reaction):
         )
 
         # Store necessary mol_entry attributes
-        self.rct_energy = reactant.energy
-        self.pro_energy = product.energy
+        self.reactant_energy = reactant.energy
+        self.product_energy = product.energy
 
-        self.rct_enthalpy = reactant.enthalpy
-        self.pro_enthalpy = product.enthalpy
+        self.reactant_enthalpy = reactant.enthalpy
+        self.product_enthalpy = product.enthalpy
 
-        self.rct_entropy = reactant.entropy
-        self.pro_entropy = product.entropy
+        self.reactant_entropy = reactant.entropy
+        self.product_entropy = product.entropy
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type(reactant, product)
@@ -787,10 +786,10 @@ class IntramolSingleBondChangeReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.rct_energy, self.rct_enthalpy, self.rct_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
         )
         pro_free_energy = mol_free_energy(
-            self.pro_energy, self.pro_enthalpy, self.pro_entropy, temp=temperature
+            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature
         )
 
         if rct_free_energy is not None and pro_free_energy is not None:
@@ -818,9 +817,9 @@ class IntramolSingleBondChangeReaction(Reaction):
             Dictionary of the form {"energy_A": energy_A, "energy_B": energy_B}
         """
 
-        if self.pro_energy is not None and self.rct_energy is not None:
-            self.energy_A = self.pro_energy - self.rct_energy
-            self.energy_B = self.rct_energy - self.pro_energy
+        if self.product_energy is not None and self.reactant_energy is not None:
+            self.energy_A = self.product_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.product_energy
 
         else:
             self.energy_A = None
@@ -871,8 +870,8 @@ class IntramolSingleBondChangeReaction(Reaction):
             "transition_state": ts,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.rct_atom_mapping,
-            "products_atom_mapping": self.pro_atom_mapping,
+            "reactants_atom_mapping": self.reactant_atom_mapping,
+            "products_atom_mapping": self.product_atom_mapping,
         }
 
         return d
@@ -958,15 +957,15 @@ class IntermolecularReaction(Reaction):
         )
 
         # Store necessary mol_entry attributes
-        self.rct_energy = reactant.energy
+        self.reactant_energy = reactant.energy
         self.pro0_energy = product[0].energy
         self.pro1_energy = product[1].energy
 
-        self.rct_enthalpy = reactant.enthalpy
+        self.reactant_enthalpy = reactant.enthalpy
         self.pro0_enthalpy = product[0].enthalpy
         self.pro1_enthalpy = product[1].enthalpy
 
-        self.rct_entropy = reactant.entropy
+        self.reactant_entropy = reactant.entropy
         self.pro0_entropy = product[0].entropy
         self.pro1_entropy = product[1].entropy
 
@@ -1113,7 +1112,7 @@ class IntermolecularReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.rct_energy, self.rct_enthalpy, self.rct_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
@@ -1149,10 +1148,10 @@ class IntermolecularReaction(Reaction):
         if (
             self.pro1_energy is not None
             and self.pro0_energy is not None
-            and self.rct_energy is not None
+            and self.reactant_energy is not None
         ):
-            self.energy_A = self.pro0_energy + self.pro1_energy - self.rct_energy
-            self.energy_B = self.rct_energy - self.pro0_energy - self.pro1_energy
+            self.energy_A = self.pro0_energy + self.pro1_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.pro0_energy - self.pro1_energy
 
         else:
             self.energy_A = None
@@ -1204,8 +1203,8 @@ class IntermolecularReaction(Reaction):
             "transition_state": ts,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.rct_atom_mapping,
-            "products_atom_mapping": self.pro_atom_mapping,
+            "reactants_atom_mapping": self.reactant_atom_mapping,
+            "products_atom_mapping": self.product_atom_mapping,
         }
 
         return d
@@ -1293,15 +1292,15 @@ class CoordinationBondChangeReaction(Reaction):
         )
 
         # Store necessary mol_entry attributes
-        self.rct_energy = reactant.energy
+        self.reactant_energy = reactant.energy
         self.pro0_energy = product[0].energy
         self.pro1_energy = product[1].energy
 
-        self.rct_enthalpy = reactant.enthalpy
+        self.reactant_enthalpy = reactant.enthalpy
         self.pro0_enthalpy = product[0].enthalpy
         self.pro1_enthalpy = product[1].enthalpy
 
-        self.rct_entropy = reactant.entropy
+        self.reactant_entropy = reactant.entropy
         self.pro0_entropy = product[0].entropy
         self.pro1_entropy = product[1].entropy
 
@@ -1484,7 +1483,7 @@ class CoordinationBondChangeReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.rct_energy, self.rct_enthalpy, self.rct_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
@@ -1523,10 +1522,10 @@ class CoordinationBondChangeReaction(Reaction):
         if (
             self.pro1_energy is not None
             and self.pro0_energy is not None
-            and self.rct_energy is not None
+            and self.reactant_energy is not None
         ):
-            self.energy_A = self.pro0_energy + self.pro1_energy - self.rct_energy
-            self.energy_B = self.rct_energy - self.pro0_energy - self.pro1_energy
+            self.energy_A = self.pro0_energy + self.pro1_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.pro0_energy - self.pro1_energy
 
         else:
             self.energy_A = None
@@ -1578,8 +1577,8 @@ class CoordinationBondChangeReaction(Reaction):
             "transition_state": ts,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.rct_atom_mapping,
-            "products_atom_mapping": self.pro_atom_mapping,
+            "reactants_atom_mapping": self.reactant_atom_mapping,
+            "products_atom_mapping": self.product_atom_mapping,
         }
 
         return d
@@ -1670,16 +1669,16 @@ class ConcertedReaction(Reaction):
         )
 
         # Store necessary mol_entry attributes
-        self.rct_energy = [r.energy for r in self.reactants]
-        self.pro_energy = [p.energy for p in self.products]
-        self.rct_enthalpy = [r.enthalpy for r in reactant]
-        self.pro_enthalpy = [p.enthalpy for p in product]
+        self.reactant_energy = [r.energy for r in self.reactants]
+        self.product_energy = [p.energy for p in self.products]
+        self.reactant_enthalpy = [r.enthalpy for r in reactant]
+        self.product_enthalpy = [p.enthalpy for p in product]
 
-        self.rct_entropy = [r.entropy for r in reactant]
-        self.pro_entropy = [p.entropy for p in product]
+        self.reactant_entropy = [r.entropy for r in reactant]
+        self.product_entropy = [p.entropy for p in product]
 
-        self.rct_charge = np.sum([r.charge for r in reactant])
-        self.pro_charge = np.sum([p.charge for p in product])
+        self.reactant_charge = np.sum([r.charge for r in reactant])
+        self.product_charge = np.sum([p.charge for p in product])
 
         # Call helper methods to set relevant instance attrs
         self.reaction_type()
@@ -1715,13 +1714,13 @@ class ConcertedReaction(Reaction):
             self.base_free_energy_B,
             self.base_free_energy_A,
         )
-        self.rct_energy, self.pro_energy = self.pro_energy, self.rct_energy
-        self.rct_enthalpy, self.pro_enthalpy = self.pro_enthalpy, self.rct_enthalpy
-        self.rct_entropy, self.pro_entropy = self.pro_entropy, self.rct_entropy
-        self.rct_charge, self.pro_charge = self.pro_charge, self.rct_charge
-        self.rct_ids, self.pro_ids = self.pro_ids, self.rct_ids
-        self.rct_indices, self.pro_indices = self.pro_indices, self.rct_indices
-        self.rct_atom_mapping, self.pro_atom_mapping = self.pro_atom_mapping, self.rct_atom_mapping
+        self.reactant_energy, self.product_energy = self.product_energy, self.reactant_energy
+        self.reactant_enthalpy, self.product_enthalpy = self.product_enthalpy, self.reactant_enthalpy
+        self.reactant_entropy, self.product_entropy = self.product_entropy, self.reactant_entropy
+        self.reactant_charge, self.product_charge = self.product_charge, self.reactant_charge
+        self.reactant_eids, self.product_eids = self.product_eids, self.reactant_eids
+        self.reactant_indices, self.product_indices = self.product_indices, self.reactant_indices
+        self.reactant_atom_mapping, self.product_atom_mapping = self.product_atom_mapping, self.reactant_atom_mapping
 
     @classmethod
     def generate(
@@ -1826,23 +1825,23 @@ class ConcertedReaction(Reaction):
 
         rct_free_energies = [
             mol_free_energy(
-                self.rct_energy[i], self.rct_enthalpy[i], self.rct_entropy[i], temp=temperature
+                self.reactant_energy[i], self.reactant_enthalpy[i], self.reactant_entropy[i], temp=temperature
             )
-            for i in range(len(self.rct_ids))
+            for i in range(len(self.reactant_eids))
         ]
         pro_free_energies = [
             mol_free_energy(
-                self.pro_energy[i], self.pro_enthalpy[i], self.pro_entropy[i], temp=temperature
+                self.product_energy[i], self.product_enthalpy[i], self.product_entropy[i], temp=temperature
             )
-            for i in range(len(self.pro_ids))
+            for i in range(len(self.product_eids))
         ]
 
         cond_rct = all(el is not None for el in rct_free_energies)
         cond_pro = all(el is not None for el in pro_free_energies)
 
         if cond_rct and cond_pro:
-            reactant_charge = self.rct_charge
-            product_charge = self.pro_charge
+            reactant_charge = self.reactant_charge
+            product_charge = self.product_charge
             reactant_free_energy = np.sum(rct_free_energies)
             product_free_energy = np.sum(pro_free_energies)
             total_charge_change = product_charge - reactant_charge
@@ -1872,11 +1871,11 @@ class ConcertedReaction(Reaction):
         Returns:
             None
         """
-        if all(nrg is None for nrg in self.rct_energy) and all(
-            nrg is None for nrg in self.pro_energy
+        if all(nrg is None for nrg in self.reactant_energy) and all(
+            nrg is None for nrg in self.product_energy
         ):
-            reactant_total_energy = np.sum([nrg for nrg in self.rct_energy])
-            product_total_energy = np.sum([nrg for nrg in self.pro_energy])
+            reactant_total_energy = np.sum([nrg for nrg in self.reactant_energy])
+            product_total_energy = np.sum([nrg for nrg in self.product_energy])
             self.energy_A = product_total_energy - reactant_total_energy
             self.energy_B = reactant_total_energy - product_total_energy
 
@@ -1970,30 +1969,30 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B
 
-    pro_sorted_indices = np.argsort(reaction.pro_indices)
-    rct_sorted_indices = np.argsort(reaction.rct_indices)
+    pro_sorted_indices = np.argsort(reaction.product_indices)
+    rct_sorted_indices = np.argsort(reaction.reactant_indices)
 
     pro_node_indices = [
         [index] + [i for i in pro_sorted_indices if i != index]
-        for index in range(len(reaction.pro_indices))
+        for index in range(len(reaction.product_indices))
     ]
     rct_node_indices = [
         [index] + [i for i in rct_sorted_indices if i != index]
-        for index in range(len(reaction.rct_indices))
+        for index in range(len(reaction.reactant_indices))
     ]
     # Here, create the 'base' names for products and reactants
-    base_pro_name = "+".join([str(reaction.pro_indices[i]) for i in pro_sorted_indices])
-    base_pro_eids = "+".join([str(reaction.pro_ids[i]) for i in pro_sorted_indices])
+    base_pro_name = "+".join([str(reaction.product_indices[i]) for i in pro_sorted_indices])
+    base_pro_eids = "+".join([str(reaction.product_eids[i]) for i in pro_sorted_indices])
 
-    base_rct_name = "+".join([str(reaction.rct_indices[i]) for i in rct_sorted_indices])
-    base_rct_eids = "+".join([str(reaction.rct_ids[i]) for i in rct_sorted_indices])
+    base_rct_name = "+".join([str(reaction.reactant_indices[i]) for i in rct_sorted_indices])
+    base_rct_eids = "+".join([str(reaction.reactant_eids[i]) for i in rct_sorted_indices])
 
     # This will give the "PR" part of the name for the products and reactants
     pro_names_PR = [
-        "+PR_".join([str(reaction.pro_indices[i]) for i in el]) for el in pro_node_indices
+        "+PR_".join([str(reaction.product_indices[i]) for i in el]) for el in pro_node_indices
     ]
     rct_names_PR = [
-        "+PR_".join([str(reaction.rct_indices[i]) for i in el]) for el in rct_node_indices
+        "+PR_".join([str(reaction.reactant_indices[i]) for i in el]) for el in rct_node_indices
     ]
 
     # This will give the full names for the products and reactants (used in the graph)
@@ -2001,8 +2000,12 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
 
     # This will give the "PR" part of the id for the products and reactants
-    pro_eids_PR = ["+PR_".join([str(reaction.pro_ids[i]) for i in el]) for el in pro_node_indices]
-    rct_eids_PR = ["+PR_".join([str(reaction.rct_ids[i]) for i in el]) for el in rct_node_indices]
+    pro_eids_PR = [
+        "+PR_".join([str(reaction.product_eids[i]) for i in el]) for el in pro_node_indices
+    ]
+    rct_eids_PR = [
+        "+PR_".join([str(reaction.reactant_eids[i]) for i in el]) for el in rct_node_indices
+    ]
 
     # This will give the full ids for the products and reactants (used in the graph)
     rct_node_eids = [",".join([name, base_pro_eids]) for name in rct_eids_PR]
@@ -2020,7 +2023,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
         )
         # Add an edge from the reactant node to its "reactant"
         graph.add_edge(
-            int(reaction.rct_indices[node_ind]),
+            int(reaction.reactant_indices[node_ind]),
             rct_node_names[node_ind],
             softplus=softplus(free_energy_A),
             exponent=exponent(free_energy_A),
@@ -2029,7 +2032,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
         )
 
         # Add edges from the reactant node to the products
-        for p_ind in reaction.pro_indices:
+        for p_ind in reaction.product_indices:
             graph.add_edge(
                 rct_node_names[node_ind],
                 int(p_ind),
@@ -2052,14 +2055,14 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
 
         # Add an edge from the product node to its corresponding "product"
         graph.add_edge(
-            int(reaction.pro_indices[node_ind]),
+            int(reaction.product_indices[node_ind]),
             pro_node_names[node_ind],
             softplus=softplus(free_energy_B),
             exponent=exponent(free_energy_B),
             rexp=rexp(free_energy_B),
             weight=1.0,
         )
-        for r_ind in reaction.rct_indices:
+        for r_ind in reaction.reactant_indices:
             # Add an edge from the product node to the reactants
             graph.add_edge(
                 pro_node_names[node_ind],
@@ -2082,7 +2085,7 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
                         Concerted)
     """
 
-    if len(reaction.rct_ids) != 3 or len(reaction.pro_ids) != 2:
+    if len(reaction.reactant_eids) != 3 or len(reaction.product_eids) != 2:
         raise ValueError("Must provide reaction with 3 reactants and 2 products for graph_rep_3_2")
     else:
         return general_graph_rep(reaction)
@@ -2096,7 +2099,7 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
        :param reaction: (any of the reaction class object, ex. RedoxReaction,
        IntramolSingleBondChangeReaction, Concerted)
     """
-    if len(reaction.rct_ids) != 2 or len(reaction.pro_ids) != 2:
+    if len(reaction.reactant_eids) != 2 or len(reaction.product_eids) != 2:
         raise ValueError("Must provide reaction with 2 reactants and 2 products for graph_rep_2_2")
     else:
         return general_graph_rep(reaction)
@@ -2112,7 +2115,7 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
        IntramolSingleBondChangeReaction)
     """
 
-    if len(reaction.rct_ids) != 1 or len(reaction.pro_ids) != 2:
+    if len(reaction.reactant_eids) != 1 or len(reaction.product_eids) != 2:
         raise ValueError("Must provide reaction with 1 reactant and 2 products" "for graph_rep_1_2")
     else:
         return general_graph_rep(reaction)
@@ -2128,7 +2131,7 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
        IntramolSingleBondChangeReaction)
     """
 
-    if len(reaction.rct_indices) != 1 or len(reaction.pro_indices) != 1:
+    if len(reaction.reactant_indices) != 1 or len(reaction.product_indices) != 1:
         raise ValueError("Must provide reaction with 1 reactant and product" "for graph_rep_1_1")
     else:
         return general_graph_rep(reaction)
