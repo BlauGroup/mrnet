@@ -55,14 +55,22 @@ class ReactionRateCalculator(MSONable):
 
         self.product_enthalpy = sum([p.enthalpy if p.enthalpy else 0 for p in products])
         self.reactant_enthalpy = sum([r.enthalpy if r.enthalpy else 0 for r in reactants])
-        self.transition_state_enthalpy = None if transition_state is None else transition_state.enthalpy
+        self.transition_state_enthalpy = (
+            None if transition_state is None else transition_state.enthalpy
+        )
 
         self.product_entropy = sum([p.entropy if p.entropy else 0 for p in products])
         self.reactant_entropy = sum([r.entropy if r.entropy else 0 for r in reactants])
-        self.transition_state_entropy = None if transition_state is None else transition_state.entropy
+        self.transition_state_entropy = (
+            None if transition_state is None else transition_state.entropy
+        )
 
-        self.reactant_str = " + ".join([r.molecule.composition.alphabetical_formula for r in reactants])
-        self.product_str = " + ".join([p.molecule.composition.alphabetical_formula for p in products])
+        self.reactant_str = " + ".join(
+            [r.molecule.composition.alphabetical_formula for r in reactants]
+        )
+        self.product_str = " + ".join(
+            [p.molecule.composition.alphabetical_formula for p in products]
+        )
 
         # Compute net values for the reaction
         self.net_energy = (self.product_energy - self.reactant_energy) * 27.2116

@@ -154,10 +154,12 @@ class TestRedoxReaction(PymatgenTest):
 
         for r in reactions:
             self.assertEqual(
-                r.reactant_atom_mapping, [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
+                r.reactant_atom_mapping,
+                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
             self.assertEqual(
-                r.product_atom_mapping, [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
+                r.product_atom_mapping,
+                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")

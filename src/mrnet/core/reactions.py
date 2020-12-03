@@ -459,10 +459,10 @@ class RedoxReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
         )
         pro_free_energy = mol_free_energy(
-            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature
+            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature,
         )
 
         if rct_free_energy is not None and pro_free_energy is not None:
@@ -786,10 +786,10 @@ class IntramolSingleBondChangeReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
         )
         pro_free_energy = mol_free_energy(
-            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature
+            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature,
         )
 
         if rct_free_energy is not None and pro_free_energy is not None:
@@ -1112,7 +1112,7 @@ class IntermolecularReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
@@ -1483,7 +1483,7 @@ class CoordinationBondChangeReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature
+            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
@@ -1714,13 +1714,31 @@ class ConcertedReaction(Reaction):
             self.base_free_energy_B,
             self.base_free_energy_A,
         )
-        self.reactant_energy, self.product_energy = self.product_energy, self.reactant_energy
-        self.reactant_enthalpy, self.product_enthalpy = self.product_enthalpy, self.reactant_enthalpy
-        self.reactant_entropy, self.product_entropy = self.product_entropy, self.reactant_entropy
-        self.reactant_charge, self.product_charge = self.product_charge, self.reactant_charge
+        self.reactant_energy, self.product_energy = (
+            self.product_energy,
+            self.reactant_energy,
+        )
+        self.reactant_enthalpy, self.product_enthalpy = (
+            self.product_enthalpy,
+            self.reactant_enthalpy,
+        )
+        self.reactant_entropy, self.product_entropy = (
+            self.product_entropy,
+            self.reactant_entropy,
+        )
+        self.reactant_charge, self.product_charge = (
+            self.product_charge,
+            self.reactant_charge,
+        )
         self.reactant_eids, self.product_eids = self.product_eids, self.reactant_eids
-        self.reactant_indices, self.product_indices = self.product_indices, self.reactant_indices
-        self.reactant_atom_mapping, self.product_atom_mapping = self.product_atom_mapping, self.reactant_atom_mapping
+        self.reactant_indices, self.product_indices = (
+            self.product_indices,
+            self.reactant_indices,
+        )
+        self.reactant_atom_mapping, self.product_atom_mapping = (
+            self.product_atom_mapping,
+            self.reactant_atom_mapping,
+        )
 
     @classmethod
     def generate(
@@ -1825,13 +1843,19 @@ class ConcertedReaction(Reaction):
 
         rct_free_energies = [
             mol_free_energy(
-                self.reactant_energy[i], self.reactant_enthalpy[i], self.reactant_entropy[i], temp=temperature
+                self.reactant_energy[i],
+                self.reactant_enthalpy[i],
+                self.reactant_entropy[i],
+                temp=temperature,
             )
             for i in range(len(self.reactant_eids))
         ]
         pro_free_energies = [
             mol_free_energy(
-                self.product_energy[i], self.product_enthalpy[i], self.product_entropy[i], temp=temperature
+                self.product_energy[i],
+                self.product_enthalpy[i],
+                self.product_entropy[i],
+                temp=temperature,
             )
             for i in range(len(self.product_eids))
         ]
@@ -1969,9 +1993,11 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B
 
+    # Sort product and reactant indices in ascending order, e.g. A,B or C,D
     pro_sorted_indices = np.argsort(reaction.product_indices)
     rct_sorted_indices = np.argsort(reaction.reactant_indices)
 
+    # Generate the index ordering used to create the node names
     pro_node_indices = [
         [index] + [i for i in pro_sorted_indices if i != index]
         for index in range(len(reaction.product_indices))
@@ -1980,14 +2006,14 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
         [index] + [i for i in rct_sorted_indices if i != index]
         for index in range(len(reaction.reactant_indices))
     ]
-    # Here, create the 'base' names for products and reactants
+    # Here, create the 'base' names/ids for products and reactants (sorted by index)
     base_pro_name = "+".join([str(reaction.product_indices[i]) for i in pro_sorted_indices])
     base_pro_eids = "+".join([str(reaction.product_eids[i]) for i in pro_sorted_indices])
 
     base_rct_name = "+".join([str(reaction.reactant_indices[i]) for i in rct_sorted_indices])
     base_rct_eids = "+".join([str(reaction.reactant_eids[i]) for i in rct_sorted_indices])
 
-    # This will give the "PR" part of the name for the products and reactants
+    # This will give the "PR" part of the name for the nodes, e.g. A+PR_B
     pro_names_PR = [
         "+PR_".join([str(reaction.product_indices[i]) for i in el]) for el in pro_node_indices
     ]
@@ -1996,6 +2022,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     ]
 
     # This will give the full names for the products and reactants (used in the graph)
+    # e.g. A+PR_B,C
     rct_node_names = [",".join([name, base_pro_name]) for name in rct_names_PR]
     pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
 
@@ -2012,7 +2039,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     pro_node_eids = [",".join([name, base_rct_eids]) for name in pro_eids_PR]
 
     for node_ind in range(len(rct_node_names)):
-        # Add a reactant node
+        # Add a reactant reaction node
         graph.add_node(
             rct_node_names[node_ind],
             rxn_type=rxn_type_A,
@@ -2021,7 +2048,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             free_energy=free_energy_A,
             entry_ids=rct_node_eids[node_ind],
         )
-        # Add an edge from the reactant node to its "reactant"
+        # Add an edge from the reactant node to its "reactant" (i.e. Molecule Node)
         graph.add_edge(
             int(reaction.reactant_indices[node_ind]),
             rct_node_names[node_ind],
@@ -2031,7 +2058,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             weight=1.0,
         )
 
-        # Add edges from the reactant node to the products
+        # Add edges from the reactant node to the products (i.e. Product Molecule Node)
         for p_ind in reaction.product_indices:
             graph.add_edge(
                 rct_node_names[node_ind],
@@ -2043,7 +2070,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             )
 
     for node_ind in range(len(pro_node_names)):
-        # Add a product node
+        # Add a product node (reaction node)
         graph.add_node(
             pro_node_names[node_ind],
             rxn_type=rxn_type_B,
@@ -2053,7 +2080,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             entry_ids=pro_node_eids[node_ind],
         )
 
-        # Add an edge from the product node to its corresponding "product"
+        # Add an edge from the product node to its corresponding "product" Molecule Node
         graph.add_edge(
             int(reaction.product_indices[node_ind]),
             pro_node_names[node_ind],
@@ -2063,7 +2090,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             weight=1.0,
         )
         for r_ind in reaction.reactant_indices:
-            # Add an edge from the product node to the reactants
+            # Add an edge from the product node to the reactant Molecule Nodes
             graph.add_edge(
                 pro_node_names[node_ind],
                 int(r_ind),
