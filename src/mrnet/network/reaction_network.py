@@ -1541,6 +1541,44 @@ class ReactionNetwork(MSONable):
 
         return self.PRs, paths, top_path_list
 
+    def path_analysis(self):
+        """
+        Method to rerank paths after find_paths() is perfromed.
+        """
+        heap = []
+        path_count = 0
+        for path in self.paths:
+            all_uphill_dG_full_path = 0
+            all_downhill_dG_full_path = 0
+            all_uphill_dG_path = 0
+            all_downhill_dG_path = 0
+            for step in path["full_path"]:
+                if isinstance(step, str):
+                    if self.graph.nodes[step]["free_energy"] <= 0:
+                        all_downhill_dG_full_path = all_downhill_dG_full_path + self.graph.nodes[step]["free_energy"]
+                    elif self.graph.nodes[step]["free_energy"] > 0:
+                        all_uphill_dG_full_path = all_uphill_dG_full_path + self.graph.nodes[step]["free_energy"]
+
+            for step in path["path"]:
+                if isinstance(step, str):
+                    if self.graph.nodes[step]["free_energy"] <= 0:
+                        all_downhill_dG_path = all_downhill_dG_path + self.graph.nodes[step]["free_energy"]
+                    elif self.graph.nodes[step]["free_energy"] > 0:
+                        all_uphill_dG_path = all_uphill_dG_path + self.graph.nodes[step]["free_energy"]
+            all_uphill_dG_full_path = float("{0:.4f}".format(all_uphill_dG_full_path))
+            all_uphill_dG_path = float("{0:.4f}".format(all_uphill_dG_path))
+            all_downhill_dG_full_path = float("{0:.4f}".format(all_downhill_dG_full_path))
+            all_downhill_dG_path = float("{0:.4f}".format(all_downhill_dG_path))
+            heapq.heappush(heap, (all_uphill_dG_full_path,  all_uphill_dG_path, all_downhill_dG_full_path,
+                                  all_downhill_dG_path,
+                                  len(path["path"]),
+                                  len(path["full_path"]),
+                                  path_count,path))
+            path_count = path_count + 1
+        return heap
+
+
+
     @staticmethod
     def mols_w_cuttoff(RN_pr_solved, cutoff=0, build_pruned_network=True):
         """
@@ -1593,6 +1631,162 @@ class ReactionNetwork(MSONable):
             return mols_to_keep, pruned_entries_list, pruned_network_build
         else:
             return mols_to_keep, pruned_entries_list
+
+
+    @staticmethod
+    def generate_node_string(combined_reactants, combined_products):
+        """
+        Method generate node string based on reactants and products
+        :param combined_reactants: list of node numbers, ex [100, 30], max length of 2
+        :param combined_products: list of node numbers, ex [100, 30], max length of 2
+        """
+        node_str = None
+        if len(combined_reactants) <= 2 and len(combined_products) <= 2:
+            if len(combined_reactants) == 2 and len(combined_products) == 2:
+                node_str = str(combined_reactants[0]) + "+" + "PR_" + str(combined_reactants[
+                                                                              1]) + "," + str(
+                    combined_products[0]) + "+" + str(
+                    combined_products[1])
+            elif len(combined_reactants) == 2 and len(combined_products) == 1:
+                node_str = str(combined_reactants[0]) + "+" + "PR_" + str(combined_reactants[
+                                                                        1]) + "," + str(
+                    combined_products[0])
+            elif len(combined_reactants) == 1 and len(combined_products) == 2:
+                node_str = str(combined_reactants[0]) + "," + str(
+                    combined_products[0]) + "+" + str(
+                    combined_products[1])
+            elif len(combined_reactants) == 1 and len(combined_products) == 1:
+                node_str = str(combined_reactants[0]) + "," + str(
+                    combined_products[0])
+            else:
+                node_str = None
+                print("Something is wrong", combined_reactants, combined_products)
+        return node_str
+
+
+    @staticmethod
+    def parse_reaction_node(node):
+        """
+        Method to parse out reactant,pr and prodcut nodes from a node string.
+        :param node: node string, ex "1+PR_2,3+4"
+        """
+        react_list = []
+        prod_list = []
+        if "PR" in node and "+" in node.split(",")[1]:
+            reactant = int(node.split("+PR_")[0])
+            pr = int(node.split("+PR_")[1].split(",")[0])
+            product1 = int(node.split("+PR_")[1].split(",")[1].split("+")[0])
+            product2 = int(node.split("+PR_")[1].split(",")[1].split("+")[1])
+            react_list = [reactant, pr]
+            prod_list = [product1, product2]
+            prod_list.sort()
+        elif "PR" in node and "+" not in node.split(",")[1]:
+            reactant = int(node.split("+PR_")[0])
+            pr = int(node.split("+PR_")[1].split(",")[0])
+            product = int(node.split("+PR_")[1].split(",")[1])
+            react_list = [reactant, pr]
+            prod_list = [product]
+        elif "PR" not in node and "+" in node:
+            reactant = int(node.split(",")[0])
+            product1 = int(node.split(",")[1].split("+")[0])
+            product2 = int(node.split(",")[1].split("+")[1])
+            prod_list = [product1, product2]
+            prod_list.sort()
+            react_list = [reactant]
+            prod_list = [product1, product2]
+            prod_list.sort()
+        elif "PR" not in node and "+" not in node:
+            reactant = int(node.split(",")[0])
+            product = int(node.split(",")[1])
+            react_list = [reactant]
+            prod_list = [product]
+        else:
+            print("Something wrong while parsing reaction node string", node)
+
+        return react_list, prod_list
+
+    @staticmethod
+    def identify_concerted_rxns_via_intermediates_NEW(RN, mols_to_keep=None,
+                                                  single_elem_interm_ignore=["C1", "H1", "O1", "Li1"]):
+        """
+            A method to identify concerted reactions by looping through high enery intermediates
+        :param RN: ReactionNetwork atleast built with elementary reaction
+        :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes in the
+        RN_pr_solved
+        :param single_elem_interm_ignore: List of formula of high energy intermediates to ignore
+        :return: list of reactions
+        """
+        print("identify_concerted_rxns_via_intermediates start", time.time())
+        flag = True
+        if mols_to_keep is None:
+            mols_to_keep = list(range(0, len(RN.entries_list)))
+        mols_to_keep.append(None)
+        count_total = 0
+        reactions = []
+        unique_reactions = []
+        not_wanted_formula = single_elem_interm_ignore
+        for entry in RN.entries_list:
+            node = entry.parameters["ind"]
+            if RN.entries_list[node].formula not in not_wanted_formula and RN.graph.nodes[node][
+                "bipartite"] == 0 and node not in RN.not_reachable_nodes and node not in RN.unsolvable_PRs:
+                out_nodes = []
+                for rxn in list(RN.graph.neighbors(node)):
+                    if "electron" not in RN.graph.nodes[rxn]["rxn_type"]:
+                        out_nodes.append(rxn)
+                in_nodes = []
+                for in_edge in list(RN.graph.in_edges(node)):
+                    in_rxn = in_edge[0]
+                    if "electron" not in RN.graph.nodes[in_rxn]["rxn_type"]:
+                        in_nodes.append(in_rxn)
+                count = 0
+                count_new = 0
+                for out_node in out_nodes:
+                    for in_node in in_nodes:
+                        if "Concerted" in RN.graph.nodes[in_node]["rxn_type"] and "Concerted" in RN.graph.nodes[
+                            out_node]["rxn_type"]:
+                            pass
+                        else:
+                            rxn1_dG = RN.graph.nodes[in_node]["free_energy"]
+                            total_dG = rxn1_dG + RN.graph.nodes[out_node]["free_energy"]
+                            if rxn1_dG > 0 and total_dG < 0:
+                            #if flag:
+                                in_reactants, in_products = ReactionNetwork.parse_reaction_node(in_node)
+                                out_reactants, out_products = ReactionNetwork.parse_reaction_node(out_node)
+                                combined_reactants = in_reactants + out_reactants
+                                combined_products = in_products + out_products
+                                combined_reactants.sort()
+                                combined_products.sort()
+                                inter = set(combined_reactants).intersection(set(combined_products))
+                                for i in inter:
+                                    combined_reactants.remove(i)
+                                    combined_products.remove(i)
+                                if len(combined_reactants) > 0 and len(combined_reactants) <= 2 and len(
+                                        combined_products) > 0 and len(combined_products) <= 2:
+                                    node_str = ReactionNetwork.generate_node_string(combined_reactants, combined_products)
+                                    glist = combined_reactants + combined_products
+
+                                    if node_str not in RN.graph.nodes() and set(glist).issubset(set(mols_to_keep)) \
+                                            and set(combined_reactants) != set(combined_products):
+                                        if (combined_reactants, combined_products) not in \
+                                                unique_reactions:
+                                            if node == 171:
+                                                print(combined_reactants, combined_products)
+                                            if len(combined_reactants) == 2 and len(combined_products) == 1:
+                                                count_new = count_new + 1
+                                                unique_reactions.append((combined_reactants , combined_products))
+                                                reactions.append((combined_products, combined_reactants, [in_node,
+                                                                                                  out_node]))
+
+                                            else:
+                                                count_new = count_new + 1
+                                                unique_reactions.append((combined_reactants, combined_products))
+                                                reactions.append((combined_reactants, combined_products, [in_node,
+                                                                                                          out_node]))
+
+
+        print("total number of concerted reactions:", len(reactions))
+        print("identify_concerted_rxns_via_intermediates end", time.time())
+        return reactions
 
     @staticmethod
     def identify_concerted_rxns_via_intermediates(
