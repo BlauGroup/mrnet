@@ -623,9 +623,9 @@ class ReactionNetwork(MSONable):
                                         entry.get_free_energy() is not None
                                         and Uentry.get_free_energy() is not None
                                     ):
-                                        if entry.get_free_energy(
+                                        if entry.free_energy(temp=temperature) < Uentry.free_energy(
                                             temp=temperature
-                                        ) < Uentry.get_free_energy(temp=temperature):
+                                        ):
                                             unique[ii] = entry
                                     elif entry.get_free_energy() is not None:
                                         unique[ii] = entry
