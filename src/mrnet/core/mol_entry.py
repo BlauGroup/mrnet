@@ -82,15 +82,11 @@ class MoleculeEntry(MSONable):
                 else:
                     self.mol_graph = MoleculeGraph.from_dict(self.mol_doc["mol_graph"])
             else:
-                mol_graph = MoleculeGraph.with_local_env_strategy(
-                    molecule, OpenBabelNN()
-                )
+                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
                 self.mol_graph = metal_edge_extender(mol_graph)
         else:
             if self.mol_graph is None:
-                mol_graph = MoleculeGraph.with_local_env_strategy(
-                    molecule, OpenBabelNN()
-                )
+                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
                 self.mol_graph = metal_edge_extender(mol_graph)
 
     @classmethod
@@ -191,9 +187,7 @@ class MoleculeEntry(MSONable):
         return [tuple(sorted(e)) for e in self.graph.edges()]
 
     @property
-    @deprecated(
-        message="`Nbonds` is replaced by `num_bonds`. This will be removed shortly."
-    )
+    @deprecated(message="`Nbonds` is replaced by `num_bonds`. This will be removed shortly.")
     def Nbonds(self) -> int:
         return self.num_bonds
 

@@ -103,15 +103,11 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
                 elif (len(reaction.reactants) == 2) and (
                     reaction.reactants[0] == reaction.reactants[1]
                 ):
-                    self.coord_array[2 * ind] = num_reactants_for[0] * (
-                        num_reactants_for[0] - 1
-                    )
+                    self.coord_array[2 * ind] = num_reactants_for[0] * (num_reactants_for[0] - 1)
                 elif (len(reaction.reactants) == 2) and (
                     reaction.reactants[0] != reaction.reactants[1]
                 ):
-                    self.coord_array[2 * ind] = (
-                        num_reactants_for[0] * num_reactants_for[1]
-                    )
+                    self.coord_array[2 * ind] = num_reactants_for[0] * num_reactants_for[1]
                 else:
                     raise RuntimeError(
                         "Only single and bimolecular reactions supported by this simulation"
@@ -128,9 +124,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
                 elif (len(reaction.products) == 2) and (
                     reaction.products[0] != reaction.products[1]
                 ):
-                    self.coord_array[2 * ind + 1] = (
-                        num_reactants_rev[0] * num_reactants_rev[1]
-                    )
+                    self.coord_array[2 * ind + 1] = num_reactants_rev[0] * num_reactants_rev[1]
                 else:
                     raise RuntimeError(
                         "Only single and bimolecular reactions supported by this simulation"
@@ -138,13 +132,9 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
 
             self.propensities = np.multiply(self.coord_array, self.rate_constants)
             # Set up molind_rxn_mapping
-            spec_rxn_map_lengths = [
-                len(rxn_list) for rxn_list in species_rxn_mapping_list
-            ]
+            spec_rxn_map_lengths = [len(rxn_list) for rxn_list in species_rxn_mapping_list]
             max_map_length = max(spec_rxn_map_lengths)
-            self.species_rxn_mapping = (
-                np.ones((self.num_species, max_map_length), dtype=int) * -1
-            )
+            self.species_rxn_mapping = np.ones((self.num_species, max_map_length), dtype=int) * -1
             for ind, rxn_list in enumerate(species_rxn_mapping_list):
                 if len(rxn_list) == max_map_length:
                     self.species_rxn_mapping[ind, :] = rxn_list
@@ -187,9 +177,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
             rate_constants,
             propensities,
             molid_index_mapping,
-        ] = initialize_simulation(
-            self.reaction_network, self.initial_conditions, self.volume
-        )
+        ] = initialize_simulation(self.reaction_network, self.initial_conditions, self.volume)
         # Verify initial state
         num_species = len(self.reaction_network.entries_list)
         exp_initial_state = np.array([0 for i in range(num_species)])
@@ -246,9 +234,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
         expected_state[self.molid_ind_mapping["h-"]] = num_iterations
         expected_state[self.molid_ind_mapping["h+"]] = self.num_mols + num_iterations
         expected_state[self.molid_ind_mapping["oh-"]] = self.num_mols
-        expected_state[self.molid_ind_mapping["h2"]] = (
-            self.num_mols - 2 * num_iterations
-        )
+        expected_state[self.molid_ind_mapping["h2"]] = self.num_mols - 2 * num_iterations
         expected_state[self.molid_ind_mapping["h2+"]] = num_iterations
         expected_state[self.molid_ind_mapping["h2o-"]] = num_iterations
         expected_state[self.molid_ind_mapping["h2o"]] = self.num_mols - num_iterations
@@ -295,11 +281,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
                     converted_rxn_ind = math.floor(rxn_ind / 2)
                     coords.append(
                         get_coordination(
-                            self.reactants,
-                            self.products,
-                            state,
-                            converted_rxn_ind,
-                            reverse,
+                            self.reactants, self.products, state, converted_rxn_ind, reverse,
                         )
                     )
 
@@ -413,15 +395,11 @@ class TestKmcDataAnalyzer(PymatgenTest):
                 elif (len(reaction.reactants) == 2) and (
                     reaction.reactants[0] == reaction.reactants[1]
                 ):
-                    self.coord_array[2 * ind] = num_reactants_for[0] * (
-                        num_reactants_for[0] - 1
-                    )
+                    self.coord_array[2 * ind] = num_reactants_for[0] * (num_reactants_for[0] - 1)
                 elif (len(reaction.reactants) == 2) and (
                     reaction.reactants[0] != reaction.reactants[1]
                 ):
-                    self.coord_array[2 * ind] = (
-                        num_reactants_for[0] * num_reactants_for[1]
-                    )
+                    self.coord_array[2 * ind] = num_reactants_for[0] * num_reactants_for[1]
                 else:
                     raise RuntimeError(
                         "Only single and bimolecular reactions supported by this simulation"
@@ -438,9 +416,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
                 elif (len(reaction.products) == 2) and (
                     reaction.products[0] != reaction.products[1]
                 ):
-                    self.coord_array[2 * ind + 1] = (
-                        num_reactants_rev[0] * num_reactants_rev[1]
-                    )
+                    self.coord_array[2 * ind + 1] = num_reactants_rev[0] * num_reactants_rev[1]
                 else:
                     raise RuntimeError(
                         "Only single and bimolecular reactions supported by this simulation"
@@ -448,13 +424,9 @@ class TestKmcDataAnalyzer(PymatgenTest):
 
             self.propensities = np.multiply(self.coord_array, self.rate_constants)
             # Set up molind_rxn_mapping
-            spec_rxn_map_lengths = [
-                len(rxn_list) for rxn_list in species_rxn_mapping_list
-            ]
+            spec_rxn_map_lengths = [len(rxn_list) for rxn_list in species_rxn_mapping_list]
             max_map_length = max(spec_rxn_map_lengths)
-            self.species_rxn_mapping = (
-                np.ones((self.num_species, max_map_length), dtype=int) * -1
-            )
+            self.species_rxn_mapping = np.ones((self.num_species, max_map_length), dtype=int) * -1
             for ind, rxn_list in enumerate(species_rxn_mapping_list):
                 if len(rxn_list) == max_map_length:
                     self.species_rxn_mapping[ind, :] = rxn_list
@@ -522,17 +494,13 @@ class TestKmcDataAnalyzer(PymatgenTest):
             del self.rxn_a
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_generate_time_dep_profiles_intermediates_analysis_final_state_analysis(
-        self,
-    ):
+    def test_generate_time_dep_profiles_intermediates_analysis_final_state_analysis(self,):
         exp_trajectories = list()
         initial_cond = dict()
         for mol_id in self.initial_conditions:
             initial_cond[self.molid_ind_mapping[mol_id]] = [(0.0, self.num_mols)]
             if (mol_id != "h2o") and (mol_id != "h2o-"):
-                initial_cond[self.molid_ind_mapping[mol_id]].append(
-                    (12.0, self.num_mols)
-                )
+                initial_cond[self.molid_ind_mapping[mol_id]].append((12.0, self.num_mols))
         # print(initial_cond)
         for i in range(3):
             exp_trajectories.append(copy.deepcopy(initial_cond))
@@ -596,14 +564,10 @@ class TestKmcDataAnalyzer(PymatgenTest):
 
         profiles = self.analyzer.generate_time_dep_profiles()
         for i in range(3):
-            self.assertDictsAlmostEqual(
-                profiles["species_profiles"][i], exp_trajectories[i]
-            )
+            self.assertDictsAlmostEqual(profiles["species_profiles"][i], exp_trajectories[i])
 
         # Test intermediates analysis
-        intermediates_analysis = self.analyzer.analyze_intermediates(
-            profiles["species_profiles"]
-        )
+        intermediates_analysis = self.analyzer.analyze_intermediates(profiles["species_profiles"])
         exp_intermediates = {
             "h2o-": {
                 "frequency": 2 / 3,
@@ -628,9 +592,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
         self.assertCountEqual(intermediates_analysis, exp_sorted_intermediates)
 
         # Test final state analysis
-        actual_final_states = self.analyzer.final_state_analysis(
-            profiles["final_states"]
-        )
+        actual_final_states = self.analyzer.final_state_analysis(profiles["final_states"])
         expected_final_states = dict()
         unchanged_species = ["h2", "o2", "h+", "oh-"]
         for id in unchanged_species:
@@ -649,10 +611,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
             np.std(h2ominus_final_states),
         )
         expected_sorted_final_states = sorted(
-            [
-                (entry_id, data_tup)
-                for entry_id, data_tup in expected_final_states.items()
-            ],
+            [(entry_id, data_tup) for entry_id, data_tup in expected_final_states.items()],
             key=lambda x: x[1][0],
             reverse=True,
         )
@@ -669,9 +628,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_frequency_analysis(self):
-        freq_analysis = self.analyzer.frequency_analysis(
-            [self.rxn_a, self.rxn_b], [9, 10], 2
-        )
+        freq_analysis = self.analyzer.frequency_analysis([self.rxn_a, self.rxn_b], [9, 10], 2)
         expected_rxn = {
             self.rxn_a: [
                 (3, np.mean([1, 1, 1 / 2]), np.std([1, 1, 1 / 2])),
