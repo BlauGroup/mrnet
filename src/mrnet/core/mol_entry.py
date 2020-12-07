@@ -3,15 +3,15 @@
 # Distributed under the terms of the MIT License.
 
 import copy
-import numpy as np
 from typing import Any, Dict, List, Optional, Tuple
+
 import networkx as nx
+import numpy as np
 from monty.json import MSONable
-from monty.dev import deprecated
-from pymatgen.core.structure import Molecule
 from pymatgen.analysis.fragmenter import metal_edge_extender
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
 from pymatgen.analysis.local_env import OpenBabelNN
+from pymatgen.core.structure import Molecule
 
 __author__ = "Sam Blau, Mingjian Wen"
 __copyright__ = "Copyright 2019, The Materials Project"
@@ -41,12 +41,9 @@ class MoleculeEntry(MSONable):
             a particular label for the entry, or else ... Used for further
             analysis and plotting purposes. An attribute can be anything
             but must be MSONable.
-        mol_doc: MongoDB document that contains information of the molecule.
         mol_graph: MoleculeGraph of the molecule.
     """
 
-    # TODO (mjwen) remove mol_doc from __init__ and self.mol_doc (large dict).
-    #  `from_molecule_document` provides the functionality for initialization.
     def __init__(
         self,
         molecule: Molecule,
@@ -57,7 +54,6 @@ class MoleculeEntry(MSONable):
         parameters: Optional[Dict] = None,
         entry_id: Optional[Any] = None,
         attribute=None,
-        mol_doc: Optional[Dict] = None,
         mol_graph: Optional[MoleculeGraph] = None,
     ):
 
@@ -68,26 +64,11 @@ class MoleculeEntry(MSONable):
         self.parameters = parameters if parameters else {}
         self.entry_id = entry_id
         self.attribute = attribute
-        self.mol_doc = mol_doc if mol_doc else {}
         self.mol_graph = mol_graph
 
-        if self.mol_doc != {}:
-
-            self.enthalpy = self.mol_doc["enthalpy_kcal/mol"]
-            self.entropy = self.mol_doc["entropy_cal/molK"]
-            self.entry_id = self.mol_doc["task_id"]
-            if "mol_graph" in self.mol_doc:
-                if isinstance(self.mol_doc["mol_graph"], MoleculeGraph):
-                    self.mol_graph = self.mol_doc["mol_graph"]
-                else:
-                    self.mol_graph = MoleculeGraph.from_dict(self.mol_doc["mol_graph"])
-            else:
-                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
-                self.mol_graph = metal_edge_extender(mol_graph)
-        else:
-            if self.mol_graph is None:
-                mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
-                self.mol_graph = metal_edge_extender(mol_graph)
+        if self.mol_graph is None:
+            mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
+            self.mol_graph = metal_edge_extender(mol_graph)
 
     @classmethod
     def from_molecule_document(
@@ -134,8 +115,7 @@ class MoleculeEntry(MSONable):
             else:
                 mol_graph = MoleculeGraph.from_dict(mol_doc["mol_graph"])
         else:
-            mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
-            mol_graph = metal_edge_extender(mol_graph)
+            mol_graph = None
 
         return cls(
             molecule=molecule,
@@ -174,22 +154,12 @@ class MoleculeEntry(MSONable):
         return [str(s) for s in self.mol_graph.molecule.species]
 
     @property
-    def num_atoms(self) -> int:
-        return len(self.mol_graph.molecule)
-
-    @property
-    @deprecated(message="`edges` is replaced by `bonds`. This will be removed shortly.")
-    def edges(self) -> List[Tuple[int, int]]:
-        return self.bonds
-
-    @property
     def bonds(self) -> List[Tuple[int, int]]:
         return [tuple(sorted(e)) for e in self.graph.edges()]
 
     @property
-    @deprecated(message="`Nbonds` is replaced by `num_bonds`. This will be removed shortly.")
-    def Nbonds(self) -> int:
-        return self.num_bonds
+    def num_atoms(self) -> int:
+        return len(self.mol_graph.molecule)
 
     @property
     def num_bonds(self) -> int:
@@ -199,19 +169,15 @@ class MoleculeEntry(MSONable):
     def coords(self) -> np.ndarray:
         return self.mol_graph.molecule.cart_coords
 
-    @deprecated(
-        message="`free_energy(temp=<float>)` is replaced by "
-        "get_free_energy(temperature=<float>)`. This will be removed shortly."
-    )
-    def free_energy(self, temp=298.15) -> float:
-        return self.get_free_energy(temp)
-
-    def get_free_energy(self, temp: float = 298.15) -> float:
+    def get_free_energy(self, temperature: float = 298.15) -> float:
+        """
+        Get the free energy at the give temperature.
+        """
         if self.enthalpy is not None and self.entropy is not None:
             return (
                 self.energy * 27.21139
                 + 0.0433641 * self.enthalpy
-                - temp * self.entropy * 0.0000433641
+                - temperature * self.entropy * 0.0000433641
             )
         else:
             return None
@@ -320,7 +286,7 @@ class MoleculeEntry(MSONable):
     def __repr__(self):
         output = [
             "MoleculeEntry {} - {} - E{} - C{}".format(
-                self.entry_id, self.formula, self.Nbonds, self.charge
+                self.entry_id, self.formula, self.num_bonds, self.charge
             ),
             "Energy = {:.4f} Hartree".format(self.uncorrected_energy),
             "Correction = {:.4f} Hartree".format(self.correction),

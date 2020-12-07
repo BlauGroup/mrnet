@@ -1,17 +1,16 @@
-from pymatgen.analysis.local_env import OpenBabelNN
-
-from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
-from pymatgen import Molecule
 import copy
 from itertools import combinations_with_replacement
-from pymatgen.analysis.fragmenter import open_ring
-from monty.serialization import dumpfn
+
 import numpy as np
+from monty.serialization import dumpfn
+from pymatgen import Molecule
+from pymatgen.analysis.fragmenter import open_ring
+from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
+from pymatgen.analysis.local_env import OpenBabelNN
 
 
 def convert_atomic_numbers_to_stoi_dict(atomic_numbers):
     """
-
     :param atomic_numbers: a list of atomic numbers
     :return: {'Li':1, '110':0,'C':3,...} zero padding for non-existing elements
     """
@@ -150,9 +149,11 @@ def check_same_mol_graphs(mol_graphs1, mol_graphs2):
     )
     if sorted_formula_1 == sorted_formula_2:
         while mol_graphs1_copy != [] and mol_graphs2_copy != []:
-            (found_one_equivalent_graph, mol_graphs1_copy, mol_graphs2_copy,) = find_one_same_mol(
-                mol_graphs1_copy, mol_graphs2_copy
-            )
+            (
+                found_one_equivalent_graph,
+                mol_graphs1_copy,
+                mol_graphs2_copy,
+            ) = find_one_same_mol(mol_graphs1_copy, mol_graphs2_copy)
             if found_one_equivalent_graph == "False":
                 return is_the_same
         is_the_same = True
@@ -294,7 +295,7 @@ def open_ring_in_one_mol(mol_graph):
                 frag = open_ring(mol_graph, bond, 10000)
                 if not check_in_list(frag, all_possible_fragments):
                     all_possible_fragments.append(frag)
-            except:
+            except Exception:
                 continue
     return all_possible_fragments
 

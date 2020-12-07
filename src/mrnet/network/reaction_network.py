@@ -1,37 +1,30 @@
 import copy
-import itertools
 import heapq
-from typing import List, Dict, Tuple
+import itertools
 import time as time
+from typing import Dict, List, Tuple
 
 import networkx as nx
+from monty.json import MSONable
 from networkx.readwrite import json_graph
 
-from monty.json import MSONable
-
 from mrnet.core.mol_entry import MoleculeEntry
-
-from mrnet.utils.classes import load_class
-
-# TODO (mjwen) remove imports that is not used in this file
-# Import everything used to be in this file but moved to reaction.py in case somebody
-# imports it directly from this file. (The pickled files in the unit test uses them).
 from mrnet.core.reactions import (
+    ConcertedReaction,
+    CoordinationBondChangeReaction,
+    IntermolecularReaction,
+    IntramolSingleBondChangeReaction,
     Reaction,
     RedoxReaction,
-    IntramolSingleBondChangeReaction,
-    IntermolecularReaction,
-    CoordinationBondChangeReaction,
-    ConcertedReaction,
+    exponent,
     graph_rep_1_1,
     graph_rep_1_2,
     graph_rep_2_2,
     graph_rep_3_2,
-    softplus,
     rexp,
-    exponent,
+    softplus,
 )
-
+from mrnet.utils.classes import load_class
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith"
 __version__ = "0.1"
@@ -390,7 +383,13 @@ class ReactionPath(MSONable):
             class_instance = cls(None)
         else:
             class_instance = cls.characterize_path(
-                path, weight, min_cost, graph, old_solved_PRs, PR_byproduct_dict, PR_paths,
+                path,
+                weight,
+                min_cost,
+                graph,
+                old_solved_PRs,
+                PR_byproduct_dict,
+                PR_paths,
             )
             assert len(class_instance.solved_prereqs) == len(class_instance.all_prereqs)
             assert len(class_instance.unsolved_prereqs) == 0
@@ -595,13 +594,13 @@ class ReactionNetwork(MSONable):
             return x.formula
 
         def get_Nbonds(x):
-            return x.Nbonds
+            return x.num_bonds
 
         def get_charge(x):
             return x.charge
 
         def get_free_energy(x):
-            return x.free_energy(temp=temperature)
+            return x.get_free_energy(temperature)
 
         sorted_entries_0 = sorted(connected_entries, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
@@ -620,12 +619,12 @@ class ReactionNetwork(MSONable):
                                 if entry.mol_graph.isomorphic_to(Uentry.mol_graph):
                                     isomorphic_found = True
                                     if (
-                                        entry.free_energy() is not None
-                                        and Uentry.free_energy() is not None
+                                        entry.get_free_energy() is not None
+                                        and Uentry.get_free_energy() is not None
                                     ):
-                                        if entry.free_energy(temp=temperature) < Uentry.free_energy(
-                                            temp=temperature
-                                        ):
+                                        if entry.get_free_energy(
+                                            temperature
+                                        ) < Uentry.get_free_energy(temperature):
                                             unique[ii] = entry
                                     elif entry.free_energy() is not None:
                                         unique[ii] = entry
@@ -769,9 +768,7 @@ class ReactionNetwork(MSONable):
                         if cond_rct and cond_pro:
                             self.families[this_class][layer1][layer2].add(ii)
 
-        print(
-            "redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c,
-        )
+        print("redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c)
         self.PR_record = self.build_PR_record()
         self.Reactant_record = self.build_reactant_record()
 
@@ -1562,7 +1559,7 @@ class ReactionNetwork(MSONable):
                                         if set(glist).issubset(set(mols_to_keep)):
                                             count = count + 1
                                             reactions.append(
-                                                ([reactant], [product], [in_node, out_node],)
+                                                ([reactant], [product], [in_node, out_node])
                                             )
                                             # print(([reactant], [product]), in_node, out_node)
                                 elif "+" in in_node and "+" not in out_node:
@@ -1571,29 +1568,21 @@ class ReactionNetwork(MSONable):
                                     product1.remove(str(node))
                                     product1 = int(product1[0])
                                     product2 = int(out_node.split(",")[1])
-                                    glist = [
-                                        int(reactant),
-                                        int(product1),
-                                        int(product2),
-                                    ]
+                                    glist = [int(reactant), int(product1), int(product2)]
                                     if set(glist).issubset(set(mols_to_keep)):
                                         count = count + 1
                                         reactions.append(
-                                            ([reactant], [product1, product2], [in_node, out_node],)
+                                            ([reactant], [product1, product2], [in_node, out_node])
                                         )
                                 elif "+" not in in_node and "+" in out_node:
                                     reactant = int(in_node.split(",")[0])
                                     product1 = int(out_node.split(",")[1].split("+")[0])
                                     product2 = int(out_node.split(",")[1].split("+")[1])
-                                    glist = [
-                                        int(reactant),
-                                        int(product1),
-                                        int(product2),
-                                    ]
+                                    glist = [int(reactant), int(product1), int(product2)]
                                     if set(glist).issubset(set(mols_to_keep)):
                                         count = count + 1
                                         reactions.append(
-                                            ([reactant], [product1, product2], [in_node, out_node],)
+                                            ([reactant], [product1, product2], [in_node, out_node])
                                         )
                             elif "PR" in in_node and "PR" not in out_node:
                                 if "+" in out_node:
@@ -1616,10 +1605,9 @@ class ReactionNetwork(MSONable):
                                     product1 = int(p2)
                                     product2 = int(p1)
                                     glist = [reactant1, reactant2, product1, product2]
-                                if set(glist).issubset(set(mols_to_keep)) and {
-                                    reactant1,
-                                    reactant2,
-                                } != {product1, product2}:
+                                if set(glist).issubset(set(mols_to_keep)) and (
+                                    {reactant1, reactant2} != {product1, product2}
+                                ):
                                     count = count + 1
                                     # print(glist, set(glist).issubset(set(mols_to_keep)))
                                     reactions.append(
@@ -1654,10 +1642,9 @@ class ReactionNetwork(MSONable):
                                     product2 = int(p2)
                                     glist = [reactant1, reactant2, product1, product2]
 
-                                if set(glist).issubset(set(mols_to_keep)) and {
-                                    reactant1,
-                                    reactant2,
-                                } != {product1, product2}:
+                                if set(glist).issubset(set(mols_to_keep)) and (
+                                    {reactant1, reactant2} != {product1, product2}
+                                ):
                                     count = count + 1
                                     # print(glist, set(glist).issubset(set(mols_to_keep)))
                                     reactions.append(
