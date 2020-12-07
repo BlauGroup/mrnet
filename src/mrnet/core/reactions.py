@@ -1873,11 +1873,7 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
         two_prod_name_entry_ids = str(product_1.entry_id) + "+" + str(product_0.entry_id)
 
     reactants_ind_list = np.array(
-        [
-            reactant_0.parameters["ind"],
-            reactant_1.parameters["ind"],
-            reactant_2.parameters["ind"],
-        ]
+        [reactant_0.parameters["ind"], reactant_1.parameters["ind"], reactant_2.parameters["ind"]]
     )
     reactant_inds = np.argsort(reactants_ind_list)
     reactants_ind_list = np.sort(reactants_ind_list)
