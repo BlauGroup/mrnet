@@ -1,37 +1,30 @@
 import copy
-import itertools
 import heapq
-from typing import List, Dict, Tuple
+import itertools
 import time as time
+from typing import Dict, List, Tuple
 
 import networkx as nx
+from monty.json import MSONable
 from networkx.readwrite import json_graph
 
-from monty.json import MSONable
-
 from mrnet.core.mol_entry import MoleculeEntry
-
-from mrnet.utils.classes import load_class
-
-# TODO (mjwen) remove imports that is not used in this file
-# Import everything used to be in this file but moved to reaction.py in case somebody
-# imports it directly from this file. (The pickled files in the unit test uses them).
 from mrnet.core.reactions import (
+    ConcertedReaction,
+    CoordinationBondChangeReaction,
+    IntermolecularReaction,
+    IntramolSingleBondChangeReaction,
     Reaction,
     RedoxReaction,
-    IntramolSingleBondChangeReaction,
-    IntermolecularReaction,
-    CoordinationBondChangeReaction,
-    ConcertedReaction,
+    exponent,
     graph_rep_1_1,
     graph_rep_1_2,
     graph_rep_2_2,
     graph_rep_3_2,
-    softplus,
     rexp,
-    exponent,
+    softplus,
 )
-
+from mrnet.utils.classes import load_class
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith"
 __version__ = "0.1"

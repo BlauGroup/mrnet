@@ -3,14 +3,15 @@
 # Distributed under the terms of the MIT License.
 
 import copy
-import numpy as np
 from typing import Any, Dict, List, Optional, Tuple
+
 import networkx as nx
+import numpy as np
 from monty.json import MSONable
-from pymatgen.core.structure import Molecule
 from pymatgen.analysis.fragmenter import metal_edge_extender
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
 from pymatgen.analysis.local_env import OpenBabelNN
+from pymatgen.core.structure import Molecule
 
 __author__ = "Sam Blau, Mingjian Wen"
 __copyright__ = "Copyright 2019, The Materials Project"
@@ -68,8 +69,6 @@ class MoleculeEntry(MSONable):
         if self.mol_graph is None:
             mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
             self.mol_graph = metal_edge_extender(mol_graph)
-
-
 
     @classmethod
     def from_molecule_document(

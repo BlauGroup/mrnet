@@ -1,27 +1,21 @@
-from abc import ABCMeta, abstractmethod
 import copy
 import itertools
-import numpy as np
-from scipy.constants import h, k, R
+from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-from typing import Dict, Tuple, Optional, Union, List
+from typing import Dict, List, Optional, Tuple, Union
 
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
-
+import numpy as np
 from monty.json import MSONable
 from monty.serialization import loadfn
-
 from pymatgen.analysis.graphs import MolGraphSplitError
+from scipy.constants import R, h, k
+
+from mrnet.core.extract_reactions import FindConcertedReactions
 from mrnet.core.mol_entry import MoleculeEntry
+from mrnet.core.rates import ExpandedBEPRateCalculator, ReactionRateCalculator, RedoxRateCalculator
 from mrnet.utils.graphs import extract_bond_environment
-
-from mrnet.core.rates import (
-    ReactionRateCalculator,
-    ExpandedBEPRateCalculator,
-    RedoxRateCalculator,
-)
-
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -1421,7 +1415,6 @@ class CoordinationBondChangeReaction(Reaction):
         if g_1() is not None and g_0() is not None and g_entry() is not None:
             free_energy_A = g_0(temperature) + g_1(temperature) - g_entry(temperature)
             free_energy_B = g_entry(temperature) - g_0(temperature) - g_1(temperature)
-
         else:
             free_energy_A = None
             free_energy_B = None
@@ -1604,10 +1597,7 @@ class ConcertedReaction(Reaction):
             reactant, product, transition_state=transition_state, parameters=parameters
         )
 
-    def graph_representation(
-        self,
-    ) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
-
+    def graph_representation(self) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
         """
         A method to convert a Concerted class object into graph
             representation (nx.Digraph object).
@@ -1660,10 +1650,6 @@ class ConcertedReaction(Reaction):
         if read_file:
             all_concerted_reactions = loadfn(name + "_concerted_rxns.json")
         else:
-            from pymatgen.reaction_network.extract_reactions import (
-                FindConcertedReactions,
-            )
-
             FCR = FindConcertedReactions(entries_list, name)
             all_concerted_reactions = FCR.get_final_concerted_reactions(
                 name, num_processors, reaction_type
@@ -2046,18 +2032,10 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A0,
-        product_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_A0, product_0.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_A0,
-        product_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_A0, product_1.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2079,18 +2057,10 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A1,
-        product_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_A1, product_0.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_A1,
-        product_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_A1, product_1.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2112,18 +2082,10 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A1,
-        product_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_A1, product_0.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_A1,
-        product_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_A1, product_1.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2145,25 +2107,13 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B0,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_B0, reactant_0.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_B0,
-        reactant_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_B0, reactant_1.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_B0,
-        reactant_2.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_B0, reactant_2.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2185,25 +2135,13 @@ def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B1,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_B1, reactant_0.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_B1,
-        reactant_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_B1, reactant_1.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_B1,
-        reactant_2.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        weight=1.0,
+        node_name_B1, reactant_2.parameters["ind"], softplus=0.0, exponent=0.0, weight=1.0
     )
 
     return graph
@@ -2289,20 +2227,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A0,
-        product_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_A0, product_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_A0,
-        product_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_A0, product_1.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2324,20 +2252,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A1,
-        product_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_A1, product_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_A1,
-        product_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_A1, product_1.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2359,20 +2277,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B0,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B0, reactant_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_B0,
-        reactant_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B0, reactant_1.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2394,20 +2302,10 @@ def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B1,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B1, reactant_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_B1,
-        reactant_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B1, reactant_1.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
 
     return graph
@@ -2476,20 +2374,10 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_A,
-        product_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_A, product_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_A,
-        product_1.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_A, product_1.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
 
     graph.add_node(
@@ -2510,20 +2398,10 @@ def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
     )
 
     graph.add_edge(
-        node_name_B0,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B0, reactant_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     graph.add_edge(
-        node_name_B1,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B1, reactant_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
 
     graph.add_edge(
@@ -2589,12 +2467,7 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
         weight=1.0,
     )
     graph.add_edge(
-        node_name_A,
-        product_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_A, product_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     graph.add_node(
         node_name_B,
@@ -2613,12 +2486,7 @@ def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
         weight=1.0,
     )
     graph.add_edge(
-        node_name_B,
-        reactant_0.parameters["ind"],
-        softplus=0.0,
-        exponent=0.0,
-        rexp=0.0,
-        weight=1.0,
+        node_name_B, reactant_0.parameters["ind"], softplus=0.0, exponent=0.0, rexp=0.0, weight=1.0
     )
     return graph
 
@@ -2754,9 +2622,7 @@ def generate_atom_mapping_1_1(
 
 
 def generate_atom_mapping_1_2(
-    reactant: MoleculeEntry,
-    products: List[MoleculeEntry],
-    edges: List[Tuple[int, int]],
+    reactant: MoleculeEntry, products: List[MoleculeEntry], edges: List[Tuple[int, int]]
 ) -> Tuple[Atom_Mapping_Dict, List[Atom_Mapping_Dict]]:
     """
     Generate rdkit style atom mapping for reactions with one reactant and two products.

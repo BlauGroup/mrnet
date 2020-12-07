@@ -422,7 +422,6 @@ class BEPRateCalculator(ReactionRateCalculator):
             mass_factor = self.rct_mass_factor
             radius_factor = self.rct_radius_factor
 
-
         # Radius factor will be 0 for single atoms
         if radius_factor == 0:
             radius_factor = 1
