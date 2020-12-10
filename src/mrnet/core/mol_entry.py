@@ -55,9 +55,7 @@ class MoleculeEntry(MSONable):
         entry_id: Optional[Any] = None,
         attribute=None,
         mol_graph: Optional[MoleculeGraph] = None,
-        dummy: Optional[bool] = False,
     ):
-        self.dummy = dummy
         self.uncorrected_energy = energy
         self.correction = correction
         self.enthalpy = enthalpy
@@ -70,16 +68,6 @@ class MoleculeEntry(MSONable):
         if self.mol_graph is None:
             mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
             self.mol_graph = metal_edge_extender(mol_graph)
-
-    def zip_dict(self):
-        return {
-            "enthalpy": self.enthalpy,
-            "entropy": self.entropy,
-            "energy": self.energy,
-            "entry_id": self.entry_id,
-            "charge": self.charge,
-            "parameters": self.parameters,
-        }
 
     @classmethod
     def from_molecule_document(

@@ -167,16 +167,14 @@ class TestRedoxReaction(PymatgenTest):
 
         reaction = RedoxReaction(self.EC_0_entry, self.EC_1_entry)
         reaction.electron_free_energy = -2.15
-        reaction.free_energy()
+        reaction.set_free_energy()
         self.assertEqual(reaction.free_energy_A, 6.231346035181195)
         self.assertEqual(reaction.free_energy_B, -6.231346035181195)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
-
         reaction = RedoxReaction(self.EC_0_entry, self.EC_1_entry)
         reaction.electron_free_energy = -2.15
-        reaction.energy()
         self.assertEqual(reaction.energy_A, 0.3149076465170424)
         self.assertEqual(reaction.energy_B, -0.3149076465170424)
 
@@ -334,7 +332,7 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_free_energy(self):
 
         reaction = IntramolSingleBondChangeReaction(self.LiEC_entry, self.LiEC_RO_entry)
-        reaction.free_energy()
+        reaction.set_free_energy()
         self.assertEqual(reaction.free_energy_A, -1.1988634269218892)
         self.assertEqual(reaction.free_energy_B, 1.1988634269218892)
 
@@ -342,7 +340,6 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_energy(self):
 
         reaction = IntramolSingleBondChangeReaction(self.LiEC_entry, self.LiEC_RO_entry)
-        reaction.energy()
         self.assertEqual(reaction.energy_A, -0.03746218086303088)
         self.assertEqual(reaction.energy_B, 0.03746218086303088)
 
@@ -542,7 +539,7 @@ class TestIntermolecularReaction(PymatgenTest):
     def test_free_energy(self):
 
         reaction = IntermolecularReaction(self.LiEC_RO_entry, [self.C1Li1O3_entry, self.C2H4_entry])
-        reaction.free_energy()
+        reaction.set_free_energy()
         self.assertEqual(reaction.free_energy_A, 0.37075842588456)
         self.assertEqual(reaction.free_energy_B, -0.37075842588410524)
 
@@ -550,7 +547,6 @@ class TestIntermolecularReaction(PymatgenTest):
     def test_energy(self):
 
         reaction = IntermolecularReaction(self.LiEC_RO_entry, [self.C1Li1O3_entry, self.C2H4_entry])
-        reaction.energy()
         self.assertEqual(reaction.energy_A, 0.035409666514283344)
         self.assertEqual(reaction.energy_B, -0.035409666514283344)
 
@@ -741,7 +737,7 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reaction = CoordinationBondChangeReaction(
             self.LiEC_entry, [self.EC_minus_entry, self.Li_entry]
         )
-        reaction.free_energy()
+        reaction.set_free_energy()
         self.assertEqual(reaction.free_energy_A, 1.857340187929367)
         self.assertEqual(reaction.free_energy_B, -1.8573401879297649)
 
@@ -751,7 +747,6 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reaction = CoordinationBondChangeReaction(
             self.LiEC_entry, [self.EC_minus_entry, self.Li_entry]
         )
-        reaction.energy()
         self.assertEqual(reaction.energy_A, 0.08317397598398202)
         self.assertEqual(reaction.energy_B, -0.08317397598399001)
 

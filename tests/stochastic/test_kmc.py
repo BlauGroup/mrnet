@@ -97,7 +97,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
                     num_reactants_rev.append(self.initial_state[mol_ind])
                     species_rxn_mapping_list[mol_ind].append(2 * ind + 1)
 
-                reaction.rate_constant()
+                reaction.set_rate_constant()
                 self.rate_constants[2 * ind] = reaction.k_A
                 self.rate_constants[2 * ind + 1] = reaction.k_B
                 # set up coordination array
@@ -389,8 +389,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
                     self.products[ind, idx] = mol_ind
                     num_reactants_rev.append(self.initial_state[mol_ind])
                     species_rxn_mapping_list[mol_ind].append(2 * ind + 1)
-                print(reaction.__dict__)
-                reaction.rate_constant()
+                reaction.set_rate_constant()
                 self.rate_constants[2 * ind] = reaction.k_A
                 self.rate_constants[2 * ind + 1] = reaction.k_B
                 # set up coordination array

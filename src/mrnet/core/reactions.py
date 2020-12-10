@@ -65,10 +65,10 @@ class Reaction(MSONable, metaclass=ABCMeta):
         products: List[MoleculeEntry],
         transition_state: Optional[MoleculeEntry] = None,
         parameters: Optional[Dict] = None,
-        reactants_atom_mapping: List[
-            Atom_Mapping_Dict
+        reactants_atom_mapping: Optional[
+            List[Atom_Mapping_Dict]
         ] = None,  # atom mapping argument may not be necessary
-        products_atom_mapping: List[Atom_Mapping_Dict] = None,
+        products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
         self.reactants = reactants
         self.products = products
@@ -81,8 +81,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
                 reactants, products, self.transition_state
             )
 
-        self.reactant_eids = np.array([e.entry_id for e in reactants])
-        self.product_eids = np.array([e.entry_id for e in products])
+        self.reactant_ids = np.array([e.entry_id for e in reactants])
+        self.product_ids = np.array([e.entry_id for e in products])
 
         self.reactant_indices = np.array([r.parameters.get("ind") for r in reactants])
         self.product_indices = np.array([p.parameters.get("ind") for p in products])
@@ -93,12 +93,10 @@ class Reaction(MSONable, metaclass=ABCMeta):
         self.product_atom_mapping = products_atom_mapping
 
     def __in__(self, entry: MoleculeEntry):
-        return entry.entry_id in self.reactant_eids or entry.entry_id in self.product_eids
+        return entry.entry_id in self.reactant_ids or entry.entry_id in self.product_ids
 
     def update_calculator(
-        self,
-        transition_state: Optional[MoleculeEntry] = None,
-        reference: Optional[Dict] = None,
+        self, transition_state: Optional[MoleculeEntry] = None, reference: Optional[Dict] = None,
     ):
         """
         Update the rate calculator with either a transition state (or a new
@@ -149,19 +147,11 @@ class Reaction(MSONable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def reaction_type(self):
+    def set_free_energy(self, temperature=298.15):
         pass
 
     @abstractmethod
-    def free_energy(self, temperature=298.15):
-        pass
-
-    @abstractmethod
-    def energy(self):
-        pass
-
-    @abstractmethod
-    def rate_constant(self):
+    def set_rate_constant(self):
         pass
 
     def as_dict(self) -> dict:
@@ -183,7 +173,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
             "transition_state": ts,
             "rate_calculator": rc,  # consider writing as_dict/from_dict methods
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.reactant_atom_mapping,  # may end up removing
+            "reactants_atom_mapping": self.reactant_atom_mapping,
             "products_atom_mapping": self.product_atom_mapping,
         }
 
@@ -320,16 +310,27 @@ class RedoxReaction(Reaction):
         self.reactant_entropy = reactant.entropy
         self.product_entropy = product.entropy
 
-        # Call helper methods to set relevant instance attrs
-        self.reaction_type(reactant, product)
-        self.energy()
+        if product.charge < reactant.charge:
+            self.rxn_type_A = "One electron reduction"
+            self.rxn_type_B = "One electron oxidation"
+        else:
+            self.rxn_type_A = "One electron oxidation"
+            self.rxn_type_B = "One electron reduction"
+
+        if self.product_energy is not None and self.reactant_energy is not None:
+            self.energy_A = self.product_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.product_energy
+        else:
+            self.energy_A = None
+            self.energy_B = None
+
         # These store the free energy at 298.15 K.
-        # Initialized to none, generally overwritten by self.free_energy()
+        # Initialized to none, generally overwritten by self.set_free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
         if self.electron_free_energy is not None:
-            self.free_energy()
-            self.rate_constant()
+            self.set_free_energy()
+            self.set_rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -339,13 +340,11 @@ class RedoxReaction(Reaction):
         Returns:
             nx.Digraph object of a single Redox Reaction
         """
-
-        return graph_rep_1_1(self)
+        assert len(self.reactant_ids) == len(self.product_ids) == 1
+        return general_graph_rep(self)
 
     def update_calculator(
-        self,
-        transition_state: Optional[MoleculeEntry] = None,
-        reference: Optional[Dict] = None,
+        self, transition_state: Optional[MoleculeEntry] = None, reference: Optional[Dict] = None,
     ):
         """
         Update the rate calculator with either a transition state (or a new
@@ -412,28 +411,7 @@ class RedoxReaction(Reaction):
 
         return reactions, families
 
-    def reaction_type(self, reactant, product):
-        """
-        A method to identify type of redox reaction (oxidation or reduction)
-        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the
-        primary type of the reaction based on the reactant and product of the
-        RedoxReaction object, and rxn_type_B is the reverse.
-
-        Args:
-           reactant:
-           product:
-
-        Returns: None
-        """
-        if product.charge < reactant.charge:
-            self.rxn_type_A = "One electron reduction"
-            self.rxn_type_B = "One electron oxidation"
-        else:
-            self.rxn_type_A = "One electron oxidation"
-            self.rxn_type_B = "One electron reduction"
-        return
-
-    def free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the redox reaction. Note to
         set RedoxReaction.electron_free_energy a value.
@@ -482,32 +460,14 @@ class RedoxReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self):
-        """
-        A method to determine the energy of the redox reaction
-        Sets energy_A and energy_B
-        where energy_A is the primary type of the reaction based on the reactant and
-        product of the RedoxReaction object, and the backwards of this reaction would
-        be energy_B.
-
-        Returns:
-            None
-        """
-        if self.product_energy is not None and self.reactant_energy is not None:
-            self.energy_A = self.product_energy - self.reactant_energy
-            self.energy_B = self.reactant_energy - self.product_energy
-        else:
-            self.energy_A = None
-            self.energy_B = None
-
-    def rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, RedoxRateCalculator):
             self.k_A = self.rate_calculator.calculate_rate_constant(temperature=temperature)
             self.k_B = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True
             )
         else:
-            self.free_energy(temperature=temperature)
+            self.set_free_energy(temperature=temperature)
             if self.electrode_dist is None:
                 kappa = 1
             else:
@@ -652,15 +612,27 @@ class IntramolSingleBondChangeReaction(Reaction):
         self.reactant_entropy = reactant.entropy
         self.product_entropy = product.entropy
 
-        # Call helper methods to set relevant instance attrs
-        self.reaction_type(reactant, product)
-        self.energy()
+        if product.charge < reactant.charge:
+            self.rxn_type_A = "Intramolecular single bond breakage"
+            self.rxn_type_B = "Intramolecular single bond formation"
+        else:
+            self.rxn_type_A = "Intramolecular single bond formation"
+            self.rxn_type_B = "Intramolecular single bond breakage"
+
+        if self.product_energy is not None and self.reactant_energy is not None:
+            self.energy_A = self.product_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.product_energy
+
+        else:
+            self.energy_A = None
+            self.energy_B = None
+
         # These store the free energy at 298.15 K.
-        # Initialized to none, generally overwritten by self.free_energy()
+        # Initialized to none, generally overwritten by self.set_free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
-        self.free_energy()
-        self.rate_constant()
+        self.set_free_energy()
+        self.set_rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -671,8 +643,8 @@ class IntramolSingleBondChangeReaction(Reaction):
         Returns:
             nx.Digraph object of a single IntramolSingleBondChangeReaction object
         """
-
-        return graph_rep_1_1(self)
+        assert len(self.reactant_ids) == len(self.product_ids) == 1
+        return general_graph_rep(self)
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
@@ -737,29 +709,7 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         return reactions, sub_graphs
 
-    def reaction_type(self, reactant, product):
-        """
-        A method to identify type of Intramolecular Single Bond change reaction
-        (bond breakage or formation).
-        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the
-        primary type of the reaction based on the reactant and product of the
-        IntramolSingleBondChangeReaction object, and rxn_type_B is the reverse.
-
-        Args:
-           reactant:
-           product:
-
-        Returns: None
-        """
-        if product.charge < reactant.charge:
-            self.rxn_type_A = "Intramolecular single bond breakage"
-            self.rxn_type_B = "Intramolecular single bond formation"
-        else:
-            self.rxn_type_A = "Intramolecular single bond formation"
-            self.rxn_type_B = "Intramolecular single bond breakage"
-        return
-
-    def free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the intramolecular single bond change
         reaction. Sets free_energy_A and free_energy_B
@@ -802,28 +752,7 @@ class IntramolSingleBondChangeReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self):
-        """
-        A method to determine the energy of the intramolecular single bond change
-        reaction.
-        Sets energy_A and energy_B
-        where energy_A is the primary type of the reaction based on
-        the reactant and product of the IntramolSingleBondChangeReaction object,
-        and the backwards of this reaction would be energy_B.
-
-        Returns:
-            Dictionary of the form {"energy_A": energy_A, "energy_B": energy_B}
-        """
-
-        if self.product_energy is not None and self.reactant_energy is not None:
-            self.energy_A = self.product_energy - self.reactant_energy
-            self.energy_B = self.reactant_energy - self.product_energy
-
-        else:
-            self.energy_A = None
-            self.energy_B = None
-
-    def rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -832,7 +761,7 @@ class IntramolSingleBondChangeReaction(Reaction):
                 self.rate_calculator.calculate_rate_constant(temperature=temperature, reverse=True),
             )
         else:
-            self.free_energy(temperature=temperature)
+            self.set_free_energy(temperature=temperature)
 
             ga = self.free_energy_A
             gb = self.free_energy_B
@@ -967,15 +896,27 @@ class IntermolecularReaction(Reaction):
         self.pro0_entropy = product[0].entropy
         self.pro1_entropy = product[1].entropy
 
-        # Call helper methods to set relevant instance attrs
-        self.reaction_type()
-        self.energy()
+        self.rxn_type_A = "Molecular decomposition breaking one bond A -> B+C"
+        self.rxn_type_B = "Molecular formation from one new bond A+B -> C"
+
+        if (
+            self.pro1_energy is not None
+            and self.pro0_energy is not None
+            and self.reactant_energy is not None
+        ):
+            self.energy_A = self.pro0_energy + self.pro1_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.pro0_energy - self.pro1_energy
+
+        else:
+            self.energy_A = None
+            self.energy_B = None
+
         # These store the free energy at 298.15 K.
-        # Initialized to none, generally overwritten by self.free_energy()
+        # Initialized to none, generally overwritten by self.set_free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
-        self.free_energy()
-        self.rate_constant()
+        self.set_free_energy()
+        self.set_rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -986,8 +927,9 @@ class IntermolecularReaction(Reaction):
         Returns:
             nx.Digraph object of a single IntermolecularReaction object
         """
-
-        return graph_rep_1_2(self)
+        assert len(self.reactant_ids) == 1
+        assert len(self.product_ids) == 2
+        return general_graph_rep(self)
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
@@ -1070,22 +1012,7 @@ class IntermolecularReaction(Reaction):
 
         return reactions, sub_graphs
 
-    def reaction_type(self):
-        """
-        A method to identify type of intermolecular reaction (bond decomposition
-        from one to two or formation from two to one molecules)
-
-        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the
-        primary type of the reaction based on the reactant and product of the
-        IntermolecularReaction object, and rxn_type_B is the reverse.
-
-        Returns: None
-        """
-        self.rxn_type_A = "Molecular decomposition breaking one bond A -> B+C"
-        self.rxn_type_B = "Molecular formation from one new bond A+B -> C"
-        return
-
-    def free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the intermolecular reaction.
         Sets free_energy_A and free_energy_B
@@ -1135,27 +1062,7 @@ class IntermolecularReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self):
-        """
-        A method to determine the energy of the intermolecular reaction.
-        Sets energy_A and energy_B
-        where energy_A is the primary type of the reaction based on the
-        reactant and product of the IntermolecularReaction
-        object, and the backwards of this reaction would be energy_B.
-        """
-        if (
-            self.pro1_energy is not None
-            and self.pro0_energy is not None
-            and self.reactant_energy is not None
-        ):
-            self.energy_A = self.pro0_energy + self.pro1_energy - self.reactant_energy
-            self.energy_B = self.reactant_energy - self.pro0_energy - self.pro1_energy
-
-        else:
-            self.energy_A = None
-            self.energy_B = None
-
-    def rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -1164,7 +1071,7 @@ class IntermolecularReaction(Reaction):
                 temperature=temperature, reverse=True
             )
         else:
-            self.free_energy(temperature=temperature)
+            self.set_free_energy(temperature=temperature)
 
             ga = self.free_energy_A
             gb = self.free_energy_B
@@ -1302,15 +1209,27 @@ class CoordinationBondChangeReaction(Reaction):
         self.pro0_entropy = product[0].entropy
         self.pro1_entropy = product[1].entropy
 
-        # Call helper methods to set relevant instance attrs
-        self.reaction_type()
-        self.energy()
+        self.rxn_type_A = "Coordination bond breaking AM -> A+M"
+        self.rxn_type_B = "Coordination bond forming A+M -> AM"
+
+        if (
+            self.pro1_energy is not None
+            and self.pro0_energy is not None
+            and self.reactant_energy is not None
+        ):
+            self.energy_A = self.pro0_energy + self.pro1_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.pro0_energy - self.pro1_energy
+
+        else:
+            self.energy_A = None
+            self.energy_B = None
+
         # These store the free energy at 298.15 K.
-        # Initialized to none, generally overwritten by self.free_energy()
+        # Initialized to none, generally overwritten by self.set_free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
-        self.free_energy()
-        self.rate_constant()
+        self.set_free_energy()
+        self.set_rate_constant()
 
     def graph_representation(self) -> nx.DiGraph:
         """
@@ -1322,8 +1241,9 @@ class CoordinationBondChangeReaction(Reaction):
         Returns:
              nx.Digraph object of a single CoordinationBondChangeReaction object
         """
-
-        return graph_rep_1_2(self)
+        assert len(self.reactant_ids) == 1
+        assert len(self.product_ids) == 2
+        return general_graph_rep(self)
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
@@ -1455,11 +1375,9 @@ class CoordinationBondChangeReaction(Reaction):
 
         Returns: None
         """
-        self.rxn_type_A = "Coordination bond breaking AM -> A+M"
-        self.rxn_type_B = "Coordination bond forming A+M -> AM"
         return
 
-    def free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the coordination bond change reaction
         Sets free_energy_A and free_energy_B
@@ -1506,30 +1424,7 @@ class CoordinationBondChangeReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self):
-        """
-        A method to determine the energy of the coordination bond change reaction
-        Sets energy_A and energy_B
-        where energy_A is the primary type of the reaction based on the
-        reactant and product of the CoordinationBondChangeReaction
-        object, and the backwards of this reaction would be energy_B.
-
-        Returns:
-            None
-        """
-        if (
-            self.pro1_energy is not None
-            and self.pro0_energy is not None
-            and self.reactant_energy is not None
-        ):
-            self.energy_A = self.pro0_energy + self.pro1_energy - self.reactant_energy
-            self.energy_B = self.reactant_energy - self.pro0_energy - self.pro1_energy
-
-        else:
-            self.energy_A = None
-            self.energy_B = None
-
-    def rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -1538,7 +1433,7 @@ class CoordinationBondChangeReaction(Reaction):
                 temperature=temperature, reverse=True
             )
         else:
-            self.free_energy(temperature=temperature)
+            self.set_free_energy(temperature=temperature)
 
             ga = self.free_energy_A
             gb = self.free_energy_B
@@ -1678,15 +1573,27 @@ class ConcertedReaction(Reaction):
         self.reactant_charge = np.sum([r.charge for r in reactant])
         self.product_charge = np.sum([p.charge for p in product])
 
-        # Call helper methods to set relevant instance attrs
-        self.reaction_type()
-        self.energy()
+        self.rxn_type_A = "Concerted"
+        self.rxn_type_B = "Concerted"
+
+        if all(nrg is None for nrg in self.reactant_energy) and all(
+            nrg is None for nrg in self.product_energy
+        ):
+            reactant_total_energy = np.sum([nrg for nrg in self.reactant_energy])
+            product_total_energy = np.sum([nrg for nrg in self.product_energy])
+            self.energy_A = product_total_energy - reactant_total_energy
+            self.energy_B = reactant_total_energy - product_total_energy
+
+        else:
+            self.energy_A = None
+            self.energy_B = None
+
         # These store the free energy at 298.15 K.
-        # Initialized to none, generally overwritten by self.free_energy()
+        # Initialized to none, generally overwritten by self.set_free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
-        self.free_energy()
-        self.rate_constant()
+        self.set_free_energy()
+        self.set_rate_constant()
 
     def graph_representation(self,) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
 
@@ -1696,15 +1603,11 @@ class ConcertedReaction(Reaction):
         IntermolecularReaction must be of type 1 reactant -> 2 products
         :return nx.Digraph object of a single IntermolecularReaction object
         """
-        if len(self.reactants) == len(self.products) == 1:
-            return graph_rep_1_1(self)
-        elif len(self.reactants) == 1 and len(self.products) == 2:
-            return graph_rep_1_2(self)
-        elif len(self.reactants) == 2 and len(self.products) == 1:
+        assert len(self.reactant_ids) <= 3
+        assert len(self.product_ids) <= 3
+        if len(self.reactants) == 2 and len(self.products) == 1:
             self.swap_elements()
-            return graph_rep_1_2(self)
-        elif len(self.reactants) == len(self.products) == 2:
-            return graph_rep_2_2(self)
+        return general_graph_rep(self)
 
     def swap_elements(self):
         self.reactants, self.products = self.products, self.reactants
@@ -1728,7 +1631,7 @@ class ConcertedReaction(Reaction):
             self.product_charge,
             self.reactant_charge,
         )
-        self.reactant_eids, self.product_eids = self.product_eids, self.reactant_eids
+        self.reactant_ids, self.product_ids = self.product_ids, self.reactant_ids
         self.reactant_indices, self.product_indices = (
             self.product_indices,
             self.reactant_indices,
@@ -1796,22 +1699,7 @@ class ConcertedReaction(Reaction):
         # with multiple reactants and multiple products
         return reactions, dict()
 
-    def reaction_type(self):
-        """
-        A method to set type of reaction as Concerted.
-        Sets attributes rxn_type_A and rxn_type_B,
-        where rxn_type_A is the primary type of the reaction based on the
-        reactant and product of the ConcertedReaction object,
-        and rxn_type_B is the reverse.
-
-        Returns: None
-        """
-
-        self.rxn_type_A = "Concerted"
-        self.rxn_type_B = "Concerted"
-        return
-
-    def free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=298.15):
         """
         A method to determine the free energy of the concerted reaction
         Sets free_energy_A and free_energy_B,
@@ -1844,7 +1732,7 @@ class ConcertedReaction(Reaction):
                 self.reactant_entropy[i],
                 temp=temperature,
             )
-            for i in range(len(self.reactant_eids))
+            for i in range(len(self.reactant_ids))
         ]
         pro_free_energies = [
             mol_free_energy(
@@ -1853,7 +1741,7 @@ class ConcertedReaction(Reaction):
                 self.product_entropy[i],
                 temp=temperature,
             )
-            for i in range(len(self.product_eids))
+            for i in range(len(self.product_ids))
         ]
 
         cond_rct = all(el is not None for el in rct_free_energies)
@@ -1880,30 +1768,7 @@ class ConcertedReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def energy(self):
-        """
-        A method to determine the energy of the concerted reaction
-        Sets energy_A and energy_B
-        where energy_A is the primary type of the reaction based on the
-        reactant and product of the ConcertedReaction
-        object, and the backwards of this reaction would be energy_B.
-        Electron electronic energy set to 0 for now.
-        Returns:
-            None
-        """
-        if all(nrg is None for nrg in self.reactant_energy) and all(
-            nrg is None for nrg in self.product_energy
-        ):
-            reactant_total_energy = np.sum([nrg for nrg in self.reactant_energy])
-            product_total_energy = np.sum([nrg for nrg in self.product_energy])
-            self.energy_A = product_total_energy - reactant_total_energy
-            self.energy_B = reactant_total_energy - product_total_energy
-
-        else:
-            self.energy_A = None
-            self.energy_B = None
-
-    def rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -1912,7 +1777,7 @@ class ConcertedReaction(Reaction):
                 temperature=temperature, reverse=True
             )
         else:
-            self.free_energy()
+            self.set_free_energy()
 
             ga = self.free_energy_A
             gb = self.free_energy_B
@@ -1979,13 +1844,15 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
        :param reaction:(any of the reaction class object, ex. RedoxReaction,
        IntramolSingleBondChangeReaction)
     """
+    assert len(reaction.reactant_ids) <= 3
+    assert len(reaction.product_ids) <= 3
     # Create the graph object, and define/call appropriate data
     graph = nx.DiGraph()
     rxn_type_A = reaction.rxn_type_A
     rxn_type_B = reaction.rxn_type_B
     energy_A = reaction.energy_A
     energy_B = reaction.energy_B
-    reaction.free_energy()
+    reaction.set_free_energy()
     free_energy_A = reaction.free_energy_A
     free_energy_B = reaction.free_energy_B
 
@@ -2004,10 +1871,10 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     ]
     # Here, create the 'base' names/ids for products and reactants (sorted by index)
     base_pro_name = "+".join([str(reaction.product_indices[i]) for i in pro_sorted_indices])
-    base_pro_eids = "+".join([str(reaction.product_eids[i]) for i in pro_sorted_indices])
+    base_pro_ids = "+".join([str(reaction.product_ids[i]) for i in pro_sorted_indices])
 
     base_rct_name = "+".join([str(reaction.reactant_indices[i]) for i in rct_sorted_indices])
-    base_rct_eids = "+".join([str(reaction.reactant_eids[i]) for i in rct_sorted_indices])
+    base_rct_ids = "+".join([str(reaction.reactant_ids[i]) for i in rct_sorted_indices])
 
     # This will give the "PR" part of the name for the nodes, e.g. A+PR_B
     pro_names_PR = [
@@ -2023,16 +1890,16 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
 
     # This will give the "PR" part of the id for the products and reactants
-    pro_eids_PR = [
-        "+PR_".join([str(reaction.product_eids[i]) for i in el]) for el in pro_node_indices
+    pro_ids_PR = [
+        "+PR_".join([str(reaction.product_ids[i]) for i in el]) for el in pro_node_indices
     ]
-    rct_eids_PR = [
-        "+PR_".join([str(reaction.reactant_eids[i]) for i in el]) for el in rct_node_indices
+    rct_ids_PR = [
+        "+PR_".join([str(reaction.reactant_ids[i]) for i in el]) for el in rct_node_indices
     ]
 
     # This will give the full ids for the products and reactants (used in the graph)
-    rct_node_eids = [",".join([name, base_pro_eids]) for name in rct_eids_PR]
-    pro_node_eids = [",".join([name, base_rct_eids]) for name in pro_eids_PR]
+    rct_node_ids = [",".join([name, base_pro_ids]) for name in rct_ids_PR]
+    pro_node_ids = [",".join([name, base_rct_ids]) for name in pro_ids_PR]
 
     for node_ind in range(len(rct_node_names)):
         # Add a reactant reaction node
@@ -2042,7 +1909,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             bipartite=1,
             energy=energy_A,
             free_energy=free_energy_A,
-            entry_ids=rct_node_eids[node_ind],
+            entry_ids=rct_node_ids[node_ind],
         )
         # Add an edge from the reactant node to its "reactant" (i.e. Molecule Node)
         graph.add_edge(
@@ -2073,7 +1940,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             bipartite=1,
             energy=energy_B,
             free_energy=free_energy_B,
-            entry_ids=pro_node_eids[node_ind],
+            entry_ids=pro_node_ids[node_ind],
         )
 
         # Add an edge from the product node to its corresponding "product" Molecule Node
@@ -2097,67 +1964,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             )
 
     return graph
-
-
-def graph_rep_3_2(reaction: Reaction) -> nx.DiGraph:
-    """
-    A method to convert a reaction type object into graph representation. Reaction much be of type 3 reactants -> 2
-    products
-    Args:
-       :param reaction: (any of the reaction class object, ex. RedoxReaction, IntramolSingleBondChangeReaction,
-                        Concerted)
-    """
-
-    if len(reaction.reactant_eids) != 3 or len(reaction.product_eids) != 2:
-        raise ValueError("Must provide reaction with 3 reactants and 2 products for graph_rep_3_2")
-    else:
-        return general_graph_rep(reaction)
-
-
-def graph_rep_2_2(reaction: Reaction) -> nx.DiGraph:
-    """
-    A method to convert a reaction type object into graph representation.
-    Reaction much be of type 2 reactants -> 2 products
-    Args:
-       :param reaction: (any of the reaction class object, ex. RedoxReaction,
-       IntramolSingleBondChangeReaction, Concerted)
-    """
-    if len(reaction.reactant_eids) != 2 or len(reaction.product_eids) != 2:
-        raise ValueError("Must provide reaction with 2 reactants and 2 products for graph_rep_2_2")
-    else:
-        return general_graph_rep(reaction)
-
-
-def graph_rep_1_2(reaction: Reaction) -> nx.DiGraph:
-    """
-    A method to convert a reaction type object into graph representation.
-    Reaction much be of type 1 reactant -> 2 products
-
-    Args:
-       :param reaction: (any of the reaction class object, ex. RedoxReaction,
-       IntramolSingleBondChangeReaction)
-    """
-
-    if len(reaction.reactant_eids) != 1 or len(reaction.product_eids) != 2:
-        raise ValueError("Must provide reaction with 1 reactant and 2 products" "for graph_rep_1_2")
-    else:
-        return general_graph_rep(reaction)
-
-
-def graph_rep_1_1(reaction: Reaction) -> nx.DiGraph:
-    """
-    A method to convert a reaction type object into graph representation.
-    Reaction much be of type 1 reactant -> 1 product
-
-    Args:
-       :param reaction:(any of the reaction class object, ex. RedoxReaction,
-       IntramolSingleBondChangeReaction)
-    """
-
-    if len(reaction.reactant_indices) != 1 or len(reaction.product_indices) != 1:
-        raise ValueError("Must provide reaction with 1 reactant and product" "for graph_rep_1_1")
-    else:
-        return general_graph_rep(reaction)
 
 
 def categorize(reaction, families, templates, environment, charge):

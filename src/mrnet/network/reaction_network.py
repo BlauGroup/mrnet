@@ -17,10 +17,7 @@ from mrnet.core.reactions import (
     Reaction,
     RedoxReaction,
     exponent,
-    graph_rep_1_1,
-    graph_rep_1_2,
-    graph_rep_2_2,
-    graph_rep_3_2,
+    general_graph_rep,
     rexp,
     softplus,
 )
@@ -587,20 +584,20 @@ class ReactionNetwork(MSONable):
         def get_formula(x):
             return x.formula
 
-        def get_Nbonds(x):
+        def get_num_bonds(x):
             return x.num_bonds
 
         def get_charge(x):
             return x.charge
 
         def get_free_energy(x):
-            return x.get_free_energy(temp=temperature)
+            return x.get_free_energy(temperature=temperature)
 
         sorted_entries_0 = sorted(connected_entries, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
-            sorted_entries_1 = sorted(list(g1), key=get_Nbonds)
+            sorted_entries_1 = sorted(list(g1), key=get_num_bonds)
             entries[k1] = dict()
-            for k2, g2 in itertools.groupby(sorted_entries_1, get_Nbonds):
+            for k2, g2 in itertools.groupby(sorted_entries_1, get_num_bonds):
                 sorted_entries_2 = sorted(list(g2), key=get_charge)
                 entries[k1][k2] = dict()
                 for k3, g3 in itertools.groupby(sorted_entries_2, get_charge):
@@ -757,8 +754,8 @@ class ReactionNetwork(MSONable):
                 for layer2, class2 in class1.items():
                     for rxn in class2:
                         # Reactions identical - link by index
-                        cond_rct = sorted(r.reactant_eids) == sorted(rxn.reactant_eids)
-                        cond_pro = sorted(r.product_eids) == sorted(rxn.product_eids)
+                        cond_rct = sorted(r.reactant_ids) == sorted(rxn.reactant_ids)
+                        cond_pro = sorted(r.product_ids) == sorted(rxn.product_ids)
                         if cond_rct and cond_pro:
                             self.families[this_class][layer1][layer2].add(ii)
 
