@@ -56,7 +56,6 @@ class MoleculeEntry(MSONable):
         attribute=None,
         mol_graph: Optional[MoleculeGraph] = None,
     ):
-
         self.uncorrected_energy = energy
         self.correction = correction
         self.enthalpy = enthalpy

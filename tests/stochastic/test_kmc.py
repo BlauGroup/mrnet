@@ -27,7 +27,9 @@ __email__ = "kamronald@berkeley.edu"
 __copyright__ = "Copyright 2020, The Materials Project"
 __version__ = "0.1"
 
-test_dir = os.path.dirname(__file__)
+test_dir = os.path.join(
+    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
+)
 
 
 class TestKMCReactionPropagatorFxns(PymatgenTest):
@@ -95,8 +97,9 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
                     num_reactants_rev.append(self.initial_state[mol_ind])
                     species_rxn_mapping_list[mol_ind].append(2 * ind + 1)
 
-                self.rate_constants[2 * ind] = reaction.rate_constant()["k_A"]
-                self.rate_constants[2 * ind + 1] = reaction.rate_constant()["k_B"]
+                reaction.set_rate_constant()
+                self.rate_constants[2 * ind] = reaction.k_A
+                self.rate_constants[2 * ind + 1] = reaction.k_B
                 # set up coordination array
                 if len(reaction.reactants) == 1:
                     self.coord_array[2 * ind] = num_reactants_for[0]
@@ -386,9 +389,9 @@ class TestKmcDataAnalyzer(PymatgenTest):
                     self.products[ind, idx] = mol_ind
                     num_reactants_rev.append(self.initial_state[mol_ind])
                     species_rxn_mapping_list[mol_ind].append(2 * ind + 1)
-
-                self.rate_constants[2 * ind] = reaction.rate_constant()["k_A"]
-                self.rate_constants[2 * ind + 1] = reaction.rate_constant()["k_B"]
+                reaction.set_rate_constant()
+                self.rate_constants[2 * ind] = reaction.k_A
+                self.rate_constants[2 * ind + 1] = reaction.k_B
                 # set up coordination array
                 if len(reaction.reactants) == 1:
                     self.coord_array[2 * ind] = num_reactants_for[0]

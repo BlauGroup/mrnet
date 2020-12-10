@@ -17,10 +17,7 @@ from mrnet.core.reactions import (
     Reaction,
     RedoxReaction,
     exponent,
-    graph_rep_1_1,
-    graph_rep_1_2,
-    graph_rep_2_2,
-    graph_rep_3_2,
+    general_graph_rep,
     rexp,
     softplus,
 )
@@ -383,13 +380,7 @@ class ReactionPath(MSONable):
             class_instance = cls(None)
         else:
             class_instance = cls.characterize_path(
-                path,
-                weight,
-                min_cost,
-                graph,
-                old_solved_PRs,
-                PR_byproduct_dict,
-                PR_paths,
+                path, weight, min_cost, graph, old_solved_PRs, PR_byproduct_dict, PR_paths,
             )
             assert len(class_instance.solved_prereqs) == len(class_instance.all_prereqs)
             assert len(class_instance.unsolved_prereqs) == 0
@@ -593,20 +584,20 @@ class ReactionNetwork(MSONable):
         def get_formula(x):
             return x.formula
 
-        def get_Nbonds(x):
+        def get_num_bonds(x):
             return x.num_bonds
 
         def get_charge(x):
             return x.charge
 
         def get_free_energy(x):
-            return x.get_free_energy(temperature)
+            return x.get_free_energy(temperature=temperature)
 
         sorted_entries_0 = sorted(connected_entries, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
-            sorted_entries_1 = sorted(list(g1), key=get_Nbonds)
+            sorted_entries_1 = sorted(list(g1), key=get_num_bonds)
             entries[k1] = dict()
-            for k2, g2 in itertools.groupby(sorted_entries_1, get_Nbonds):
+            for k2, g2 in itertools.groupby(sorted_entries_1, get_num_bonds):
                 sorted_entries_2 = sorted(list(g2), key=get_charge)
                 entries[k1][k2] = dict()
                 for k3, g3 in itertools.groupby(sorted_entries_2, get_charge):
@@ -626,7 +617,7 @@ class ReactionNetwork(MSONable):
                                             temperature
                                         ) < Uentry.get_free_energy(temperature):
                                             unique[ii] = entry
-                                    elif entry.free_energy() is not None:
+                                    elif entry.get_free_energy() is not None:
                                         unique[ii] = entry
                                     elif entry.energy < Uentry.energy:
                                         unique[ii] = entry
@@ -745,20 +736,20 @@ class ReactionNetwork(MSONable):
 
         for ii, r in enumerate(self.reactions):
             r.parameters["ind"] = ii
-            if r.reaction_type()["class"] == "RedoxReaction":
+            if r.__class__.__name__ == "RedoxReaction":
                 redox_c += 1
                 r.electron_free_energy = self.electron_free_energy
-            elif r.reaction_type()["class"] == "IntramolSingleBondChangeReaction":
+            elif r.__class__.__name__ == "IntramolSingleBondChangeReaction":
                 intra_c += 1
-            elif r.reaction_type()["class"] == "IntermolecularReaction":
+            elif r.__class__.__name__ == "IntermolecularReaction":
                 inter_c += 1
-            elif r.reaction_type()["class"] == "CoordinationBondChangeReaction":
+            elif r.__class__.__name__ == "CoordinationBondChangeReaction":
                 coord_c += 1
             self.add_reaction(r.graph_representation())
 
             # TODO: concerted reactions?
 
-            this_class = r.reaction_type()["class"]
+            this_class = r.__class__.__name__
             for layer1, class1 in raw_families[this_class].items():
                 for layer2, class2 in class1.items():
                     for rxn in class2:
@@ -968,7 +959,7 @@ class ReactionNetwork(MSONable):
                 else:
                     print("parse_path something is wrong", path, step)
             else:
-                assert (("," in step), True)
+                assert "," in step
                 nodes = nodes + step.split(",")
         nodes.pop(0)
         if len(nodes) != 0:
@@ -1060,7 +1051,7 @@ class ReactionNetwork(MSONable):
                             else:
                                 print("SOMETHING IS WRONG", step)
                         else:
-                            assert (("," in step), True)
+                            assert "," in step
                             nodes = nodes + step.split(",")
                     nodes.pop(0)
                     if len(nodes) != 0:
@@ -1510,7 +1501,6 @@ class ReactionNetwork(MSONable):
         :return: list of reactions
         """
 
-        flag = True
         print("identify_concerted_rxns_via_intermediates start", time.time())
         mols_to_keep.append(None)
         count_total = 0
@@ -1539,7 +1529,6 @@ class ReactionNetwork(MSONable):
                         rxn1_dG = RN_pr_solved.graph.nodes[in_node]["free_energy"]
                         total_dG = rxn1_dG + RN_pr_solved.graph.nodes[out_node]["free_energy"]
                         if rxn1_dG > 0 and total_dG < 0:
-                            # if flag:
                             if "PR" in out_node and "PR" in in_node:
                                 pass
                             elif "PR" not in out_node and "PR" not in in_node:
@@ -1552,7 +1541,6 @@ class ReactionNetwork(MSONable):
                                         in_mol = in_node.split(",")[0]
                                         out_mol = out_node.split(",")[1]
                                         glist = [int(in_mol), int(out_mol)]
-                                        gnode = in_mol + "," + out_mol
                                         reactant = int(in_mol)
                                         product = int(out_mol)
                                         glist = [reactant, product]

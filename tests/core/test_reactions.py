@@ -154,11 +154,11 @@ class TestRedoxReaction(PymatgenTest):
 
         for r in reactions:
             self.assertEqual(
-                r.reactants_atom_mapping,
+                r.reactant_atom_mapping,
                 [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
             self.assertEqual(
-                r.products_atom_mapping,
+                r.product_atom_mapping,
                 [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
 
@@ -167,35 +167,24 @@ class TestRedoxReaction(PymatgenTest):
 
         reaction = RedoxReaction(self.EC_0_entry, self.EC_1_entry)
         reaction.electron_free_energy = -2.15
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": 6.231346035181195, "free_energy_B": -6.231346035181195},
-        )
+        reaction.set_free_energy()
+        self.assertEqual(reaction.free_energy_A, 6.231346035181195)
+        self.assertEqual(reaction.free_energy_B, -6.231346035181195)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
-
         reaction = RedoxReaction(self.EC_0_entry, self.EC_1_entry)
         reaction.electron_free_energy = -2.15
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": 0.3149076465170424, "energy_B": -0.3149076465170424},
-        )
+        self.assertEqual(reaction.energy_A, 0.3149076465170424)
+        self.assertEqual(reaction.energy_B, -0.3149076465170424)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
 
         reaction = RedoxReaction(self.EC_0_entry, self.EC_1_entry)
-        type_dict = reaction.reaction_type()
-        self.assertEqual(
-            type_dict,
-            {
-                "class": "RedoxReaction",
-                "rxn_type_A": "One electron oxidation",
-                "rxn_type_B": "One electron reduction",
-            },
-        )
+        self.assertEqual(reaction.__class__.__name__, "RedoxReaction")
+        self.assertEqual(reaction.rxn_type_A, "One electron oxidation")
+        self.assertEqual(reaction.rxn_type_B, "One electron reduction")
 
 
 class TestIntramolSingleBondChangeReaction(PymatgenTest):
@@ -331,11 +320,11 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
         self.assertEqual(rxn.product.entry_id, self.LiEC_entry.entry_id)
 
         self.assertEqual(
-            rxn.reactants_atom_mapping,
+            rxn.reactant_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
         self.assertEqual(
-            rxn.products_atom_mapping,
+            rxn.product_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
 
@@ -343,34 +332,24 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_free_energy(self):
 
         reaction = IntramolSingleBondChangeReaction(self.LiEC_entry, self.LiEC_RO_entry)
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": -1.1988634269218892, "free_energy_B": 1.1988634269218892},
-        )
+        reaction.set_free_energy()
+        self.assertEqual(reaction.free_energy_A, -1.1988634269218892)
+        self.assertEqual(reaction.free_energy_B, 1.1988634269218892)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
 
         reaction = IntramolSingleBondChangeReaction(self.LiEC_entry, self.LiEC_RO_entry)
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": -0.03746218086303088, "energy_B": 0.03746218086303088},
-        )
+        self.assertEqual(reaction.energy_A, -0.03746218086303088)
+        self.assertEqual(reaction.energy_B, 0.03746218086303088)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
 
         reaction = IntramolSingleBondChangeReaction(self.LiEC_entry, self.LiEC_RO_entry)
-        type_dict = reaction.reaction_type()
-        self.assertEqual(
-            type_dict,
-            {
-                "class": "IntramolSingleBondChangeReaction",
-                "rxn_type_A": "Intramolecular single bond formation",
-                "rxn_type_B": "Intramolecular single bond breakage",
-            },
-        )
+        self.assertEqual(reaction.__class__.__name__, "IntramolSingleBondChangeReaction")
+        self.assertEqual(reaction.rxn_type_A, "Intramolecular single bond formation")
+        self.assertEqual(reaction.rxn_type_B, "Intramolecular single bond breakage")
 
 
 class TestIntermolecularReaction(PymatgenTest):
@@ -548,11 +527,11 @@ class TestIntermolecularReaction(PymatgenTest):
         self.assertEqual(rxn.product_1.entry_id, self.C1Li1O3_entry.entry_id)
 
         self.assertEqual(
-            rxn.reactants_atom_mapping,
+            rxn.reactant_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
         self.assertEqual(
-            rxn.products_atom_mapping,
+            rxn.product_atom_mapping,
             [{0: 0, 1: 1, 2: 7, 3: 8, 4: 9, 5: 10}, {0: 2, 1: 3, 2: 4, 3: 5, 4: 6}],
         )
 
@@ -560,34 +539,24 @@ class TestIntermolecularReaction(PymatgenTest):
     def test_free_energy(self):
 
         reaction = IntermolecularReaction(self.LiEC_RO_entry, [self.C1Li1O3_entry, self.C2H4_entry])
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": 0.37075842588456, "free_energy_B": -0.37075842588410524},
-        )
+        reaction.set_free_energy()
+        self.assertEqual(reaction.free_energy_A, 0.37075842588456)
+        self.assertEqual(reaction.free_energy_B, -0.37075842588410524)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
 
         reaction = IntermolecularReaction(self.LiEC_RO_entry, [self.C1Li1O3_entry, self.C2H4_entry])
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": 0.035409666514283344, "energy_B": -0.035409666514283344},
-        )
+        self.assertEqual(reaction.energy_A, 0.035409666514283344)
+        self.assertEqual(reaction.energy_B, -0.035409666514283344)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
 
         reaction = IntermolecularReaction(self.LiEC_RO_entry, [self.C1Li1O3_entry, self.C2H4_entry])
-        type_dict = reaction.reaction_type()
-        self.assertEqual(
-            type_dict,
-            {
-                "class": "IntermolecularReaction",
-                "rxn_type_A": "Molecular decomposition breaking one bond A -> B+C",
-                "rxn_type_B": "Molecular formation from one new bond A+B -> C",
-            },
-        )
+        self.assertEqual(reaction.__class__.__name__, "IntermolecularReaction")
+        self.assertEqual(reaction.rxn_type_A, "Molecular decomposition breaking one bond A -> B+C")
+        self.assertEqual(reaction.rxn_type_B, "Molecular formation from one new bond A+B -> C")
 
 
 class TestCoordinationBondChangeReaction(PymatgenTest):
@@ -753,12 +722,12 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         self.assertEqual(rxn.product_1.entry_id, self.Li_entry.entry_id)
 
         self.assertEqual(
-            rxn.reactants_atom_mapping,
+            rxn.reactant_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
 
         self.assertEqual(
-            rxn.products_atom_mapping,
+            rxn.product_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 7, 7: 8, 8: 9, 9: 10}, {0: 6}],
         )
 
@@ -768,11 +737,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reaction = CoordinationBondChangeReaction(
             self.LiEC_entry, [self.EC_minus_entry, self.Li_entry]
         )
-        free_energy_dict = reaction.free_energy()
-        self.assertEqual(
-            free_energy_dict,
-            {"free_energy_A": 1.857340187929367, "free_energy_B": -1.8573401879297649},
-        )
+        reaction.set_free_energy()
+        self.assertEqual(reaction.free_energy_A, 1.857340187929367)
+        self.assertEqual(reaction.free_energy_B, -1.8573401879297649)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
@@ -780,10 +747,8 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reaction = CoordinationBondChangeReaction(
             self.LiEC_entry, [self.EC_minus_entry, self.Li_entry]
         )
-        energy_dict = reaction.energy()
-        self.assertEqual(
-            energy_dict, {"energy_A": 0.08317397598398202, "energy_B": -0.08317397598399001},
-        )
+        self.assertEqual(reaction.energy_A, 0.08317397598398202)
+        self.assertEqual(reaction.energy_B, -0.08317397598399001)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
@@ -791,15 +756,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         reaction = CoordinationBondChangeReaction(
             self.LiEC_entry, [self.EC_minus_entry, self.Li_entry]
         )
-        type_dict = reaction.reaction_type()
-        self.assertEqual(
-            type_dict,
-            {
-                "class": "CoordinationBondChangeReaction",
-                "rxn_type_A": "Coordination bond breaking AM -> A+M",
-                "rxn_type_B": "Coordination bond forming A+M -> AM",
-            },
-        )
+        self.assertEqual(reaction.__class__.__name__, "CoordinationBondChangeReaction")
+        self.assertEqual(reaction.rxn_type_A, "Coordination bond breaking AM -> A+M")
+        self.assertEqual(reaction.rxn_type_B, "Coordination bond forming A+M -> AM")
 
 
 @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")

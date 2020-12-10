@@ -149,11 +149,9 @@ def check_same_mol_graphs(mol_graphs1, mol_graphs2):
     )
     if sorted_formula_1 == sorted_formula_2:
         while mol_graphs1_copy != [] and mol_graphs2_copy != []:
-            (
-                found_one_equivalent_graph,
-                mol_graphs1_copy,
-                mol_graphs2_copy,
-            ) = find_one_same_mol(mol_graphs1_copy, mol_graphs2_copy)
+            (found_one_equivalent_graph, mol_graphs1_copy, mol_graphs2_copy,) = find_one_same_mol(
+                mol_graphs1_copy, mol_graphs2_copy
+            )
             if found_one_equivalent_graph == "False":
                 return is_the_same
         is_the_same = True
@@ -295,7 +293,7 @@ def open_ring_in_one_mol(mol_graph):
                 frag = open_ring(mol_graph, bond, 10000)
                 if not check_in_list(frag, all_possible_fragments):
                     all_possible_fragments.append(frag)
-            except Exception:
+            except MolGraphSplitError:
                 continue
     return all_possible_fragments
 
@@ -586,8 +584,6 @@ def identify_reactions_AB_C_record_one_bond_breakage(
     A = mol_graphs1[0]
     B = mol_graphs1[1]
     C = mol_graphs2[0]
-    num_A = nums1[0]
-    num_B = nums1[1]
     num_C = nums2[0]
 
     if num_C in one_bond_dict.keys():
@@ -1066,9 +1062,8 @@ class FindConcertedReactions:
                  The number correspond to the index of a mol_graph in
                  self.unique_mol_graphs_new.
         """
-        i, name = args[0], args[1]
+        i = args[0]
         valid_reactions = []
-
         reac = self.concerted_rxns_to_determine[i][0]
         prod = self.concerted_rxns_to_determine[i][1]
 
