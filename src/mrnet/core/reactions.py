@@ -1,28 +1,22 @@
-from abc import ABCMeta, abstractmethod
 import copy
 import itertools
-import numpy as np
-from scipy.constants import h, k, R
+from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-from typing import Dict, Tuple, Optional, Union, List
+from typing import Dict, List, Optional, Tuple, Union
 
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
-
+import numpy as np
 from monty.json import MSONable
 from monty.serialization import loadfn
-
 from pymatgen.analysis.graphs import MolGraphSplitError
+from scipy.constants import R, h, k
+
+from mrnet.core.extract_reactions import FindConcertedReactions
 from mrnet.core.mol_entry import MoleculeEntry
+from mrnet.core.rates import ExpandedBEPRateCalculator, ReactionRateCalculator, RedoxRateCalculator
 from mrnet.utils.graphs import extract_bond_environment
 from mrnet.utils.mols import mol_free_energy
-
-from mrnet.core.rates import (
-    ReactionRateCalculator,
-    ExpandedBEPRateCalculator,
-    RedoxRateCalculator,
-)
-
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -102,7 +96,9 @@ class Reaction(MSONable, metaclass=ABCMeta):
         return entry.entry_id in self.reactant_eids or entry.entry_id in self.product_eids
 
     def update_calculator(
-        self, transition_state: Optional[MoleculeEntry] = None, reference: Optional[Dict] = None,
+        self,
+        transition_state: Optional[MoleculeEntry] = None,
+        reference: Optional[Dict] = None,
     ):
         """
         Update the rate calculator with either a transition state (or a new
@@ -347,7 +343,9 @@ class RedoxReaction(Reaction):
         return graph_rep_1_1(self)
 
     def update_calculator(
-        self, transition_state: Optional[MoleculeEntry] = None, reference: Optional[Dict] = None,
+        self,
+        transition_state: Optional[MoleculeEntry] = None,
+        reference: Optional[Dict] = None,
     ):
         """
         Update the rate calculator with either a transition state (or a new
@@ -378,7 +376,7 @@ class RedoxReaction(Reaction):
 
         Args:
             entries: ReactionNetwork(input_entries).entries,
-               entries = {[formula]:{[Nbonds]:{[charge]:MoleculeEntry}}}
+               entries = {[formula]:{[num_bonds]:{[charge]:MoleculeEntry}}}
 
         Returns:
             list of RedoxReaction class objects
@@ -1776,8 +1774,6 @@ class ConcertedReaction(Reaction):
         if read_file:
             all_concerted_reactions = loadfn(name + "_concerted_rxns.json")
         else:
-            from pymatgen.reaction_network.extract_reactions import FindConcertedReactions
-
             FCR = FindConcertedReactions(entries_list, name)
             all_concerted_reactions = FCR.get_final_concerted_reactions(
                 name, num_processors, reaction_type
@@ -2294,7 +2290,7 @@ def generate_atom_mapping_1_1(
 
 
 def generate_atom_mapping_1_2(
-    reactant: MoleculeEntry, products: List[MoleculeEntry], edges: List[Tuple[int, int]],
+    reactant: MoleculeEntry, products: List[MoleculeEntry], edges: List[Tuple[int, int]]
 ) -> Tuple[Atom_Mapping_Dict, List[Atom_Mapping_Dict]]:
     """
     Generate rdkit style atom mapping for reactions with one reactant and two products.
@@ -2369,17 +2365,17 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     specified in keys.
 
     The nested dictionary has keys as given in `keys`, and the innermost value is a
-    list. For example, if `keys = ['formula', 'Nbonds', 'charge']`, then the returned
+    list. For example, if `keys = ['formula', 'num_bonds', 'charge']`, then the returned
     bucket dictionary is something like:
 
-    bucket[formula][Nbonds][charge] = [mol_entry1, mol_entry2, ...]
+    bucket[formula][num_bonds][charge] = [mol_entry1, mol_entry2, ...]
 
     where mol_entry1, mol_entry2, ... have the same formula, number of bonds, and charge.
 
     Args:
         entries: a list of molecule entries to bucket
         keys: each str should be a molecule property.
-            default to ['formula', 'Nbonds', 'charge']
+            default to ['formula', 'num_bonds', 'charge']
 
     Returns:
         Nested dictionary of molecule entry bucketed according to keys.
@@ -2409,7 +2405,7 @@ def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
 
     Args:
         entries: nested dictionaries, e.g.
-            bucket[formula][Nbonds][charge] = [mol_entry1, mol_entry2, ...]
+            bucket[formula][num_bonds][charge] = [mol_entry1, mol_entry2, ...]
 
     Returns:
         a list of molecule entries

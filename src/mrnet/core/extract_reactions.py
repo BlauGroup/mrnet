@@ -1,17 +1,16 @@
-from pymatgen.analysis.local_env import OpenBabelNN
-
-from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
-from pymatgen import Molecule
 import copy
 from itertools import combinations_with_replacement
-from pymatgen.analysis.fragmenter import open_ring
-from monty.serialization import dumpfn
+
 import numpy as np
+from monty.serialization import dumpfn
+from pymatgen import Molecule
+from pymatgen.analysis.fragmenter import open_ring
+from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
+from pymatgen.analysis.local_env import OpenBabelNN
 
 
 def convert_atomic_numbers_to_stoi_dict(atomic_numbers):
     """
-
     :param atomic_numbers: a list of atomic numbers
     :return: {'Li':1, '110':0,'C':3,...} zero padding for non-existing elements
     """
