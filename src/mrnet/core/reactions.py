@@ -3079,3 +3079,273 @@ def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
     unbucket(entries)
 
     return entries_list
+
+
+
+
+class MetalHopReaction(Reaction):
+    """
+    A class to define metal "hopping" bond change as follows:
+        Breaking one coordination bond (AM -> A + M) while simultaneously
+        forming another (B + M -> BM), with overall stoichiometry
+        AM + B <-> BM + A
+        Four entries with:
+            M = Li or Mg
+            comp(AM) = comp(A) + comp(M)
+            comp(BM) + comp(B) + comp(M)
+            charge(AM) = charge(A) + charge(M)
+            charge(BM) = charge(B) + charge(M)
+            removing all edges containing M in AM yields two disconnected
+            subgraphs that are isomorphic to A and M, and likewise for BM
+
+    NOTE: This class assumes that the reactants and products are in the order:
+        reactants: AM, B
+        products: BM, A
+
+    Args:
+        reactant([MoleculeEntry]): list of single molecular entry
+        product([MoleculeEntry]): list of two molecular entries
+        transition_state (MoleculeEntry or None): A MoleculeEntry representing a
+            transition state for the reaction.
+        parameters (dict): Any additional data about this reaction
+    """
+
+    def __init__(self, reactants: MoleculeEntry, products: List[MoleculeEntry],
+                 metal: MoleculeEntry,
+                 transition_state: Optional[MoleculeEntry] = None,
+                 parameters: Optional[Dict] = None,
+                 neutral_hop_barrier: Optional[float] = 0.130,
+                 anion_hop_barrier: Optional[float] = 0.239):
+        """
+        Initializes MetalHopReaction.reactant to be in the form of a
+            [MoleculeEntry], MetalHopReaction.product to be in the form of
+            [MoleculeEntry],
+
+        Args:
+            reactants: list of MoleculeEntry objects of length 2
+            products: list of MoleculeEntry objects of length 2
+            transition_state (MoleculeEntry or None): A MoleculeEntry
+                representing a transition state for the reaction.
+            parameters (dict): Any additional data about this reaction
+            neutral_hop_barrier (float): Energy barrier (in eV) for a metal ion
+                to de-coordinate from a neutral species
+            anion_hop_barrier (float): Energy barrier (in eV) for a metal ion
+                to de-coordinate from an anionic species
+
+        """
+
+        self.metal = metal
+        self.neutral_hop_barrier = neutral_hop_barrier
+        self.anion_hop_barrier = anion_hop_barrier
+
+        super().__init__(reactants, products, transition_state=transition_state,
+                         parameters=parameters)
+
+    def graph_representation(self) -> nx.DiGraph:
+        """
+            A method to convert a CoordinationBondChangeReaction class object
+                into graph representation (nx.Digraph object).
+            CoordinationBondChangeReaction must be of type 1 reactant -> 2 products
+
+            :return nx.Digraph object of a single CoordinationBondChangeReaction object
+        """
+
+        return graph_rep_2_2(self)
+
+    @classmethod
+    def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+        reactions = list()
+        M_entries = dict()
+        pairs = list()
+        for formula in entries:
+            if formula in ["Li1", "Mg1", "Ca1", "Zn1"]:
+                if formula not in M_entries:
+                    M_entries[formula] = dict()
+                for charge in entries[formula][0]:
+                    # Only allow cations - neutral/anionic metals probably won't be re-coordinating
+                    if charge > 0:
+                        assert (len(entries[formula][0][charge]) == 1)
+                        M_entries[formula][charge] = entries[formula][0][charge][0]
+        if M_entries != dict():
+            for formula in entries:
+                if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
+                    for Nbonds in entries[formula]:
+                        if Nbonds > 2:
+                            for charge in entries[formula][Nbonds]:
+                                for entry in entries[formula][Nbonds][charge]:
+                                    for aa, atom in enumerate(entry.molecule):
+                                        if str(atom.specie) in ["Li", "Mg", "Zn", "Ca"]:
+                                            edge_list = list()
+                                            for edge in entry.mol_graph.graph.edges():
+                                                if aa in edge:
+                                                    edge_list.append(edge)
+
+                                            try:
+                                                frags = entry.mol_graph.split_molecule_subgraphs(edge_list,
+                                                                                                 allow_reverse=True)
+                                                M_ind = None
+                                                M_formula = None
+                                                for ii, frag in enumerate(frags):
+                                                    frag_formula = frag.molecule.composition.alphabetical_formula
+                                                    if frag_formula in M_entries:
+                                                        M_ind = ii
+                                                        M_formula = frag_formula
+                                                        break
+                                                if M_ind is not None:
+                                                    for ii, frag in enumerate(frags):
+                                                        if ii != M_ind:
+                                                            nonM_formula = frag.molecule.composition.alphabetical_formula
+                                                            nonM_Nbonds = len(frag.graph.edges())
+                                                            if nonM_formula in entries:
+                                                                if nonM_Nbonds in entries[nonM_formula]:
+                                                                    for nonM_charge in entries[nonM_formula][nonM_Nbonds]:
+                                                                        M_charge = entry.charge - nonM_charge
+                                                                        if M_charge in M_entries[M_formula] and M_charge > 0:
+                                                                            for nonM_entry in \
+                                                                                    entries[nonM_formula][nonM_Nbonds][
+                                                                                        nonM_charge]:
+                                                                                if frag.isomorphic_to(nonM_entry.mol_graph):
+                                                                                    pairs.append((entry, nonM_entry, M_entries[M_formula][M_charge]))
+                                                                                    break
+                                            except MolGraphSplitError:
+                                                pass
+
+        if len(pairs) > 1:
+            for combo in itertools.combinations(pairs, 2):
+                m_one = combo[0][2]
+                m_two = combo[1][2]
+                # Only allow if metal ion is the same on both sides
+                if m_one.charge == m_two.charge and m_one.formula == m_two.formula:
+                    reactions.append(cls([combo[0][0], combo[1][1]],
+                                         [combo[1][0], combo[0][1]],
+                                         m_one))
+
+        return reactions, dict()
+
+    def reaction_type(self) -> Mapping_ReactionType_Dict:
+        """
+           A method to identify type of coordination bond change reaction
+           (bond breaking from one to two or forming from two to one molecules)
+
+           Args:
+              :return dictionary of the form {"class": "CoordinationBondChangeReaction",
+                                              "rxn_type_A": rxn_type_A,
+                                              "rxn_type_B": rxn_type_B}
+              where rnx_type_A is the primary type of the reaction based on the
+              reactant and product of the CoordinationBondChangeReaction
+              object, and the backwards of this reaction would be rnx_type_B
+        """
+
+        rxn_string = "Metal hopping AM + B <-> BM + A"
+
+        reaction_type = {"class": "MetalHopReaction",
+                         "rxn_type_A": rxn_string,
+                         "rxn_type_B": rxn_string}
+        return reaction_type
+
+    def free_energy(self, temperature=298.15) -> Mapping_Energy_Dict:
+        """
+              A method to determine the free energy of the coordination bond
+                change reaction
+
+              Args:
+                 :return dictionary of the form {"free_energy_A": energy_A,
+                                                 "free_energy_B": energy_B}
+                 where free_energy_A is the primary type of the reaction based
+                 on the reactant and product of the CoordinationBondChangeReaction
+                 object, and the backwards of this reaction would be free_energy_B.
+         """
+
+        try:
+            g_product = sum([x.free_energy(temp=temperature) for x in self.products])
+            g_reactant = sum([x.free_energy(temp=temperature) for x in self.reactants])
+            free_energy_A = g_product - g_reactant
+            free_energy_B = g_reactant - g_product
+        except TypeError:
+            free_energy_A = None
+            free_energy_B = None
+
+        return {"free_energy_A": free_energy_A, "free_energy_B": free_energy_B}
+
+    def energy(self) -> Mapping_Energy_Dict:
+        """
+              A method to determine the energy of the coordination bond change
+              reaction
+
+              Args:
+                 :return dictionary of the form {"energy_A": energy_A,
+                                                 "energy_B": energy_B}
+                 where energy_A is the primary type of the reaction based on the
+                 reactant and product of the CoordinationBondChangeReaction
+                 object, and the backwards of this reaction would be energy_B.
+        """
+
+        try:
+            e_product = sum([x.energy for x in self.products])
+            e_reactant = sum([x.energy for x in self.reactants])
+            energy_A = e_product - e_reactant
+            energy_B = e_reactant - e_product
+        except TypeError:
+            energy_A = None
+            energy_B = None
+
+        return {"energy_A": energy_A, "energy_B": energy_B}
+
+    def rate_constant(self, temperature=298.15) -> Mapping_Energy_Dict:
+        rate_constant = dict()
+        g = self.free_energy(temperature=temperature)
+
+        ga = g["free_energy_A"]
+        gb = g["free_energy_B"]
+
+        q_no_m_a = self.reactants[0].charge - self.metal.charge
+        q_no_m_b = self.products[0].charge - self.metal.charge
+
+        if q_no_m_a == 0:
+            barrier_a = self.neutral_hop_barrier
+        else:
+            barrier_a = self.anion_hop_barrier
+
+        if q_no_m_b == 0:
+            barrier_b = self.neutral_hop_barrier
+        else:
+            barrier_b = self.anion_hop_barrier
+
+        if ga < barrier_a:
+            rate_constant["k_A"] = k * temperature / h * np.exp(-1 * barrier_a * 96487 / (R * temperature))
+        else:
+            rate_constant["k_A"] = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+
+        if gb < barrier_b:
+            rate_constant["k_B"] = k * temperature / h * np.exp(-1 * barrier_b * 96487 / (R * temperature))
+        else:
+            rate_constant["k_B"] = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+
+        return rate_constant
+
+    def as_dict(self) -> dict:
+
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             "reactants": [r.as_dict() for r in self.reactants],
+             "products": [p.as_dict() for p in self.products],
+             "metal": self.metal.as_dict(),
+             "transition_state": None,
+             "rate_calculator": None,
+             "parameters": self.parameters,
+             "neutral_hop_barrier": self.neutral_hop_barrier,
+             "anion_hop_barrier": self.anion_hop_barrier}
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        reactants = [MoleculeEntry.from_dict(m) for m in d["reactants"]]
+        products = [MoleculeEntry.from_dict(m) for m in d["products"]]
+        metal = MoleculeEntry.from_dict(d["metal"])
+
+        reaction = cls(reactants, products, metal,
+                       neutral_hop_barrier=d["neutral_hop_barrier"],
+                       anion_hop_barrier=d["anion_hop_barrier"])
+
+        return reaction
