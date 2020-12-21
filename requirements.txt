@@ -1,4 +1,4 @@
-pymatgen==2020.7.14
+pymatgen==2020.12.18
 numpy==1.19.2
 networkx==2.5
 numba==0.50.0
