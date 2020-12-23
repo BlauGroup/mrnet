@@ -3257,8 +3257,8 @@ class MetalHopReaction(Reaction):
          """
 
         try:
-            g_product = sum([x.free_energy(temp=temperature) for x in self.products])
-            g_reactant = sum([x.free_energy(temp=temperature) for x in self.reactants])
+            g_product = sum([x.get_free_energy(temp=temperature) for x in self.products])
+            g_reactant = sum([x.get_free_energy(temp=temperature) for x in self.reactants])
             free_energy_A = g_product - g_reactant
             free_energy_B = g_reactant - g_product
         except TypeError:
