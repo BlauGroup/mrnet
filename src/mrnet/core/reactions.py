@@ -1903,6 +1903,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
 
     for node_ind in range(len(rct_node_names)):
         # Add a reactant reaction node
+        # TODO: Make this just one node
         graph.add_node(
             rct_node_names[node_ind],
             rxn_type=rxn_type_A,
@@ -1912,6 +1913,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             entry_ids=rct_node_ids[node_ind],
         )
         # Add an edge from the reactant node to its "reactant" (i.e. Molecule Node)
+        # TODO: Destination should be the sole node created before.
         graph.add_edge(
             int(reaction.reactant_indices[node_ind]),
             rct_node_names[node_ind],
@@ -1934,6 +1936,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
 
     for node_ind in range(len(pro_node_names)):
         # Add a product node (reaction node)
+        # TODO: Just one node
         graph.add_node(
             pro_node_names[node_ind],
             rxn_type=rxn_type_B,

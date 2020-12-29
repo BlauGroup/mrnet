@@ -142,7 +142,7 @@ class ReactionPath(MSONable):
             within a graph built using ReactionNetwork.build()
         :param weight: string (either "softplus" or "exponent")
         :param min_cost: dict with minimum cost from path start to a node, of
-            from {node: float}
+            form {node: float}
         :param graph: nx.Digraph
         :param old_solved_PRs: previously solved PRs from the iterations before
             the current iteration
@@ -157,19 +157,21 @@ class ReactionPath(MSONable):
             class_instance = cls(path)
             pool = []
             pool.append(path[0])
-            for ii, step in enumerate(path):
-                if ii != len(path) - 1:
-                    class_instance.cost += graph[step][path[ii + 1]][weight]
-                    if ii % 2 == 1:
-                        rxn = step.split(",")
-                        if "+PR_" in rxn[0]:
+            for ii, step in enumerate(path):  # iterate over all steps in the path
+                if ii != len(path) - 1:  # make sure we aren't at last step
+                    class_instance.cost += graph[step][path[ii + 1]][
+                        weight
+                    ]  # add softplus/rexp/exp weight of prod
+                    if ii % 2 == 1:  # for every other step (reactant)
+                        rxn = step.split(",")  # split into reactants and products
+                        if "+PR_" in rxn[0]:  # check whether reactant has a PR
                             a = int(rxn[0].split("+PR_")[0])
                             PR_b = int(rxn[0].split("+PR_")[1])
                             concerted = False
-                            PR_b2 = None
+                            PR_b2 = None  # assume no third reactant
                             if rxn[0].count("PR_") == 2:
-                                PR_b2 = int(rxn[0].split("+PR_")[2])
-                            if "+" in rxn[1]:
+                                PR_b2 = int(rxn[0].split("+PR_")[2])  # assign third reactant
+                            if "+" in rxn[1]:  # Check if multiple products
                                 concerted = True
                                 c = int(rxn[1].split("+")[0])
                                 d = int(rxn[1].split("+")[1])
@@ -177,26 +179,29 @@ class ReactionPath(MSONable):
                                 c = int(rxn[1])
                             pool_modified = copy.deepcopy(pool)
                             pool_modified.remove(a)
-                            if PR_b2 is None:
-                                if PR_b in pool_modified:
-                                    if PR_b in list(min_cost.keys()):
+                            if PR_b2 is None:  # only 1 PR
+                                if PR_b in pool_modified:  # Have PR from previous iteration
+                                    if PR_b in list(min_cost.keys()):  # actually used in path
                                         class_instance.cost = class_instance.cost - min_cost[PR_b]
                                     else:
                                         pass
-                                    pool.remove(a)
+                                    pool.remove(a)  # processed A, PR of B
                                     pool.remove(PR_b)
                                     pool.append(c)
                                     if concerted:
-                                        pool.append(d)
-                                elif PR_b not in pool_modified:
-                                    if PR_b in old_solved_PRs:
+                                        pool.append(d)  # need to deal with C + D
+                                elif PR_b not in pool_modified:  # haven't calculated it here yet
+                                    if PR_b in old_solved_PRs:  # check if in old iter
                                         class_instance.solved_prereqs.append(PR_b)
                                         class_instance.all_prereqs.append(PR_b)
                                         PR_b_byproducts = PR_byproduct_dict[PR_b]["byproducts"]
                                         start = int(PR_byproduct_dict[PR_b]["start"])
                                         if a in PR_b_byproducts:
-                                            # print("path replacement happenning")
-                                            new_path_piece1 = actualPRs[PR_b][start].path
+                                            # print("path replacement happening")
+                                            new_path_piece1 = actualPRs[PR_b][
+                                                start
+                                            ].path  # need to get to start point
+                                            # current step:
                                             new_path_piece2 = [
                                                 str(PR_b) + "+" + "PR_" + str(a) + "," + str(c)
                                             ]
@@ -211,6 +216,7 @@ class ReactionPath(MSONable):
                                                     + "+"
                                                     + str(d)
                                                 ]
+                                            # rest of the path (to be solved)
                                             new_path_piece3 = path[ii + 1 : :]
                                             new_path = (
                                                 new_path_piece1 + new_path_piece2 + new_path_piece3
@@ -325,7 +331,7 @@ class ReactionPath(MSONable):
                             b = int(rxn[1])
                             pool.remove(a)
                             pool.append(b)
-            pool.remove(path[-1])
+            pool.remove(path[-1])  # last element in path isn't a "byproduct"
             class_instance.byproducts = pool
 
             class_instance.path_dict = {
@@ -819,7 +825,7 @@ class ReactionNetwork(MSONable):
     ):  # -> Tuple[Union[Dict[Union[int,
         # Any], dict], Any], Any]:
         """
-            A method to solve the all the prerequisites found in
+            A method to solve all the prerequisites found in
             ReactionNetwork.graph. By solving all PRs, it gives information on
             whether 1. if a path exist from any of the starts to all other
             molecule nodes, 2. if so what is the min cost to reach that node
@@ -849,19 +855,18 @@ class ReactionNetwork(MSONable):
         self.PR_byproducts = {}
 
         if len(self.graph.nodes) == 0:
-            self.build()
+            self.build()  # actually construct the graph
         if self.PR_record is None:
-            self.PR_record = self.build_PR_record()
+            self.PR_record = self.build_PR_record()  # get a dict of desired PRs
         if self.Reactant_record is None:
-            self.Reactant_record = self.build_reactant_record()
+            self.Reactant_record = self.build_reactant_record()  # get a dict of desired reactants
         orig_graph = copy.deepcopy(self.graph)
 
-        for start in starts:
+        for start in starts:  # all the reactant (non-reaction) nodes
             PRs[start] = {}
-
         for PR in PRs:
             for start in starts:
-                if start == PR:
+                if start == PR:  # need to compute the PR of this reactant
                     PRs[PR][start] = ReactionPath.characterize_path(
                         [start], weight, self.min_cost, self.graph
                     )
