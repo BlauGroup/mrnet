@@ -1888,7 +1888,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     # e.g. A+PR_B,C
     rct_node_names = [",".join([name, base_pro_name]) for name in rct_names_PR]
     pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
-
     # This will give the "PR" part of the id for the products and reactants
     pro_ids_PR = [
         "+PR_".join([str(reaction.product_ids[i]) for i in el]) for el in pro_node_indices
@@ -1911,9 +1910,11 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             energy=energy_A,
             free_energy=free_energy_A,
             entry_ids=rct_node_ids[node_ind],
+            species=[str(reaction.reactant_indices[i]) for i in rct_sorted_indices],
         )
         # Add an edge from the reactant node to its "reactant" (i.e. Molecule Node)
         # TODO: Destination should be the sole node created before.
+        # TODO: attribute that lists PR's included on edge
         graph.add_edge(
             int(reaction.reactant_indices[node_ind]),
             rct_node_names[node_ind],
@@ -1944,6 +1945,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             energy=energy_B,
             free_energy=free_energy_B,
             entry_ids=pro_node_ids[node_ind],
+            species=[str(reaction.product_indices[i]) for i in pro_sorted_indices],
         )
 
         # Add an edge from the product node to its corresponding "product" Molecule Node

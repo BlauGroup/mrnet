@@ -159,17 +159,24 @@ class ReactionPath(MSONable):
             pool.append(path[0])
             for ii, step in enumerate(path):  # iterate over all steps in the path
                 if ii != len(path) - 1:  # make sure we aren't at last step
+                    print(step, "->", path[ii + 1])
                     class_instance.cost += graph[step][path[ii + 1]][
                         weight
-                    ]  # add softplus/rexp/exp weight of prod
-                    if ii % 2 == 1:  # for every other step (reactant)
+                    ]  # add softplus/rexp/exp weight of reactant -> reaction node: Graph[start][edge][attr] (edge access)
+                    if (
+                        ii % 2 == 1
+                    ):  # for every other element (reaction nodes) [not specie (reactant/prod)]
                         rxn = step.split(",")  # split into reactants and products
-                        if "+PR_" in rxn[0]:  # check whether reactant has a PR
-                            a = int(rxn[0].split("+PR_")[0])
-                            PR_b = int(rxn[0].split("+PR_")[1])
+                        print(graph.nodes()[step])
+                        if (
+                            "+" in rxn[0]  # TODO: STR
+                        ):  # check whether reactant has a PR (really just means > 1 rct)
+                            a = int(rxn[0].split("+PR_")[0])  # TODO: STR
+                            # convert to list of PR elements?
+                            PR_b = int(rxn[0].split("+PR_")[1])  # TODO: STR
                             concerted = False
                             PR_b2 = None  # assume no third reactant
-                            if rxn[0].count("PR_") == 2:
+                            if rxn[0].count("PR_") == 2:  # TODO: STR
                                 PR_b2 = int(rxn[0].split("+PR_")[2])  # assign third reactant
                             if "+" in rxn[1]:  # Check if multiple products
                                 concerted = True
@@ -203,10 +210,15 @@ class ReactionPath(MSONable):
                                             ].path  # need to get to start point
                                             # current step:
                                             new_path_piece2 = [
-                                                str(PR_b) + "+" + "PR_" + str(a) + "," + str(c)
+                                                str(PR_b)
+                                                + "+"
+                                                + "PR_"
+                                                + str(a)
+                                                + ","
+                                                + str(c)  # TODO: str
                                             ]
                                             if concerted:
-                                                new_path_piece2 = [
+                                                new_path_piece2 = [  # TODO: str
                                                     str(PR_b)
                                                     + "+"
                                                     + "PR_"
@@ -223,7 +235,7 @@ class ReactionPath(MSONable):
                                             )
                                             # print(path, new_path_piece1, new_path_piece2,new_path_piece3 )
                                             assert c == path[ii + 1] or d == path[ii + 1]
-                                            if new_path_piece2[0] not in graph.nodes:
+                                            if new_path_piece2[0] not in graph.nodes:  # TODO: str
                                                 pool.remove(a)
                                                 pool = pool + PR_b_byproducts
                                                 pool.append(c)
@@ -253,7 +265,7 @@ class ReactionPath(MSONable):
                                         if concerted:
                                             pool.append(d)
                             else:  # nodes with 2 PRs
-                                if PR_b in pool_modified and PR_b2 in pool_modified:
+                                if PR_b in pool_modified and PR_b2 in pool_modified:  # TODO: str
                                     # print("!!")
                                     class_instance.cost = class_instance.cost - min_cost[PR_b]
                                     class_instance.cost = class_instance.cost - min_cost[PR_b2]
@@ -480,7 +492,6 @@ class ReactionPath(MSONable):
             "hardest_step_deltaG": class_instance.hardest_step_deltaG,
             "full_path": class_instance.full_path,
         }
-
         return class_instance
 
 
