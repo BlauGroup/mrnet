@@ -1,7 +1,8 @@
 from abc import abstractmethod
+from monty.json import MSONable
 from mrnet.core.reaction import Reaction
 
-class ReactionRateCalculator:
+class ReactionRateCalculator(MSONable):
   " This defined an abstract interface to a reaction rate calculator which takes a reaction and computes the rate constant in ** "
   
   @abstractmethod
