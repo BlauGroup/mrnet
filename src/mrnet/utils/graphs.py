@@ -13,7 +13,7 @@ def extract_bond_environment(mg: MoleculeGraph, bonds: List[Tuple[int, int]], or
     :return: set of integers representing the relevant atom indices
     """
 
-    indices = set()
+    indices = set() # type: Set[int]
     if order < 0:
         return indices
     elif order == 0:
