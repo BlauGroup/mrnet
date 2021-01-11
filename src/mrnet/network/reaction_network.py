@@ -391,7 +391,7 @@ class ReactionPath(MSONable):
                 new_PRs = []
                 for PR in PRs_to_join:
                     PR_path = None
-                    PR_min_cost = float("inf")  # 1000000000000000.0
+                    PR_min_cost = float("inf")
                     for start in PR_paths[PR]:
                         if PR_paths[PR][start].path is not None:
                             if PR_paths[PR][start].cost < PR_min_cost:
@@ -572,7 +572,6 @@ class ReactionNetwork(MSONable):
 
         print(len(input_entries), "input entries")
 
-
         # Filter out unconnected entries, aka those that contain distinctly
         # separate molecules which are not connected via a bond
         connected_entries = list()
@@ -673,6 +672,8 @@ class ReactionNetwork(MSONable):
     def softplus(free_energy: float) -> float:
         """
         Method to determine edge weight using softplus cost function
+        NOTE: This cost function is unphysical and should only be used when
+        neither rexp nor exponent allow prerequisite costs to be solved.
         """
         return softplus(free_energy)
 
@@ -709,6 +710,8 @@ class ReactionNetwork(MSONable):
         """
 
         print("build() start", time.time())
+
+        # Add molecule nodes
         for entry in self.entries_list:
             self.graph.add_node(entry.parameters["ind"], bipartite=0)
 
@@ -717,6 +720,7 @@ class ReactionNetwork(MSONable):
         all_reactions = list()
         raw_families = dict()
 
+        # Generate reactions
         for r in reaction_types:
             if r.__name__ == "ConcertedReaction":
                 reactions, families = r.generate(self.entries_list)
@@ -729,7 +733,6 @@ class ReactionNetwork(MSONable):
 
         all_reactions = [i for i in all_reactions if i]
         self.reactions = list(itertools.chain.from_iterable(all_reactions))
-        self.graph.add_nodes_from(range(len(self.entries_list)), bipartite=0)
 
         redox_c = 0
         inter_c = 0
@@ -826,16 +829,15 @@ class ReactionNetwork(MSONable):
 
     def solve_prerequisites(
         self, starts: List[int], weight: str, max_iter=25
-    ):  # -> Tuple[Union[Dict[Union[int,
-        # Any], dict], Any], Any]:
+    ):  # -> Tuple[Union[Dict[Union[int, Any], dict], Any], Any]:
         """
-            A method to solve the all the prerequisites found in
+            A method to solve all of the prerequisites found in
             ReactionNetwork.graph. By solving all PRs, it gives information on
-            whether 1. if a path exist from any of the starts to all other
-            molecule nodes, 2. if so what is the min cost to reach that node
-            from any of the start, 3. if there is no path from any of the starts
-            to a any of the molecule node, 4. for molecule nodes where the path
-            exist, characterize the in the form of ReactionPath
+            1. whether a path exists from any of the starts to each other
+            molecule node, 2. if so, what is the min cost to reach that node
+            from any of the starts, 3. if there is no path from any of the starts
+            to a given molecule node, 4. for molecule nodes where the path
+            exists, characterize it in the form of ReactionPath
         :param starts: List(molecular nodes), list of molecular nodes of type
             int found in the ReactionNetwork.graph
         :param weight: "softplus" or "exponent", type of cost function to use
@@ -894,7 +896,7 @@ class ReactionNetwork(MSONable):
             cost_from_start = {}
             for PR in PRs:
                 cost_from_start[PR] = {}
-                min_cost[PR] = float("inf")  # 10000000000000000.0
+                min_cost[PR] = float("inf")
                 self.PR_byproducts[PR] = {}
                 for start in PRs[PR]:
                     if PRs[PR][start] == {}:
@@ -1135,7 +1137,7 @@ class ReactionNetwork(MSONable):
                         cost_from_start[node][start] = "no_path"
                     elif dist_and_path[start][node]["cost"] == float(
                         "inf"
-                    ):  # >= 10000000000000000.0:
+                    ):
                         PRs[node][start] = ReactionPath(None)
                     else:
                         path_class = ReactionPath.characterize_path(
@@ -1183,9 +1185,9 @@ class ReactionNetwork(MSONable):
                 if len(PRs[PR].keys()) == self.num_starts:
                     new_solved_PRs.append(PR)
                 else:
-                    best_start_so_far = [None, float("inf")]  # 10000000000000000.0]
+                    best_start_so_far = [None, float("inf")]
                     for start in PRs[PR]:
-                        if PRs[PR][start] is not None:  # ALWAYS TRUE shoudl be != {}
+                        if PRs[PR][start] is not None:  # ALWAYS TRUE should be != {}
                             if PRs[PR][start].cost < best_start_so_far[1]:
                                 best_start_so_far[0] = start
                                 best_start_so_far[1] = PRs[PR][start].cost
@@ -1252,7 +1254,7 @@ class ReactionNetwork(MSONable):
             path_found = False
             if PRs[PR] != {}:
                 for start in PRs[PR]:
-                    if PRs[PR][start].cost == float("inf"):  # 10000000000000000.0:
+                    if PRs[PR][start].cost == float("inf"):
                         PRs[PR][start] = ReactionPath(None)
                     if PRs[PR][start].path is not None:
                         path_found = True
@@ -1286,7 +1288,8 @@ class ReactionNetwork(MSONable):
 
     def remove_node(self, node_ind):
         """
-        Remove a species from self.graph. Also remove all the reaction nodes with that species. Used for removing Li0.
+        Remove a species from self.graph. Also remove all the reaction nodes with that species.
+        Used for e.g. removing Li0.
         :param: list of node numbers to remove
         """
         for n in node_ind:
@@ -1363,7 +1366,7 @@ class ReactionNetwork(MSONable):
 
     def find_paths(self, starts, target, weight, num_paths=10, ignorenode=[]):  # -> ??
         """
-            A method to find the shorted parth from given starts to a target
+            A method to find the shorted path from given starts to a target
 
         :param starts: starts: List(molecular nodes), list of molecular nodes
             of type int found in the ReactionNetwork.graph
