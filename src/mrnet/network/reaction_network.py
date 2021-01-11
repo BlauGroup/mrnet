@@ -572,6 +572,9 @@ class ReactionNetwork(MSONable):
 
         print(len(input_entries), "input entries")
 
+
+        # Filter out unconnected entries, aka those that contain distinctly
+        # separate molecules which are not connected via a bond
         connected_entries = list()
         for entry in input_entries:
             if len(entry.molecule) > 1:
@@ -593,19 +596,24 @@ class ReactionNetwork(MSONable):
         def get_free_energy(x):
             return x.get_free_energy(temperature=temperature)
 
+        # Sort by formula
         sorted_entries_0 = sorted(connected_entries, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
             sorted_entries_1 = sorted(list(g1), key=get_num_bonds)
             entries[k1] = dict()
+            # Sort by number of bonds
             for k2, g2 in itertools.groupby(sorted_entries_1, get_num_bonds):
                 sorted_entries_2 = sorted(list(g2), key=get_charge)
                 entries[k1][k2] = dict()
+                # Sort by charge
                 for k3, g3 in itertools.groupby(sorted_entries_2, get_charge):
                     sorted_entries_3 = sorted(list(g3), key=get_free_energy)
                     if len(sorted_entries_3) > 1:
                         unique = list()
                         for entry in sorted_entries_3:
                             isomorphic_found = False
+                            # Sort by graph isomorphism, taking the isomorphic
+                            # entry with the lowest free energy
                             for ii, Uentry in enumerate(unique):
                                 if entry.mol_graph.isomorphic_to(Uentry.mol_graph):
                                     isomorphic_found = True
@@ -631,6 +639,8 @@ class ReactionNetwork(MSONable):
                         entries_list.append(entry)
 
         print(len(entries_list), "unique entries")
+
+        # Add entry indices
         for ii, entry in enumerate(entries_list):
             if "ind" in entry.parameters.keys():
                 pass
