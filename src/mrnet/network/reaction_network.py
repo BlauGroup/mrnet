@@ -129,7 +129,7 @@ class ReactionPath(MSONable):
         cls,
         path: List[str],
         weight: str,
-        min_cost: Dict[str, float],
+        min_cost: Dict[int, float],
         graph: nx.DiGraph,
         old_solved_PRs=[],
         PR_byproduct_dict={},
@@ -155,8 +155,8 @@ class ReactionPath(MSONable):
             class_instance = cls(None)
         else:
             class_instance = cls(path)
-            pool = []
-            pool.append(path[0])
+            pool = list() #  type: List[int]
+            pool.append(int(path[0]))
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
