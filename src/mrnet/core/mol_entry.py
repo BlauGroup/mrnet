@@ -3,7 +3,7 @@
 # Distributed under the terms of the MIT License.
 
 import copy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -156,7 +156,7 @@ class MoleculeEntry(MSONable):
         return [str(s) for s in self.molecule.species]
 
     @property
-    def bonds(self) -> List[Tuple[Union[int, str], Union[int, str]]]:
+    def bonds(self) -> List[Tuple[Any, Any]]:
         return [tuple(sorted(e)) for e in self.graph.edges()]
 
     @property

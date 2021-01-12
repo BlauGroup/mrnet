@@ -1242,7 +1242,7 @@ class FindConcertedReactions:
         elif reaction_type == "break1_form1":
             func = self.find_concerted_break1_form1
             print("Reaction type: break1 form1")
-        from pathos.multiprocessing import ProcessingPool as Pool
+        from pathos.multiprocessing import ProcessingPool as Pool  # type: ignore
 
         nums = list(np.arange(len(self.concerted_rxns_to_determine)))
         args = [(i) for i in nums]
