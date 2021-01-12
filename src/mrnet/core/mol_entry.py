@@ -134,7 +134,10 @@ class MoleculeEntry(MSONable):
 
     @property
     def graph(self) -> nx.MultiDiGraph:
-        return self.mol_graph.graph
+        if not self.mol_graph:
+            return None
+        else:
+            return self.mol_graph.graph
 
     @property
     def energy(self) -> float:
