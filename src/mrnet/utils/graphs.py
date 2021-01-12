@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Set
 
 from pymatgen.analysis.graphs import MoleculeGraph
 
