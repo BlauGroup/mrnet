@@ -155,7 +155,7 @@ class ReactionPath(MSONable):
             class_instance = cls(None)
         else:
             class_instance = cls(path)
-            pool = list() #  type: List[int]
+            pool = list()  # type: List[int]
             pool.append(int(path[0]))
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
