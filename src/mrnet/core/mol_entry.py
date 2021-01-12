@@ -3,7 +3,7 @@
 # Distributed under the terms of the MIT License.
 
 import copy
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import networkx as nx
 import numpy as np
