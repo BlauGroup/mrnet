@@ -145,15 +145,15 @@ class MoleculeEntry(MSONable):
 
     @property
     def formula(self) -> str:
-        return self.mol_graph.molecule.composition.alphabetical_formula
+        return self.molecule.composition.alphabetical_formula
 
     @property
     def charge(self) -> float:
-        return self.mol_graph.molecule.charge
+        return self.molecule.charge
 
     @property
     def species(self) -> List[str]:
-        return [str(s) for s in self.mol_graph.molecule.species]
+        return [str(s) for s in self.molecule.species]
 
     @property
     def bonds(self) -> List[Tuple[int, int]]:
@@ -161,7 +161,7 @@ class MoleculeEntry(MSONable):
 
     @property
     def num_atoms(self) -> int:
-        return len(self.mol_graph.molecule)
+        return len(self.molecule)
 
     @property
     def num_bonds(self) -> int:
@@ -169,9 +169,9 @@ class MoleculeEntry(MSONable):
 
     @property
     def coords(self) -> np.ndarray:
-        return self.mol_graph.molecule.cart_coords
+        return self.molecule.cart_coords
 
-    def get_free_energy(self, temperature: float = 298.15) -> float:
+    def get_free_energy(self, temperature: float = 298.15) -> Optional[float]:
         """
         Get the free energy at the give temperature.
         """
@@ -184,7 +184,7 @@ class MoleculeEntry(MSONable):
         else:
             return None
 
-    def get_fragments(self) -> Dict[Tuple[int, int], List[MoleculeGraph]]:
+    def get_fragments(self) -> Optional[Dict[Tuple[int, int], List[MoleculeGraph]]]:
         """
         Get the fragments of the molecule by breaking all its bonds.
 
@@ -198,21 +198,24 @@ class MoleculeEntry(MSONable):
         """
 
         fragments = {}
-        for edge in self.bonds:
-            try:
-                frags = self.mol_graph.split_molecule_subgraphs(
-                    [edge], allow_reverse=True, alterations=None
-                )
-                fragments[edge] = frags
+        if self.mol_graph:
+            for edge in self.bonds:
+                try:
+                    frags = self.mol_graph.split_molecule_subgraphs(
+                        [edge], allow_reverse=True, alterations=None
+                    )
+                    fragments[edge] = frags
 
-            except MolGraphSplitError:
-                # cannot split (ring-opening editing)
-                frag = copy.deepcopy(self.mol_graph)
-                idx1, idx2 = edge
-                frag.break_edge(idx1, idx2, allow_reverse=True)
-                fragments[edge] = [frag]
+                except MolGraphSplitError:
+                    # cannot split (ring-opening editing)
+                    frag = copy.deepcopy(self.mol_graph)
+                    idx1, idx2 = edge
+                    frag.break_edge(idx1, idx2, allow_reverse=True)
+                    fragments[edge] = [frag]
 
-        return fragments
+            return fragments
+        else:
+            return None
 
     def get_isomorphic_bonds(
         self, fragments: Optional[Dict[Tuple[int, int], List[MoleculeGraph]]] = None
