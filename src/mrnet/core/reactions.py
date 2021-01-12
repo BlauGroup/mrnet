@@ -382,8 +382,8 @@ class RedoxReaction(Reaction):
         Returns:
             list of RedoxReaction class objects
         """
-        reactions = list()
-        families = dict()
+        reactions = list()  # type: List[Reaction]
+        families = dict()  # type: Mapping_Family_Dict
         for formula in entries:
             families[formula] = dict()
             for Nbonds in entries[formula]:
@@ -650,9 +650,9 @@ class IntramolSingleBondChangeReaction(Reaction):
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
-        reactions = list()
-        families = dict()
-        templates = list()
+        reactions = list()  # type: List[Reaction]
+        families = dict()  # type: Mapping_Family_Dict
+        templates = list()  # type: List[nx.Graph]
         for formula in entries:
             Nbonds_list = sorted(entries[formula].keys())
             if len(Nbonds_list) <= 1:
@@ -935,9 +935,9 @@ class IntermolecularReaction(Reaction):
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
-        reactions = list()
-        families = dict()
-        templates = list()
+        reactions = list()  # type: List[Reaction]
+        families = dict()  # type: Mapping_Family_Dict
+        templates = list()  # type: List[nx.Graph]
 
         for formula in entries:
             for Nbonds in entries[formula]:
@@ -1260,9 +1260,9 @@ class CoordinationBondChangeReaction(Reaction):
                     assert len(entries[formula][0][charge]) == 1
                     M_entries[formula][charge] = entries[formula][0][charge][0]
 
-        reactions = list()
-        families = dict()
-        templates = list()
+        reactions = list()  # type: List[Reaction]
+        families = dict()  # type: Mapping_Family_Dict
+        templates = list()  # type: List[nx.Graph]
 
         if not M_entries:
             return reactions, families
