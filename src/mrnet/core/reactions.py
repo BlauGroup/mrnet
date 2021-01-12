@@ -211,7 +211,9 @@ class Reaction(MSONable, metaclass=ABCMeta):
         reaction.rate_calculator = rate_calculator
         return reaction
 
+
 Mapping_Family_Dict = Dict[str, Dict[int, List[Reaction]]]
+
 
 class RedoxReaction(Reaction):
     """
