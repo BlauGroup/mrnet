@@ -26,7 +26,6 @@ __status__ = "Alpha"
 
 MappingDict = Dict[str, Dict[int, Dict[int, List[MoleculeEntry]]]]
 Mapping_Record_Dict = Dict[str, List[str]]
-Mapping_Family_Dict = Dict[str, Dict[int, List[Reaction]]]
 Atom_Mapping_Dict = Dict[int, int]
 
 
@@ -212,6 +211,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
         reaction.rate_calculator = rate_calculator
         return reaction
 
+Mapping_Family_Dict = Dict[str, Dict[int, List[Reaction]]]
 
 class RedoxReaction(Reaction):
     """
@@ -1646,7 +1646,7 @@ class ConcertedReaction(Reaction):
     @classmethod
     def generate(
         cls,
-        entries_list: List[MoleculeEntry],
+        entries: MappingDict,
         name="nothing",
         read_file=False,
         num_processors=16,
@@ -1658,7 +1658,7 @@ class ConcertedReaction(Reaction):
         A method to generate all the possible concerted reactions from given
         entries_list.
         Args:
-           :param entries_list, entries_list = [MoleculeEntry]
+           :param entries(MappingDict)
            :param name(str): The name to put in FindConcertedReactions class. For
                  reading in the files generated from that class.
            :param read_file(bool): whether to read in the file generated from
@@ -1676,6 +1676,7 @@ class ConcertedReaction(Reaction):
                  allow n-electron redox reactions.
            :return list of IntermolecularReaction class objects
         """
+        entries_list = unbucket_mol_entries(entries)
         if read_file:
             all_concerted_reactions = loadfn(name + "_concerted_rxns.json")
         else:
