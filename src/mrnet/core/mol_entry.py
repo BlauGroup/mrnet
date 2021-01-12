@@ -156,11 +156,8 @@ class MoleculeEntry(MSONable):
         return [str(s) for s in self.molecule.species]
 
     @property
-    def bonds(self) -> List[Tuple[int, int]]:
-        if self.graph:
-            return [tuple(sorted(e)) for e in self.graph.edges()]
-        else:
-            return None
+    def bonds(self) -> List[Tuple[Union[int,str], Union[int,str]]]:
+        return [tuple(sorted(e)) for e in self.graph.edges()]
 
     @property
     def num_atoms(self) -> int:
