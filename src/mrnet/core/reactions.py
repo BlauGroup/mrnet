@@ -2191,7 +2191,7 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     keys = ["formula", "num_bonds", "charge"] if keys is None else keys
 
     num_keys = len(keys)
-    buckets = {}
+    buckets = {}  # type: MappingDict
     for m in entries:
         b = buckets
         for i, j in enumerate(keys):
@@ -2205,7 +2205,7 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     return buckets
 
 
-def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
+def unbucket_mol_entries(entries: MappingDict) -> List[MoleculeEntry]:
     """
     Unbucket molecule entries stored in a nested dictionary to a list.
 
@@ -2230,7 +2230,7 @@ def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
                     f"Cannot unbucket molecule entries. Unsupported data type `{type(v)}`"
                 )
 
-    entries_list = []
+    entries_list = []  # type: List[MoleculeEntry]
     unbucket(entries)
 
     return entries_list
