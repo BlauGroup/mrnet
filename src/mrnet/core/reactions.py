@@ -365,8 +365,10 @@ class RedoxReaction(Reaction):
 
         if reference is None:
             pass
-        else:
+        elif self.rate_calculator:
             self.rate_calculator.update_calc(reference)
+        else:
+            pass
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
