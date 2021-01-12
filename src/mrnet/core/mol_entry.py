@@ -156,7 +156,7 @@ class MoleculeEntry(MSONable):
         return [str(s) for s in self.molecule.species]
 
     @property
-    def bonds(self) -> List[Tuple[Any, Any]]:
+    def bonds(self) -> Optional[List[Tuple[Any, Any]]]:
         if not self.mol_graph:
             return None
         else:
@@ -167,7 +167,7 @@ class MoleculeEntry(MSONable):
         return len(self.molecule)
 
     @property
-    def num_bonds(self) -> int:
+    def num_bonds(self) -> Optional[int]:
         if not self.mol_graph:
             return None
         else:
