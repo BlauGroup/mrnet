@@ -1646,7 +1646,7 @@ class ConcertedReaction(Reaction):
     @classmethod
     def generate(
         cls,
-        entries_list: [MoleculeEntry],
+        entries_list: List[MoleculeEntry],
         name="nothing",
         read_file=False,
         num_processors=16,

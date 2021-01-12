@@ -65,7 +65,7 @@ class MoleculeEntry(MSONable):
         self.attribute = attribute
         self.mol_graph = mol_graph
 
-        if self.mol_graph is None:
+        if not self.mol_graph:
             mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
             self.mol_graph = metal_edge_extender(mol_graph)
 
@@ -168,7 +168,7 @@ class MoleculeEntry(MSONable):
 
     @property
     def num_bonds(self) -> Optional[int]:
-        if not self.bonds:
+        if not self.mol_graph:
             return None
         else:
             return len(self.bonds)
