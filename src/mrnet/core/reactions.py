@@ -1308,7 +1308,9 @@ class CoordinationBondChangeReaction(Reaction):
 
         bond_pairs = itertools.combinations(nosplit_M_bonds, 2)
 
-        for bond_pair in bond_pairs:
+        for bond_pair_entry in bond_pairs:
+            bond_pair = [(int(bond_pair_entry[0][0]), int(bond_pair_entry[0][1])),
+                         (int(bond_pair_entry[1][0]), int(bond_pair_entry[1][1]))]
             try:
                 frags = entry.mol_graph.split_molecule_subgraphs(bond_pair, allow_reverse=True)
                 M_ind = None
