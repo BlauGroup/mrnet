@@ -3,7 +3,6 @@ from itertools import combinations_with_replacement
 
 import numpy as np
 from monty.serialization import dumpfn
-from pymatgen import Molecule
 from pymatgen.analysis.fragmenter import open_ring
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
 from pymatgen.analysis.local_env import OpenBabelNN
