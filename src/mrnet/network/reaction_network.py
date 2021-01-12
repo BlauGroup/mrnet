@@ -1316,7 +1316,7 @@ class ReactionNetwork(MSONable):
 
     def find_or_remove_bad_nodes(
         self, nodes: List[str], remove_nodes=False
-    ) -> Union[List[str],nx.DiGraph]:
+    ) -> Union[List[str], nx.DiGraph]:
         """
             A method to either create a list of the nodes a path solving method
             should ignore or generate a graph without all the nodes it a path
