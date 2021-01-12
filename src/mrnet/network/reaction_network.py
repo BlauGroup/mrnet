@@ -759,7 +759,9 @@ class ReactionNetwork(MSONable):
                         if cond_rct and cond_pro:
                             self.families[this_class][layer1][layer2].add(ii)
 
-        print("redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c)
+        print(
+            "redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c,
+        )
         self.PR_record = self.build_PR_record()
         self.Reactant_record = self.build_reactant_record()
 
@@ -1547,7 +1549,7 @@ class ReactionNetwork(MSONable):
                                         if set(glist).issubset(set(mols_to_keep)):
                                             count = count + 1
                                             reactions.append(
-                                                ([reactant], [product], [in_node, out_node])
+                                                ([reactant], [product], [in_node, out_node],)
                                             )
                                             # print(([reactant], [product]), in_node, out_node)
                                 elif "+" in in_node and "+" not in out_node:
@@ -1556,21 +1558,29 @@ class ReactionNetwork(MSONable):
                                     product1.remove(str(node))
                                     product1 = int(product1[0])
                                     product2 = int(out_node.split(",")[1])
-                                    glist = [int(reactant), int(product1), int(product2)]
+                                    glist = [
+                                        int(reactant),
+                                        int(product1),
+                                        int(product2),
+                                    ]
                                     if set(glist).issubset(set(mols_to_keep)):
                                         count = count + 1
                                         reactions.append(
-                                            ([reactant], [product1, product2], [in_node, out_node])
+                                            ([reactant], [product1, product2], [in_node, out_node],)
                                         )
                                 elif "+" not in in_node and "+" in out_node:
                                     reactant = int(in_node.split(",")[0])
                                     product1 = int(out_node.split(",")[1].split("+")[0])
                                     product2 = int(out_node.split(",")[1].split("+")[1])
-                                    glist = [int(reactant), int(product1), int(product2)]
+                                    glist = [
+                                        int(reactant),
+                                        int(product1),
+                                        int(product2),
+                                    ]
                                     if set(glist).issubset(set(mols_to_keep)):
                                         count = count + 1
                                         reactions.append(
-                                            ([reactant], [product1, product2], [in_node, out_node])
+                                            ([reactant], [product1, product2], [in_node, out_node],)
                                         )
                             elif "PR" in in_node and "PR" not in out_node:
                                 if "+" in out_node:

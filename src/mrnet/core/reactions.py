@@ -14,7 +14,11 @@ from scipy.constants import R, h, k
 
 from mrnet.core.extract_reactions import FindConcertedReactions
 from mrnet.core.mol_entry import MoleculeEntry
-from mrnet.core.rates import ExpandedBEPRateCalculator, ReactionRateCalculator, RedoxRateCalculator
+from mrnet.core.rates import (
+    ExpandedBEPRateCalculator,
+    ReactionRateCalculator,
+    RedoxRateCalculator,
+)
 from mrnet.utils.graphs import extract_bond_environment
 from mrnet.utils.mols import mol_free_energy
 
@@ -1851,14 +1855,16 @@ class MetalHopReaction(Reaction):
         parameters (dict): Any additional data about this reaction
     """
 
-    def __init__(self,
-                 reactants: List[MoleculeEntry],
-                 products: List[MoleculeEntry],
-                 metal: MoleculeEntry,
-                 transition_state: Optional[MoleculeEntry] = None,
-                 parameters: Optional[Dict] = None,
-                 neutral_hop_barrier: Optional[float] = 0.130,
-                 anion_hop_barrier: Optional[float] = 0.239):
+    def __init__(
+        self,
+        reactants: List[MoleculeEntry],
+        products: List[MoleculeEntry],
+        metal: MoleculeEntry,
+        transition_state: Optional[MoleculeEntry] = None,
+        parameters: Optional[Dict] = None,
+        neutral_hop_barrier: Optional[float] = 0.130,
+        anion_hop_barrier: Optional[float] = 0.239,
+    ):
         """
         Initializes MetalHopReaction.reactant to be in the form of a
             [MoleculeEntry], MetalHopReaction.product to be in the form of
@@ -1922,7 +1928,9 @@ class MetalHopReaction(Reaction):
             and self.rct0_energy is not None
             and self.rct1_energy is not None
         ):
-            self.energy_A = self.pro0_energy + self.pro1_energy - self.rct0_energy - self.rct1_energy
+            self.energy_A = (
+                self.pro0_energy + self.pro1_energy - self.rct0_energy - self.rct1_energy
+            )
             self.energy_B = self.energy_A * -1
 
         else:
@@ -1983,9 +1991,9 @@ class MetalHopReaction(Reaction):
                 m_two = combo[1][2]
                 # Only allow if metal ion is the same on both sides
                 if m_one.charge == m_two.charge and m_one.formula == m_two.formula:
-                    reactions.append(cls([combo[0][0], combo[1][1]],
-                                         [combo[1][0], combo[0][1]],
-                                         m_one))
+                    reactions.append(
+                        cls([combo[0][0], combo[1][1]], [combo[1][0], combo[0][1]], m_one,)
+                    )
 
         return reactions, dict()
 
@@ -2000,8 +2008,7 @@ class MetalHopReaction(Reaction):
                         edge_list.append(edge)
 
                 try:
-                    frags = entry.mol_graph.split_molecule_subgraphs(edge_list,
-                                                                     allow_reverse=True)
+                    frags = entry.mol_graph.split_molecule_subgraphs(edge_list, allow_reverse=True)
                     M_ind = None
                     M_formula = None
                     for ii, frag in enumerate(frags):
@@ -2020,11 +2027,17 @@ class MetalHopReaction(Reaction):
                                         for nonM_charge in entries[nonM_formula][nonM_Nbonds]:
                                             M_charge = entry.charge - nonM_charge
                                             if M_charge in M_entries[M_formula] and M_charge > 0:
-                                                for nonM_entry in \
-                                                        entries[nonM_formula][nonM_Nbonds][
-                                                            nonM_charge]:
+                                                for nonM_entry in entries[nonM_formula][
+                                                    nonM_Nbonds
+                                                ][nonM_charge]:
                                                     if frag.isomorphic_to(nonM_entry.mol_graph):
-                                                        pairs.append((entry, nonM_entry, M_entries[M_formula][M_charge]))
+                                                        pairs.append(
+                                                            (
+                                                                entry,
+                                                                nonM_entry,
+                                                                M_entries[M_formula][M_charge],
+                                                            )
+                                                        )
                                                         break
                 except MolGraphSplitError:
                     pass
@@ -2071,7 +2084,9 @@ class MetalHopReaction(Reaction):
             and pro0_free_energy is not None
             and pro1_free_energy is not None
         ):
-            self.free_energy_A = pro0_free_energy + pro1_free_energy - rct0_free_energy - rct1_free_energy
+            self.free_energy_A = (
+                pro0_free_energy + pro1_free_energy - rct0_free_energy - rct1_free_energy
+            )
             self.free_energy_B = self.free_energy_A * -1
         else:
             self.free_energy_A = None
@@ -2136,20 +2151,22 @@ class MetalHopReaction(Reaction):
 
     def as_dict(self) -> dict:
 
-        d = {"@module": self.__class__.__module__,
-             "@class": self.__class__.__name__,
-             "reactants": [r.as_dict() for r in self.reactants],
-             "products": [p.as_dict() for p in self.products],
-             "reactant_0": self.reactant_0.as_dict(),
-             "reactant_1": self.reactant_1.as_dict(),
-             "product_0": self.product_0.as_dict(),
-             "product_1": self.product_1.as_dict(),
-             "metal": self.metal.as_dict(),
-             "transition_state": None,
-             "rate_calculator": None,
-             "parameters": self.parameters,
-             "neutral_hop_barrier": self.neutral_hop_barrier,
-             "anion_hop_barrier": self.anion_hop_barrier}
+        d = {
+            "@module": self.__class__.__module__,
+            "@class": self.__class__.__name__,
+            "reactants": [r.as_dict() for r in self.reactants],
+            "products": [p.as_dict() for p in self.products],
+            "reactant_0": self.reactant_0.as_dict(),
+            "reactant_1": self.reactant_1.as_dict(),
+            "product_0": self.product_0.as_dict(),
+            "product_1": self.product_1.as_dict(),
+            "metal": self.metal.as_dict(),
+            "transition_state": None,
+            "rate_calculator": None,
+            "parameters": self.parameters,
+            "neutral_hop_barrier": self.neutral_hop_barrier,
+            "anion_hop_barrier": self.anion_hop_barrier,
+        }
 
         return d
 
@@ -2159,9 +2176,13 @@ class MetalHopReaction(Reaction):
         products = [MoleculeEntry.from_dict(m) for m in d["products"]]
         metal = MoleculeEntry.from_dict(d["metal"])
 
-        reaction = cls(reactants, products, metal,
-                       neutral_hop_barrier=d["neutral_hop_barrier"],
-                       anion_hop_barrier=d["anion_hop_barrier"])
+        reaction = cls(
+            reactants,
+            products,
+            metal,
+            neutral_hop_barrier=d["neutral_hop_barrier"],
+            anion_hop_barrier=d["anion_hop_barrier"],
+        )
 
         return reaction
 
