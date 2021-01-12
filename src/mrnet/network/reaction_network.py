@@ -2,7 +2,7 @@ import copy
 import heapq
 import itertools
 import time as time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import networkx as nx
 from monty.json import MSONable
@@ -325,7 +325,7 @@ class ReactionPath(MSONable):
                             b = int(rxn[1])
                             pool.remove(a)
                             pool.append(b)
-            pool.remove(path[-1])
+            pool.remove(int(path[-1]))
             class_instance.byproducts = pool
 
             class_instance.path_dict = {
@@ -350,7 +350,7 @@ class ReactionPath(MSONable):
         cls,
         path: List[str],
         weight: str,
-        min_cost: Dict[str, float],
+        min_cost: Dict[int, float],
         graph: nx.DiGraph,
         old_solved_PRs=[],
         PR_byproduct_dict={},
@@ -1316,7 +1316,7 @@ class ReactionNetwork(MSONable):
 
     def find_or_remove_bad_nodes(
         self, nodes: List[str], remove_nodes=False
-    ) -> List[str] or nx.DiGraph:
+    ) -> Union[List[str],nx.DiGraph]:
         """
             A method to either create a list of the nodes a path solving method
             should ignore or generate a graph without all the nodes it a path
