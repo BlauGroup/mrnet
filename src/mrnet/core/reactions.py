@@ -1251,7 +1251,7 @@ class CoordinationBondChangeReaction(Reaction):
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
 
         # find metal entries
-        M_entries = dict()
+        M_entries = dict()  # type: MappingDict
         for formula in entries:
             if formula in ["Li1", "Mg1", "Ca1", "Zn1"]:
                 if formula not in M_entries:
