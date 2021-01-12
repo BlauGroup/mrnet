@@ -63,11 +63,12 @@ class MoleculeEntry(MSONable):
         self.parameters = parameters if parameters else {}
         self.entry_id = entry_id
         self.attribute = attribute
-        self.mol_graph = mol_graph
 
-        if not self.mol_graph:
+        if not mol_graph:
             mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
             self.mol_graph = metal_edge_extender(mol_graph)
+        else:
+            self.mol_graph = mol_graph
 
     @classmethod
     def from_molecule_document(
@@ -134,10 +135,7 @@ class MoleculeEntry(MSONable):
 
     @property
     def graph(self) -> nx.MultiDiGraph:
-        if not self.mol_graph:
-            return None
-        else:
-            return self.mol_graph.graph
+        return self.mol_graph.graph
 
     @property
     def energy(self) -> float:
@@ -156,22 +154,16 @@ class MoleculeEntry(MSONable):
         return [str(s) for s in self.molecule.species]
 
     @property
-    def bonds(self) -> Optional[List[Tuple[Any, Any]]]:
-        if not self.mol_graph:
-            return None
-        else:
-            return [tuple(sorted(e)) for e in self.graph.edges()]
+    def bonds(self) -> List[Tuple[Any, Any]]:
+        return [tuple(sorted(e)) for e in self.graph.edges()]
 
     @property
     def num_atoms(self) -> int:
         return len(self.molecule)
 
     @property
-    def num_bonds(self) -> Optional[int]:
-        if not self.mol_graph:
-            return None
-        else:
-            return len(self.bonds)
+    def num_bonds(self) -> int:
+        return len(self.bonds)
 
     @property
     def coords(self) -> np.ndarray:
