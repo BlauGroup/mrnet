@@ -400,7 +400,7 @@ class RedoxReaction(Reaction):
                                     isomorphic, node_mapping = is_isomorphic(
                                         entry0.graph, entry1.graph
                                     )
-                                    if isomorphic:
+                                    if isomorphic and node_mapping:
                                         rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
                                         r = cls(
                                             entry0,
@@ -693,7 +693,7 @@ class IntramolSingleBondChangeReaction(Reaction):
             if nx.is_weakly_connected(mg.graph):
                 for entry0 in entries[formula][Nbonds0][charge]:
                     isomorphic, node_mapping = is_isomorphic(entry0.graph, mg.graph)
-                    if isomorphic:
+                    if isomorphic and node_mapping:
                         rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
                         r = cls(
                             entry0,

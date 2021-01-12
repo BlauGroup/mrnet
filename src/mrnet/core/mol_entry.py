@@ -156,8 +156,11 @@ class MoleculeEntry(MSONable):
         return [str(s) for s in self.molecule.species]
 
     @property
-    def bonds(self) -> List[Tuple[Any, ...]]:
-        return [tuple(sorted(e)) for e in self.graph.edges()]
+    def bonds(self) -> List[Tuple[Any, Any]]:
+        if not self.mol_graph:
+            return None
+        else:
+            return [tuple(sorted(e)) for e in self.graph.edges()]
 
     @property
     def num_atoms(self) -> int:
@@ -165,7 +168,10 @@ class MoleculeEntry(MSONable):
 
     @property
     def num_bonds(self) -> int:
-        return len(self.bonds)
+        if not self.mol_graph:
+            return None
+        else:
+            return len(self.bonds)
 
     @property
     def coords(self) -> np.ndarray:
@@ -184,7 +190,7 @@ class MoleculeEntry(MSONable):
         else:
             return None
 
-    def get_fragments(self) -> Optional[Dict[Tuple[int, int], List[MoleculeGraph]]]:
+    def get_fragments(self) -> Optional[Dict[Tuple[Any, Any], List[MoleculeGraph]]]:
         """
         Get the fragments of the molecule by breaking all its bonds.
 
