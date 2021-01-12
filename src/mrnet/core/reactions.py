@@ -26,6 +26,7 @@ __status__ = "Alpha"
 
 MappingDict = Dict[str, Dict[int, Dict[int, List[MoleculeEntry]]]]
 Mapping_Record_Dict = Dict[str, List[str]]
+Mapping_Family_Dict = Dict[str, Dict[int, List[Reaction]]]
 Atom_Mapping_Dict = Dict[int, int]
 
 
@@ -210,9 +211,6 @@ class Reaction(MSONable, metaclass=ABCMeta):
         )
         reaction.rate_calculator = rate_calculator
         return reaction
-
-
-Mapping_Family_Dict = Dict[str, Dict[int, Dict[int, List[Reaction]]]]
 
 
 class RedoxReaction(Reaction):
@@ -2193,7 +2191,7 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     keys = ["formula", "num_bonds", "charge"] if keys is None else keys
 
     num_keys = len(keys)
-    buckets = {}  # type: MappingDict
+    buckets = {}  # type: ignore
     for m in entries:
         b = buckets
         for i, j in enumerate(keys):
