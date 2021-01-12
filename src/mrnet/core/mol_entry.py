@@ -168,7 +168,7 @@ class MoleculeEntry(MSONable):
 
     @property
     def num_bonds(self) -> Optional[int]:
-        if not self.mol_graph:
+        if not self.bonds:
             return None
         else:
             return len(self.bonds)
