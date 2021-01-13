@@ -852,7 +852,7 @@ class ReactionNetwork(MSONable):
         """
 
         print("start solve_prerequisities", time.time())
-        PRs = {}
+        PRs = {}  # type: Dict[int, Dict[int, ReactionPath]]
         old_solved_PRs = []
         new_solved_PRs = ["placeholder"]
         old_attrs = {}
