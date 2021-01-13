@@ -723,14 +723,9 @@ class ReactionNetwork(MSONable):
 
         # Generate reactions
         for r in reaction_types:
-            if r.__name__ == "ConcertedReaction":
-                reactions, families = r.generate(self.entries_list)
-                all_reactions.append(reactions)
-                raw_families[r.__name__] = families
-            else:
-                reactions, families = r.generate(self.entries)
-                all_reactions.append(reactions)
-                raw_families[r.__name__] = families
+            reactions, families = r.generate(self.entries)
+            all_reactions.append(reactions)
+            raw_families[r.__name__] = families
 
         all_reactions = [i for i in all_reactions if i]
         self.reactions = list(itertools.chain.from_iterable(all_reactions))
@@ -894,7 +889,7 @@ class ReactionNetwork(MSONable):
             print(ii, len(new_solved_PRs) > 0, old_attrs != new_attrs, ii < max_iter)
 
             min_cost = {}
-            cost_from_start = {}
+            cost_from_start = {}  # type: Dict[int, Dict[int, Union[float, str]]]
             for PR in PRs:
                 cost_from_start[PR] = {}
                 min_cost[PR] = float("inf")
@@ -1750,7 +1745,7 @@ class ReactionNetwork(MSONable):
         return pruned_network_build
 
     def as_dict(self) -> dict:
-        entries = dict()
+        entries = dict()  # type: Dict[str, Dict[int, Dict[int, Dict[str, Any]]]]
         for formula in self.entries.keys():
             entries[formula] = dict()
             for bonds in self.entries[formula].keys():
