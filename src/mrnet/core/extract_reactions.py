@@ -3,7 +3,6 @@ from itertools import combinations_with_replacement
 
 import numpy as np
 from monty.serialization import dumpfn
-from pymatgen import Molecule
 from pymatgen.analysis.fragmenter import open_ring
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
 from pymatgen.analysis.local_env import OpenBabelNN
@@ -142,16 +141,24 @@ def check_same_mol_graphs(mol_graphs1, mol_graphs2):
     mol_graphs1_copy = copy.deepcopy(mol_graphs1)
     mol_graphs2_copy = copy.deepcopy(mol_graphs2)
     sorted_formula_1 = sorted(
-        [mol_graph.molecule.composition.alphabetical_formula for mol_graph in mol_graphs1]
+        [
+            mol_graph.molecule.composition.alphabetical_formula
+            for mol_graph in mol_graphs1
+        ]
     )
     sorted_formula_2 = sorted(
-        [mol_graph.molecule.composition.alphabetical_formula for mol_graph in mol_graphs2]
+        [
+            mol_graph.molecule.composition.alphabetical_formula
+            for mol_graph in mol_graphs2
+        ]
     )
     if sorted_formula_1 == sorted_formula_2:
         while mol_graphs1_copy != [] and mol_graphs2_copy != []:
-            (found_one_equivalent_graph, mol_graphs1_copy, mol_graphs2_copy,) = find_one_same_mol(
-                mol_graphs1_copy, mol_graphs2_copy
-            )
+            (
+                found_one_equivalent_graph,
+                mol_graphs1_copy,
+                mol_graphs2_copy,
+            ) = find_one_same_mol(mol_graphs1_copy, mol_graphs2_copy)
             if found_one_equivalent_graph == "False":
                 return is_the_same
         is_the_same = True
@@ -182,7 +189,9 @@ def break_one_bond_in_one_mol(mol_graph):
             bond = [(edge[0], edge[1])]
             try:
                 mol_graph_copy = copy.deepcopy(mol_graph)
-                frags1 = mol_graph_copy.split_molecule_subgraphs(bond, allow_reverse=True)
+                frags1 = mol_graph_copy.split_molecule_subgraphs(
+                    bond, allow_reverse=True
+                )
                 if not check_mol_graphs_in_list(frags1, all_possible_fragments):
                     all_possible_fragments.append(frags1)
             except MolGraphSplitError:
@@ -209,7 +218,9 @@ def break_two_bonds_in_one_mol(mol_graph):
             # print('bond:',bond)
             try:
                 mol_graph_copy = copy.deepcopy(mol_graph)
-                frags1 = mol_graph_copy.split_molecule_subgraphs(bond, allow_reverse=True)
+                frags1 = mol_graph_copy.split_molecule_subgraphs(
+                    bond, allow_reverse=True
+                )
                 # print('original length:',len(frags1))
                 if not check_mol_graphs_in_list(frags1, all_possible_fragments):
                     all_possible_fragments.append(frags1)
@@ -237,7 +248,9 @@ def break_two_bonds_in_one_mol(mol_graph):
                                 if not check_mol_graphs_in_list(
                                     frags2 + frags1_new_new, all_possible_fragments
                                 ):
-                                    all_possible_fragments.append(frags2 + frags1_new_new)
+                                    all_possible_fragments.append(
+                                        frags2 + frags1_new_new
+                                    )
 
                             except MolGraphSplitError:
                                 frag_copy = copy.deepcopy(frag)
@@ -251,7 +264,9 @@ def break_two_bonds_in_one_mol(mol_graph):
                                 if not check_mol_graphs_in_list(
                                     [frag2] + frags1_new_new, all_possible_fragments
                                 ):
-                                    all_possible_fragments.append([frag2] + frags1_new_new)
+                                    all_possible_fragments.append(
+                                        [frag2] + frags1_new_new
+                                    )
 
             except MolGraphSplitError:
                 mol_graph_copy = copy.deepcopy(mol_graph)
@@ -264,13 +279,19 @@ def break_two_bonds_in_one_mol(mol_graph):
                         # print('bond2_2:',bond2)
                         try:
                             frag1_copy = copy.deepcopy(frag1)
-                            frags2 = frag1_copy.split_molecule_subgraphs(bond2, allow_reverse=True)
-                            if not check_mol_graphs_in_list(frags2, all_possible_fragments):
+                            frags2 = frag1_copy.split_molecule_subgraphs(
+                                bond2, allow_reverse=True
+                            )
+                            if not check_mol_graphs_in_list(
+                                frags2, all_possible_fragments
+                            ):
                                 all_possible_fragments.append(frags2)
                         except MolGraphSplitError:
                             frag1_copy = copy.deepcopy(frag1)
                             frag2 = open_ring(frag1_copy, bond2, 10000)
-                            if not check_mol_graphs_in_list([frag2], all_possible_fragments):
+                            if not check_mol_graphs_in_list(
+                                [frag2], all_possible_fragments
+                            ):
                                 all_possible_fragments.append([frag2])
     if not check_mol_graphs_in_list([mol_graph], all_possible_fragments):
         all_possible_fragments.append([mol_graph])
@@ -1243,7 +1264,7 @@ class FindConcertedReactions:
         elif reaction_type == "break1_form1":
             func = self.find_concerted_break1_form1
             print("Reaction type: break1 form1")
-        from pathos.multiprocessing import ProcessingPool as Pool
+        from pathos.multiprocessing import ProcessingPool as Pool  # type: ignore
 
         nums = list(np.arange(len(self.concerted_rxns_to_determine)))
         args = [(i) for i in nums]
@@ -1256,7 +1277,9 @@ class FindConcertedReactions:
         # dumpfn(self.valid_reactions, name + "_valid_concerted_rxns.json")
         return
 
-    def get_final_concerted_reactions(self, name, num_processors, reaction_type="break2_form2"):
+    def get_final_concerted_reactions(
+        self, name, num_processors, reaction_type="break2_form2"
+    ):
         """
         This is for getting the final set of concerted reactions: entry index
         corresponds to the index in self.entries_list.
@@ -1313,7 +1336,9 @@ class FindConcertedReactions:
                                 reactant_name = str(j) + "_" + str(k)
                             else:
                                 reactant_name = str(k) + "_" + str(j)
-                            self.final_concerted_reactions.append([reactant_name, str(m)])
+                            self.final_concerted_reactions.append(
+                                [reactant_name, str(m)]
+                            )
 
             elif len(reactant_candidates) == 1 and len(product_candidates) == 2:
                 for j in reactant_candidates[0]:
@@ -1323,7 +1348,9 @@ class FindConcertedReactions:
                                 product_name = str(m) + "_" + str(n)
                             else:
                                 product_name = str(n) + "_" + str(m)
-                            self.final_concerted_reactions.append([str(j), product_name])
+                            self.final_concerted_reactions.append(
+                                [str(j), product_name]
+                            )
 
             elif len(reactant_candidates) == 2 and len(product_candidates) == 2:
                 for j in reactant_candidates[0]:
@@ -1338,6 +1365,8 @@ class FindConcertedReactions:
                                     product_name = str(m) + "_" + str(n)
                                 else:
                                     product_name = str(n) + "_" + str(m)
-                                self.final_concerted_reactions.append([reactant_name, product_name])
+                                self.final_concerted_reactions.append(
+                                    [reactant_name, product_name]
+                                )
         dumpfn(self.final_concerted_reactions, name + "_concerted_rxns.json")
         return self.final_concerted_reactions

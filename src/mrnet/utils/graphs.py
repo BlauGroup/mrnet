@@ -1,9 +1,11 @@
-from typing import List, Tuple
+from typing import List, Tuple, Set
 
 from pymatgen.analysis.graphs import MoleculeGraph
 
 
-def extract_bond_environment(mg: MoleculeGraph, bonds: List[Tuple[int, int]], order=1) -> set:
+def extract_bond_environment(
+    mg: MoleculeGraph, bonds: List[Tuple[int, int]], order=1
+) -> set:
     """
     Extract the local environment of a particular chemical bond in a MoleculeGraph
 
@@ -13,7 +15,7 @@ def extract_bond_environment(mg: MoleculeGraph, bonds: List[Tuple[int, int]], or
     :return: set of integers representing the relevant atom indices
     """
 
-    indices = set()
+    indices = set()  # type: Set[int]
     if order < 0:
         return indices
     elif order == 0:
