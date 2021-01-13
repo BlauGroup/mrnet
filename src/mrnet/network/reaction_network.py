@@ -875,7 +875,7 @@ class ReactionNetwork(MSONable):
             for start in starts:
                 if start == PR:
                     PRs[PR][start] = ReactionPath.characterize_path(
-                        [start], weight, self.min_cost, self.graph
+                        [str(start)], weight, self.min_cost, self.graph
                     )
                 else:
                     PRs[PR][start] = ReactionPath(None)
@@ -1359,8 +1359,8 @@ class ReactionNetwork(MSONable):
         :param PRs: not used currently?
         :return: nx.path_generator of type generator
         """
-        valid_graph = self.find_or_remove_bad_nodes([target], remove_nodes=True)
-        valid_graph.remove_nodes_from(PRs)
+        valid_graph = self.find_or_remove_bad_nodes([str(target)], remove_nodes=True)
+        valid_graph.remove_nodes_from(PRs)  # type: ignore
 
         return nx.shortest_simple_paths(valid_graph, hash(start), hash(target), weight=self.weight)
 
