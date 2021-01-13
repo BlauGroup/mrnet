@@ -1745,7 +1745,7 @@ class ReactionNetwork(MSONable):
         return pruned_network_build
 
     def as_dict(self) -> dict:
-        entries = dict()  # type: Dict[str, Dict[int, Dict[int, Dict[str, Any]]]]
+        entries = dict()  # type: Dict[str, Dict[int, Dict[int, List[Dict[str, Any]]]]]
         for formula in self.entries.keys():
             entries[formula] = dict()
             for bonds in self.entries[formula].keys():
@@ -1759,7 +1759,7 @@ class ReactionNetwork(MSONable):
 
         reactions = [r.as_dict() for r in self.reactions]
 
-        families = dict()  # type: Dict[str, Dict[int, List[Reaction]]]
+        families = dict()  # type: Dict[str, Dict[int, Dict[str, List[Reaction]]]]
         for category in self.families.keys():
             families[category] = dict()
             for charge in self.families[category].keys():
