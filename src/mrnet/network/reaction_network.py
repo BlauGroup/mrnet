@@ -160,7 +160,8 @@ class ReactionPath(MSONable):
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
-                    if ii % 2 == 1:
+                    # if ii % 2 == 1:
+                    if isinstance(step,str):
                         rxn = step.split(",")
                         if "+PR_" in rxn[0]:
                             a = int(rxn[0].split("+PR_")[0])
@@ -797,7 +798,7 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         PR of node1, ex "2+PR_node1, 3"]}
         """
-        PR_record = {}
+        PR_record = {}  # type: Mapping_Record_Dict
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 0:
                 PR_record[node] = []
@@ -817,7 +818,7 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         non PR reactant of node1, ex "node1+PR_2, 3"]}
         """
-        Reactant_record = {}
+        Reactant_record = {}  # type: Mapping_Record_Dict
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 0:
                 Reactant_record[node] = []
