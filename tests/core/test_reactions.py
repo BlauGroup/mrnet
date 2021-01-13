@@ -13,7 +13,7 @@ from mrnet.core.reactions import (
     IntramolSingleBondChangeReaction,
     IntermolecularReaction,
     CoordinationBondChangeReaction,
-    MetalHopReaction
+    MetalHopReaction,
 )
 from mrnet.core.reactions import bucket_mol_entries, unbucket_mol_entries
 from mrnet.core.mol_entry import MoleculeEntry
@@ -28,12 +28,9 @@ except ImportError:
 
 
 test_dir = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "test_files",
-    "reaction_network_files",
+    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
 )
+
 
 def get_entries():
     if ob:
@@ -48,7 +45,11 @@ def get_entries():
             H = float(entry["output"]["enthalpy"])
             S = float(entry["output"]["entropy"])
             mol_entry = MoleculeEntry(
-                molecule=mol, energy=E, enthalpy=H, entropy=S, entry_id=entry["task_id"],
+                molecule=mol,
+                energy=E,
+                enthalpy=H,
+                entropy=S,
+                entry_id=entry["task_id"],
             )
             if mol_entry.formula == "Li1":
                 if mol_entry.charge == 1:
@@ -135,10 +136,10 @@ def get_entries():
                     else:
                         LiEC_plus_entry = entry
             elif (
-                    entry.formula == "C3 H4 Li1 O3"
-                    and entry.charge == 0
-                    and entry.num_bonds == 11
-                    and LiEC_RO_mg.isomorphic_to(entry.mol_graph)
+                entry.formula == "C3 H4 Li1 O3"
+                and entry.charge == 0
+                and entry.num_bonds == 11
+                and LiEC_RO_mg.isomorphic_to(entry.mol_graph)
             ):
                 if LiEC_RO_entry is not None:
                     if LiEC_RO_entry.get_free_energy() >= entry.get_free_energy():
@@ -176,17 +177,19 @@ def get_entries():
                 else:
                     Li_entry = entry
 
-        return {"entries": LiEC_reextended_entries,
-                "RN": RN,
-                "LiEC": LiEC_entry,
-                "LiEC_plus": LiEC_plus_entry,
-                "EC_1": EC_1_entry,
-                "EC_0": EC_0_entry,
-                "EC_-1": EC_minus_entry,
-                "LiEC_RO": LiEC_RO_entry,
-                "C2H4": C2H4_entry,
-                "C1Li1O3": C1Li1O3_entry,
-                "Li": Li_entry}
+        return {
+            "entries": LiEC_reextended_entries,
+            "RN": RN,
+            "LiEC": LiEC_entry,
+            "LiEC_plus": LiEC_plus_entry,
+            "EC_1": EC_1_entry,
+            "EC_0": EC_0_entry,
+            "EC_-1": EC_minus_entry,
+            "LiEC_RO": LiEC_RO_entry,
+            "C2H4": C2H4_entry,
+            "C1Li1O3": C1Li1O3_entry,
+            "Li": Li_entry,
+        }
 
     else:
         return None
@@ -212,7 +215,7 @@ class TestRedoxReaction(PymatgenTest):
                 EC_0_ind,
                 EC_1_ind,
                 str(EC_0_ind) + "," + str(EC_1_ind),
-                str(EC_1_ind) + "," + str(EC_0_ind)
+                str(EC_1_ind) + "," + str(EC_0_ind),
             ],
         )
         self.assertEqual(len(graph.edges), 4)
@@ -310,7 +313,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions, families = IntramolSingleBondChangeReaction.generate(entries["RN"].entries)
+        reactions, families = IntramolSingleBondChangeReaction.generate(
+            entries["RN"].entries
+        )
         self.assertEqual(len(reactions), 93)
 
         for r in reactions:
@@ -370,7 +375,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_reaction_type(self):
 
         reaction = IntramolSingleBondChangeReaction(entries["LiEC"], entries["LiEC_RO"])
-        self.assertEqual(reaction.__class__.__name__, "IntramolSingleBondChangeReaction")
+        self.assertEqual(
+            reaction.__class__.__name__, "IntramolSingleBondChangeReaction"
+        )
         self.assertEqual(reaction.rxn_type_A, "Intramolecular single bond formation")
         self.assertEqual(reaction.rxn_type_B, "Intramolecular single bond breakage")
 
@@ -439,8 +446,10 @@ class TestIntermolecularReaction(PymatgenTest):
                         or r.products[1].formula == "C1 Li1 O3"
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == entries["C1Li1O3"].get_free_energy()
-                        or r.products[1].get_free_energy() == entries["C1Li1O3"].get_free_energy()
+                        r.products[0].get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
+                        or r.products[1].get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
                     )
                     self.assertTrue(
                         r.products[0].get_free_energy()
@@ -452,7 +461,9 @@ class TestIntermolecularReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_atom_mapping(self):
 
-        ents = bucket_mol_entries([entries["LiEC_RO"], entries["C1Li1O3"], entries["C2H4"]])
+        ents = bucket_mol_entries(
+            [entries["LiEC_RO"], entries["C1Li1O3"], entries["C2H4"]]
+        )
 
         reactions, families = IntermolecularReaction.generate(ents)
         self.assertEqual(len(reactions), 1)
@@ -473,7 +484,9 @@ class TestIntermolecularReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
 
-        reaction = IntermolecularReaction(entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]])
+        reaction = IntermolecularReaction(
+            entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]]
+        )
         reaction.set_free_energy()
         self.assertEqual(reaction.free_energy_A, 0.37075842588456)
         self.assertEqual(reaction.free_energy_B, -0.37075842588410524)
@@ -481,14 +494,18 @@ class TestIntermolecularReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
 
-        reaction = IntermolecularReaction(entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]])
+        reaction = IntermolecularReaction(
+            entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]]
+        )
         self.assertEqual(reaction.energy_A, 0.035409666514283344)
         self.assertEqual(reaction.energy_B, -0.035409666514283344)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
 
-        reaction = IntermolecularReaction(entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]])
+        reaction = IntermolecularReaction(
+            entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]]
+        )
         self.assertEqual(reaction.__class__.__name__, "IntermolecularReaction")
         self.assertEqual(
             reaction.rxn_type_A, "Molecular decomposition breaking one bond A -> B+C"
@@ -545,7 +562,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions, families = CoordinationBondChangeReaction.generate(entries["RN"].entries)
+        reactions, families = CoordinationBondChangeReaction.generate(
+            entries["RN"].entries
+        )
         self.assertEqual(len(reactions), 50)
 
         for r in reactions:
@@ -559,8 +578,10 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                         or r.products[1].entry_id == entries["EC_-1"].entry_id
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == entries["EC_-1"].get_free_energy()
-                        or r.products[1].get_free_energy() == entries["EC_-1"].get_free_energy()
+                        r.products[0].get_free_energy()
+                        == entries["EC_-1"].get_free_energy()
+                        or r.products[1].get_free_energy()
+                        == entries["EC_-1"].get_free_energy()
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -616,12 +637,15 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
 
 
 class TestMetalHopReaction(PymatgenTest):
-
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_graph_representation(self):
 
         # perform calc
-        reaction = MetalHopReaction([entries["LiEC"], entries["EC_0"]], [entries["EC_-1"], entries["LiEC_plus"]], entries["Li"])
+        reaction = MetalHopReaction(
+            [entries["LiEC"], entries["EC_0"]],
+            [entries["EC_-1"], entries["LiEC_plus"]],
+            entries["Li"],
+        )
         graph = reaction.graph_representation()
 
         liec_ind = entries["LiEC"].parameters["ind"]
@@ -632,25 +656,67 @@ class TestMetalHopReaction(PymatgenTest):
         # assert
         self.assertCountEqual(
             list(graph.nodes),
-            [   liec_ind, ec_ind, liec_plus_ind, ec_minus_ind,
-                str(liec_ind) + "+PR_" + str(ec_ind) + "," + str(liec_plus_ind) + "+" + str(ec_minus_ind),
-                str(ec_ind) + "+PR_" + str(liec_ind) + "," + str(liec_plus_ind) + "+" + str(ec_minus_ind),
-                str(ec_minus_ind) + "+PR_" + str(liec_plus_ind) + "," + str(liec_ind) + "+" + str(ec_ind),
-                str(liec_plus_ind) + "+PR_" + str(ec_minus_ind) + "," + str(liec_ind) + "+" + str(ec_ind),
+            [
+                liec_ind,
+                ec_ind,
+                liec_plus_ind,
+                ec_minus_ind,
+                str(liec_ind)
+                + "+PR_"
+                + str(ec_ind)
+                + ","
+                + str(liec_plus_ind)
+                + "+"
+                + str(ec_minus_ind),
+                str(ec_ind)
+                + "+PR_"
+                + str(liec_ind)
+                + ","
+                + str(liec_plus_ind)
+                + "+"
+                + str(ec_minus_ind),
+                str(ec_minus_ind)
+                + "+PR_"
+                + str(liec_plus_ind)
+                + ","
+                + str(liec_ind)
+                + "+"
+                + str(ec_ind),
+                str(liec_plus_ind)
+                + "+PR_"
+                + str(ec_minus_ind)
+                + ","
+                + str(liec_ind)
+                + "+"
+                + str(ec_ind),
             ],
         )
         self.assertEqual(len(graph.edges), 12)
         self.assertEqual(
             graph.get_edge_data(
-                liec_ind, str(liec_ind) + "+PR_" + str(ec_ind) + "," + str(liec_plus_ind) + "+" + str(ec_minus_ind)
+                liec_ind,
+                str(liec_ind)
+                + "+PR_"
+                + str(ec_ind)
+                + ","
+                + str(liec_plus_ind)
+                + "+"
+                + str(ec_minus_ind),
             )["softplus"],
             1.1019073858904995,
         )
         self.assertEqual(
             graph.get_edge_data(
-                liec_ind, str(ec_minus_ind) + "+PR_" + str(liec_plus_ind) + "," + str(liec_ind) + "+" + str(ec_ind)
+                liec_ind,
+                str(ec_minus_ind)
+                + "+PR_"
+                + str(liec_plus_ind)
+                + ","
+                + str(liec_ind)
+                + "+"
+                + str(ec_ind),
             ),
-            None
+            None,
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -660,7 +726,10 @@ class TestMetalHopReaction(PymatgenTest):
         self.assertEqual(len(reactions), 4753)
 
         for r in reactions:
-            if r.reactants[0].entry_id == entries["LiEC"].entry_id and r.reactants[1].entry_id == entries["EC_0"].entry_id:
+            if (
+                r.reactants[0].entry_id == entries["LiEC"].entry_id
+                and r.reactants[1].entry_id == entries["EC_0"].entry_id
+            ):
                 if (
                     r.products[0].entry_id == entries["EC_-1"].entry_id
                     or r.products[1].entry_id == entries["EC_-1"].entry_id
@@ -670,8 +739,10 @@ class TestMetalHopReaction(PymatgenTest):
                         or r.products[1].entry_id == entries["LiEC_plus"].entry_id
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == entries["LiEC_plus"].get_free_energy()
-                        or r.products[1].get_free_energy() == entries["LiEC_plus"].get_free_energy()
+                        r.products[0].get_free_energy()
+                        == entries["LiEC_plus"].get_free_energy()
+                        or r.products[1].get_free_energy()
+                        == entries["LiEC_plus"].get_free_energy()
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -680,7 +751,7 @@ class TestMetalHopReaction(PymatgenTest):
         reaction = MetalHopReaction(
             [entries["LiEC"], entries["EC_0"]],
             [entries["EC_-1"], entries["LiEC_plus"]],
-            entries["Li"]
+            entries["Li"],
         )
         reaction.set_free_energy()
         self.assertEqual(reaction.free_energy_A, 1.303222066930175)
@@ -692,7 +763,7 @@ class TestMetalHopReaction(PymatgenTest):
         reaction = MetalHopReaction(
             [entries["LiEC"], entries["EC_0"]],
             [entries["EC_-1"], entries["LiEC_plus"]],
-            entries["Li"]
+            entries["Li"],
         )
         self.assertEqual(reaction.energy_A, 0.051295952076088724)
         self.assertEqual(reaction.energy_B, -0.051295952076088724)
@@ -703,11 +774,15 @@ class TestMetalHopReaction(PymatgenTest):
         reaction = MetalHopReaction(
             [entries["LiEC"], entries["EC_0"]],
             [entries["EC_-1"], entries["LiEC_plus"]],
-            entries["Li"]
+            entries["Li"],
         )
         self.assertEqual(reaction.__class__.__name__, "MetalHopReaction")
-        self.assertEqual(reaction.rxn_type_A, "Metal hopping reaction AM + B <-> A + BM")
-        self.assertEqual(reaction.rxn_type_B, "Metal hopping reaction AM + B <-> A + BM")
+        self.assertEqual(
+            reaction.rxn_type_A, "Metal hopping reaction AM + B <-> A + BM"
+        )
+        self.assertEqual(
+            reaction.rxn_type_B, "Metal hopping reaction AM + B <-> A + BM"
+        )
 
 
 @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
