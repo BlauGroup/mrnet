@@ -2088,11 +2088,11 @@ class MetalHopReaction(Reaction):
 
     def graph_representation(self) -> nx.DiGraph:
         """
-            A method to convert a CoordinationBondChangeReaction class object
-                into graph representation (nx.Digraph object).
-            CoordinationBondChangeReaction must be of type 1 reactant -> 2 products
+        A method to convert a CoordinationBondChangeReaction class object
+            into graph representation (nx.Digraph object).
+        CoordinationBondChangeReaction must be of type 1 reactant -> 2 products
 
-            :return nx.Digraph object of a single CoordinationBondChangeReaction object
+        :return nx.Digraph object of a single CoordinationBondChangeReaction object
         """
 
         assert len(self.reactant_ids) == 2
@@ -2230,16 +2230,28 @@ class MetalHopReaction(Reaction):
                 set_base = True
 
         rct0_free_energy = mol_free_energy(
-            self.rct0_energy, self.rct0_enthalpy, self.rct0_entropy, temp=temperature,
+            self.rct0_energy,
+            self.rct0_enthalpy,
+            self.rct0_entropy,
+            temp=temperature,
         )
         rct1_free_energy = mol_free_energy(
-            self.rct1_energy, self.rct1_enthalpy, self.rct1_entropy, temp=temperature,
+            self.rct1_energy,
+            self.rct1_enthalpy,
+            self.rct1_entropy,
+            temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
-            self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
+            self.pro0_energy,
+            self.pro0_enthalpy,
+            self.pro0_entropy,
+            temp=temperature
         )
         pro1_free_energy = mol_free_energy(
-            self.pro1_energy, self.pro1_enthalpy, self.pro1_entropy, temp=temperature
+            self.pro1_energy,
+            self.pro1_enthalpy,
+            self.pro1_entropy,
+            temp=temperature
         )
 
         if (
