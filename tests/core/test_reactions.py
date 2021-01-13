@@ -444,9 +444,9 @@ class TestIntermolecularReaction(PymatgenTest):
                     )
                     self.assertTrue(
                         r.products[0].get_free_energy()
-                        == self.C1Li1O3_entry.get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
                         or r.products[1].get_free_energy()
-                        == self.C1Li1O3_entry.get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")

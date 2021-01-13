@@ -1966,8 +1966,8 @@ class MetalHopReaction(Reaction):
 
     @classmethod
     def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
-        reactions = list()
-        M_entries = dict()
+        reactions = list()  # type: List[Reaction]
+        M_entries = dict()  # type: MappingDict
         pairs = list()
         for formula in entries:
             if formula in ["Li1", "Mg1", "Ca1", "Zn1"]:
@@ -1981,7 +1981,7 @@ class MetalHopReaction(Reaction):
 
         # TODO: implement concept of reaction families for concerted reactions
         if not M_entries:
-            return reactions, list()
+            return reactions, dict()
 
         for formula in entries:
             if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
@@ -2103,30 +2103,6 @@ class MetalHopReaction(Reaction):
             self.base_free_energy_A = self.free_energy_A
             self.base_free_energy_B = self.free_energy_B
         return
-
-    def set_rate_constant(self, temperature=298.15):
-        if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
-            self.rate_calculator, ExpandedBEPRateCalculator
-        ):
-            self.k_A: self.rate_calculator.calculate_rate_constant(temperature=temperature)
-            self.k_B: self.rate_calculator.calculate_rate_constant(
-                temperature=temperature, reverse=True
-            )
-        else:
-            self.set_free_energy(temperature=temperature)
-
-            ga = self.free_energy_A
-            gb = self.free_energy_B
-
-            if ga < 0:
-                self.k_A = k * temperature / h
-            else:
-                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
-
-            if gb < 0:
-                self.k_B = k * temperature / h
-            else:
-                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
 
     def set_rate_constant(self, temperature=298.15):
 
