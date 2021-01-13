@@ -88,33 +88,21 @@ def initialize_simulation(reaction_network, initial_cond, volume=10 ** -24):
 
         if len(reaction.reactants) == 1:
             coord_array[2 * id] = num_reactants_for[0]
-        elif (len(reaction.reactants) == 2) and (
-            reaction.reactants[0] == reaction.reactants[1]
-        ):
+        elif (len(reaction.reactants) == 2) and (reaction.reactants[0] == reaction.reactants[1]):
             coord_array[2 * id] = num_reactants_for[0] * (num_reactants_for[0] - 1)
-        elif (len(reaction.reactants) == 2) and (
-            reaction.reactants[0] != reaction.reactants[1]
-        ):
+        elif (len(reaction.reactants) == 2) and (reaction.reactants[0] != reaction.reactants[1]):
             coord_array[2 * id] = num_reactants_for[0] * num_reactants_for[1]
         else:
-            raise RuntimeError(
-                "Only single and bimolecular reactions supported by this simulation"
-            )
+            raise RuntimeError("Only single and bimolecular reactions supported by this simulation")
         # For reverse reaction
         if len(reaction.products) == 1:
             coord_array[2 * id + 1] = num_reactants_rev[0]
-        elif (len(reaction.products) == 2) and (
-            reaction.products[0] == reaction.products[1]
-        ):
+        elif (len(reaction.products) == 2) and (reaction.products[0] == reaction.products[1]):
             coord_array[2 * id + 1] = num_reactants_rev[0] * (num_reactants_rev[0] - 1)
-        elif (len(reaction.products) == 2) and (
-            reaction.products[0] != reaction.products[1]
-        ):
+        elif (len(reaction.products) == 2) and (reaction.products[0] != reaction.products[1]):
             coord_array[2 * id + 1] = num_reactants_rev[0] * num_reactants_rev[1]
         else:
-            raise RuntimeError(
-                "Only single and bimolecular reactions supported by this simulation"
-            )
+            raise RuntimeError("Only single and bimolecular reactions supported by this simulation")
     rxn_mapping_lengths = [len(rxn_list) for rxn_list in species_rxn_mapping_list]
     max_mapping_length = max(rxn_mapping_lengths)
     species_rxn_mapping = -1 * np.ones((num_species, max_mapping_length), dtype=int)
@@ -124,9 +112,7 @@ def initialize_simulation(reaction_network, initial_cond, volume=10 ** -24):
         if this_map_length == max_mapping_length:
             species_rxn_mapping[index, :] = rxn_list
         else:
-            species_rxn_mapping[
-                index, : this_map_length - max_mapping_length
-            ] = rxn_list
+            species_rxn_mapping[index, : this_map_length - max_mapping_length] = rxn_list
     propensities = np.multiply(coord_array, rate_constants)
     return [
         np.array(initial_state, dtype=int),
@@ -311,9 +297,7 @@ def get_coordination(reactants, products, state, rxn_id, reverse):
     elif (num_reactants == 2) and (reactant_array[0] != reactant_array[1]):
         h_prop = num_mols_list[0] * num_mols_list[1]
     else:
-        raise RuntimeError(
-            "Only single and bimolecular reactions supported by this simulation"
-        )
+        raise RuntimeError("Only single and bimolecular reactions supported by this simulation")
 
     return h_prop
 
@@ -359,9 +343,7 @@ class KmcDataAnalyzer:
             raise RuntimeError(
                 "Number of datasets for rxn history and time step history should be same!"
             )
-        self.molind_id_mapping = [
-            mol.entry_id for mol in self.reaction_network.entries_list
-        ]
+        self.molind_id_mapping = [mol.entry_id for mol in self.reaction_network.entries_list]
 
     def generate_time_dep_profiles(self):
         """
@@ -411,15 +393,11 @@ class KmcDataAnalyzer:
                         try:
                             state[r_ind] -= 1
                             if state[r_ind] < 0:
-                                raise ValueError(
-                                    "State invalid: negative specie: {}".format(r_ind)
-                                )
+                                raise ValueError("State invalid: negative specie: {}".format(r_ind))
                             sim_species_profile[r_ind].append((t, state[r_ind]))
                         except KeyError:
                             raise ValueError(
-                                "Reactant specie {} given is not in state!".format(
-                                    r_ind
-                                )
+                                "Reactant specie {} given is not in state!".format(r_ind)
                             )
                 for p_ind in prods:
                     if p_ind == -1:
@@ -434,9 +412,7 @@ class KmcDataAnalyzer:
 
             # for plotting convenience, add data point at final time
             for mol_ind in sim_species_profile:
-                sim_species_profile[mol_ind].append(
-                    (cumulative_time[-1], state[mol_ind])
-                )
+                sim_species_profile[mol_ind].append((cumulative_time[-1], state[mol_ind]))
 
             species_profiles.append(sim_species_profile)
             reaction_profiles.append(sim_rxn_profile)
@@ -457,16 +433,12 @@ class KmcDataAnalyzer:
 
         :return: list of tuples containing statistical data for each species, sorted from highest to low avg occurrence
         """
-        state_arrays = (
-            dict()
-        )  # For each molecule, compile an array of its final amounts
+        state_arrays = dict()  # For each molecule, compile an array of its final amounts
         for iter, final_state in enumerate(final_states):
             for mol_ind, amt in final_state.items():
                 # Store the amount, and convert key from mol_ind to entry_id
                 if self.molind_id_mapping[mol_ind] not in state_arrays:
-                    state_arrays[self.molind_id_mapping[mol_ind]] = np.zeros(
-                        self.num_sims
-                    )
+                    state_arrays[self.molind_id_mapping[mol_ind]] = np.zeros(self.num_sims)
                 state_arrays[self.molind_id_mapping[mol_ind]][iter] = amt
         analyzed_states = dict()  # will contain statistical results of final states
         for mol_entry, state_array in state_arrays.items():
@@ -509,9 +481,7 @@ class KmcDataAnalyzer:
             # Sorting and plotting:
             fig, ax = plt.subplots()
             sorted_state = sorted(
-                [(k, v) for k, v in final_states[n_sim].items()],
-                key=lambda x: x[1],
-                reverse=True,
+                [(k, v) for k, v in final_states[n_sim].items()], key=lambda x: x[1], reverse=True,
             )
             sorted_inds = [mol_tuple[0] for mol_tuple in sorted_state]
             sorted_ind_id_mapping = dict()
@@ -535,9 +505,7 @@ class KmcDataAnalyzer:
                     mol_id = sorted_ind_id_mapping[mol_ind]
                     for entry in self.reaction_network.entries_list:
                         if mol_id == entry.entry_id:
-                            this_composition = (
-                                entry.molecule.composition.alphabetical_formula
-                            )
+                            this_composition = entry.molecule.composition.alphabetical_formula
                             this_charge = entry.molecule.charge
                             this_label = this_composition + " " + str(this_charge)
                             this_color = colors(this_id)
@@ -549,9 +517,7 @@ class KmcDataAnalyzer:
 
             title = "KMC simulation, total time {}".format(t_end)
             ax.set(title=title, xlabel="Time (s)", ylabel="# Molecules")
-            ax.legend(
-                loc="upper right", bbox_to_anchor=(1, 1), ncol=2, fontsize="small"
-            )
+            ax.legend(loc="upper right", bbox_to_anchor=(1, 1), ncol=2, fontsize="small")
 
             sim_filename = filename + "_run_" + str(n_sim + 1)
             if file_dir is None:
@@ -603,9 +569,7 @@ class KmcDataAnalyzer:
         for mol_ind in intermediates:
             entry_id = self.molind_id_mapping[mol_ind]
             intermediates_analysis[entry_id] = dict()  # convert keys to entry id
-            if len(intermediates[mol_ind]["lifetime"]) != len(
-                intermediates[mol_ind]["t_max"]
-            ):
+            if len(intermediates[mol_ind]["lifetime"]) != len(intermediates[mol_ind]["t_max"]):
                 raise RuntimeError("Intermediates data should be of the same length")
             intermediates_analysis[entry_id]["frequency"] = (
                 len(intermediates[mol_ind]["lifetime"]) / self.num_sims
@@ -633,10 +597,7 @@ class KmcDataAnalyzer:
 
         # Sort by highest average amount produced
         sorted_intermediates_analysis = sorted(
-            [
-                (entry_id, mol_data)
-                for entry_id, mol_data in intermediates_analysis.items()
-            ],
+            [(entry_id, mol_data) for entry_id, mol_data in intermediates_analysis.items()],
             key=lambda x: x[1]["amt_produced"][0],
             reverse=True,
         )
@@ -668,9 +629,7 @@ class KmcDataAnalyzer:
             rxn_locations = dict()
             # Find the step numbers when reactions fire in the simulation
             for rxn_ind in reaction_inds:
-                rxn_locations[rxn_ind] = list(
-                    np.where(self.reaction_history[n_sim] == rxn_ind)[0]
-                )
+                rxn_locations[rxn_ind] = list(np.where(self.reaction_history[n_sim] == rxn_ind)[0])
                 rxn_locations[rxn_ind].append(len(self.reaction_history[n_sim]))
             # Correlate between each reaction
             for (rxn_ind, location_list) in rxn_locations.items():
@@ -684,12 +643,8 @@ class KmcDataAnalyzer:
                         for loc_j in location_list_j:
 
                             # Find location where reaction j happens after reaction i, before reaction i fires again
-                            if (loc_j > location_list[i - 1]) and (
-                                loc_j < location_list[i]
-                            ):
-                                time_elapse.append(
-                                    cum_time[loc_j] - cum_time[location_list[i - 1]]
-                                )
+                            if (loc_j > location_list[i - 1]) and (loc_j < location_list[i]):
+                                time_elapse.append(cum_time[loc_j] - cum_time[location_list[i - 1]])
                                 step_elapse.append(loc_j - location_list[i - 1])
                                 occurrences += 1
                                 break
@@ -697,12 +652,8 @@ class KmcDataAnalyzer:
                 if len(time_elapse) == 0:
                     correlation_data[rxn_ind]["occurrences"].append(0)
                 else:
-                    correlation_data[rxn_ind]["time"].append(
-                        np.mean(np.array(time_elapse))
-                    )
-                    correlation_data[rxn_ind]["steps"].append(
-                        np.mean(np.array(step_elapse))
-                    )
+                    correlation_data[rxn_ind]["time"].append(np.mean(np.array(time_elapse)))
+                    correlation_data[rxn_ind]["steps"].append(np.mean(np.array(step_elapse)))
                     correlation_data[rxn_ind]["occurrences"].append(occurrences)
 
         for rxn_ind, data_dict in correlation_data.items():
@@ -795,9 +746,7 @@ class KmcDataAnalyzer:
             for rxn_ind in relevant_rxns:
                 if rxn_ind not in reaction_data:
                     reaction_data[rxn_ind] = list()
-                reaction_data[rxn_ind].append(
-                    np.sum(self.reaction_history[n_sim] == rxn_ind)
-                )
+                reaction_data[rxn_ind].append(np.sum(self.reaction_history[n_sim] == rxn_ind))
 
         reaction_analysis = dict()
         for rxn_ind, counts in reaction_data.items():
@@ -808,9 +757,7 @@ class KmcDataAnalyzer:
 
         # Sort reactions by the average amount fired
         sorted_reaction_analysis = sorted(
-            [(i, c) for i, c in reaction_analysis.items()],
-            key=lambda x: x[1][0],
-            reverse=True,
+            [(i, c) for i, c in reaction_analysis.items()], key=lambda x: x[1][0], reverse=True,
         )
         if num_rxns is None:
             return sorted_reaction_analysis
@@ -833,9 +780,7 @@ class KmcDataAnalyzer:
 
         """
         reaction_frequency_data = dict()
-        reaction_frequency_array = (
-            dict()
-        )  # Growing arrays of reaction frequencies as fxn of time
+        reaction_frequency_array = dict()  # Growing arrays of reaction frequencies as fxn of time
         species_frequency_data = dict()
         species_frequency_array = dict()
         new_species_counters = dict()
@@ -869,9 +814,7 @@ class KmcDataAnalyzer:
                         species_counters[spec_ind] += 1
 
                 # When t reaches the next discretized time step, or end of the simulation
-                if (t >= (n + 1) * delta_t) or (
-                    step_num == len(self.reaction_history[n_sim]) - 1
-                ):
+                if (t >= (n + 1) * delta_t) or (step_num == len(self.reaction_history[n_sim]) - 1):
                     n_to_fill = n
                     if t >= (n + 2) * delta_t:
                         n += math.floor(t / delta_t - n)
@@ -879,15 +822,12 @@ class KmcDataAnalyzer:
                         n += 1
                     steps = step_num - ind_0 + 1
                     for spec_ind in spec_inds:
-                        spec_freq_data[spec_ind][n_to_fill] = (
-                            species_counters[spec_ind] / steps
-                        )
+                        spec_freq_data[spec_ind][n_to_fill] = species_counters[spec_ind] / steps
 
                     for rxn_ind in rxn_inds:
                         rxn_freq = (
                             np.count_nonzero(
-                                self.reaction_history[n_sim][ind_0 : step_num + 1]
-                                == rxn_ind
+                                self.reaction_history[n_sim][ind_0 : step_num + 1] == rxn_ind
                             )
                             / steps
                         )
@@ -909,9 +849,7 @@ class KmcDataAnalyzer:
 
             for spec_ind in spec_inds:
                 if n_sim == 0:
-                    species_frequency_array[spec_ind] = np.array(
-                        spec_freq_data[spec_ind]
-                    )
+                    species_frequency_array[spec_ind] = np.array(spec_freq_data[spec_ind])
                 else:
                     species_frequency_array[spec_ind] = np.vstack(
                         (species_frequency_array[spec_ind], spec_freq_data[spec_ind])
