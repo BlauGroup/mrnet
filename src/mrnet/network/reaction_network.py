@@ -876,7 +876,7 @@ class ReactionNetwork(MSONable):
             for start in starts:
                 if start == PR:
                     PRs[PR][start] = ReactionPath.characterize_path(
-                        [str(start)], weight, self.min_cost, self.graph
+                        [start], weight, self.min_cost, self.graph
                     )
                 else:
                     PRs[PR][start] = ReactionPath(None)
@@ -1316,7 +1316,7 @@ class ReactionNetwork(MSONable):
             self.Product_record.pop(n, None)
 
     def find_or_remove_bad_nodes(
-        self, nodes: List[str], remove_nodes=False
+        self, nodes: List[int], remove_nodes=False
     ) -> Union[List[str], nx.DiGraph]:
         """
             A method to either create a list of the nodes a path solving method
@@ -1360,7 +1360,7 @@ class ReactionNetwork(MSONable):
         :param PRs: not used currently?
         :return: nx.path_generator of type generator
         """
-        valid_graph = self.find_or_remove_bad_nodes([str(target)], remove_nodes=True)
+        valid_graph = self.find_or_remove_bad_nodes([target], remove_nodes=True)
         valid_graph.remove_nodes_from(PRs)  # type: ignore
 
         return nx.shortest_simple_paths(valid_graph, hash(start), hash(target), weight=self.weight)
