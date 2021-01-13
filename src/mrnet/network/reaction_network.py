@@ -29,7 +29,7 @@ __maintainer__ = "Sam Blau"
 __status__ = "Alpha"
 
 
-Mapping_Record_Dict = Dict[str, List[str]]
+Mapping_Record_Dict = Dict[int, List[str]]
 
 
 class ReactionPath(MSONable):
@@ -160,7 +160,6 @@ class ReactionPath(MSONable):
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
-                    # if ii % 2 == 1:
                     if isinstance(step, str):
                         rxn = step.split(",")
                         if "+PR_" in rxn[0]:
