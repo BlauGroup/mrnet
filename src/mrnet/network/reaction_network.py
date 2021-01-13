@@ -855,11 +855,11 @@ class ReactionNetwork(MSONable):
         PRs = {}  # type: Dict[int, Dict[int, ReactionPath]]
         old_solved_PRs = []
         new_solved_PRs = ["placeholder"]
-        old_attrs = {}
-        new_attrs = {}
+        old_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
+        new_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
         self.weight = weight
         self.num_starts = len(starts)
-        self.PR_byproducts = {}
+        self.PR_byproducts = {}  # type: Dict[int, Dict[str, int]]
 
         if len(self.graph.nodes) == 0:
             self.build()
