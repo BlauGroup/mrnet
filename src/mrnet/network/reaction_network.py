@@ -127,7 +127,7 @@ class ReactionPath(MSONable):
     @classmethod
     def characterize_path(
         cls,
-        path: List[str],
+        path: List[Union[str, int]],
         weight: str,
         min_cost: Dict[int, float],
         graph: nx.DiGraph,
@@ -348,7 +348,7 @@ class ReactionPath(MSONable):
     @classmethod
     def characterize_path_final(
         cls,
-        path: List[str],
+        path: List[Union[str, int]],
         weight: str,
         min_cost: Dict[int, float],
         graph: nx.DiGraph,
