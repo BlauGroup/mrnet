@@ -397,10 +397,11 @@ class ReactionPath(MSONable):
                             if PR_paths[PR][start].cost < PR_min_cost:
                                 PR_min_cost = PR_paths[PR][start].cost
                                 PR_path = PR_paths[PR][start]
-                    assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
-                    for new_PR in PR_path.all_prereqs:
-                        new_PRs.append(new_PR)
-                    full_path = PR_path.path + full_path
+                    if PR_path:
+                        assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
+                        for new_PR in PR_path.all_prereqs:
+                            new_PRs.append(new_PR)
+                        full_path = PR_path.path + full_path
                 PRs_to_join = copy.deepcopy(new_PRs)
 
             for PR in class_instance.all_prereqs:
