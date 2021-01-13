@@ -63,11 +63,12 @@ class MoleculeEntry(MSONable):
         self.parameters = parameters if parameters else {}
         self.entry_id = entry_id
         self.attribute = attribute
-        self.mol_graph = mol_graph
 
-        if self.mol_graph is None:
+        if not mol_graph:
             mol_graph = MoleculeGraph.with_local_env_strategy(molecule, OpenBabelNN())
             self.mol_graph = metal_edge_extender(mol_graph)
+        else:
+            self.mol_graph = mol_graph
 
     @classmethod
     def from_molecule_document(
@@ -142,23 +143,23 @@ class MoleculeEntry(MSONable):
 
     @property
     def formula(self) -> str:
-        return self.mol_graph.molecule.composition.alphabetical_formula
+        return self.molecule.composition.alphabetical_formula
 
     @property
     def charge(self) -> float:
-        return self.mol_graph.molecule.charge
+        return self.molecule.charge
 
     @property
     def species(self) -> List[str]:
-        return [str(s) for s in self.mol_graph.molecule.species]
+        return [str(s) for s in self.molecule.species]
 
     @property
     def bonds(self) -> List[Tuple[int, int]]:
-        return [tuple(sorted(e)) for e in self.graph.edges()]
+        return [(int(sorted(e)[0]), int(sorted(e)[1])) for e in self.graph.edges()]
 
     @property
     def num_atoms(self) -> int:
-        return len(self.mol_graph.molecule)
+        return len(self.molecule)
 
     @property
     def num_bonds(self) -> int:
@@ -166,9 +167,9 @@ class MoleculeEntry(MSONable):
 
     @property
     def coords(self) -> np.ndarray:
-        return self.mol_graph.molecule.cart_coords
+        return self.molecule.cart_coords
 
-    def get_free_energy(self, temperature: float = 298.15) -> float:
+    def get_free_energy(self, temperature: float = 298.15) -> Optional[float]:
         """
         Get the free energy at the give temperature.
         """
@@ -181,7 +182,7 @@ class MoleculeEntry(MSONable):
         else:
             return None
 
-    def get_fragments(self) -> Dict[Tuple[int, int], List[MoleculeGraph]]:
+    def get_fragments(self) -> Optional[Dict[Tuple[Any, Any], List[MoleculeGraph]]]:
         """
         Get the fragments of the molecule by breaking all its bonds.
 
@@ -195,25 +196,28 @@ class MoleculeEntry(MSONable):
         """
 
         fragments = {}
-        for edge in self.bonds:
-            try:
-                frags = self.mol_graph.split_molecule_subgraphs(
-                    [edge], allow_reverse=True, alterations=None
-                )
-                fragments[edge] = frags
+        if self.mol_graph:
+            for edge in self.bonds:
+                try:
+                    frags = self.mol_graph.split_molecule_subgraphs(
+                        [edge], allow_reverse=True, alterations=None
+                    )
+                    fragments[edge] = frags
 
-            except MolGraphSplitError:
-                # cannot split (ring-opening editing)
-                frag = copy.deepcopy(self.mol_graph)
-                idx1, idx2 = edge
-                frag.break_edge(idx1, idx2, allow_reverse=True)
-                fragments[edge] = [frag]
+                except MolGraphSplitError:
+                    # cannot split (ring-opening editing)
+                    frag = copy.deepcopy(self.mol_graph)
+                    idx1, idx2 = edge
+                    frag.break_edge(idx1, idx2, allow_reverse=True)
+                    fragments[edge] = [frag]
 
-        return fragments
+            return fragments
+        else:
+            return None
 
     def get_isomorphic_bonds(
         self, fragments: Optional[Dict[Tuple[int, int], List[MoleculeGraph]]] = None
-    ) -> List[List[Tuple[int, int]]]:
+    ) -> Optional[List[List[Tuple[int, int]]]]:
         """
         Find isomorphic bonds in the molecule.
 
@@ -248,39 +252,43 @@ class MoleculeEntry(MSONable):
 
         fragments = self.get_fragments() if fragments is None else fragments
 
-        iso_bonds = []
+        if fragments:
 
-        for current_bond, current_frags in fragments.items():
-            for group in iso_bonds:
+            iso_bonds = []  # type: List[List[Tuple[int, int]]]
 
-                # compare to the first element in a group to determine whether they are
-                # isomorphic to each other
-                existing_bond = group[0]
-                exsiting_frags = fragments[existing_bond]
+            for current_bond, current_frags in fragments.items():
+                for group in iso_bonds:
 
-                # one fragments (ring-opening like fragments)
-                if len(current_frags) == len(exsiting_frags) == 1:
-                    if current_frags[0].isomorphic_to(exsiting_frags[0]):
-                        group.append(current_bond)
-                        break
+                    # compare to the first element in a group to determine whether they are
+                    # isomorphic to each other
+                    existing_bond = group[0]
+                    exsiting_frags = fragments[existing_bond]
 
-                # two fragments
-                elif len(current_frags) == len(exsiting_frags) == 2:
-                    if (
-                        current_frags[0].isomorphic_to(exsiting_frags[0])
-                        and current_frags[1].isomorphic_to(exsiting_frags[1])
-                    ) or (
-                        current_frags[0].isomorphic_to(exsiting_frags[1])
-                        and current_frags[1].isomorphic_to(exsiting_frags[0])
-                    ):
-                        group.append(current_bond)
-                        break
+                    # one fragments (ring-opening like fragments)
+                    if len(current_frags) == len(exsiting_frags) == 1:
+                        if current_frags[0].isomorphic_to(exsiting_frags[0]):
+                            group.append(current_bond)
+                            break
 
-            # current_bond not in any group, create a new group
-            else:
-                iso_bonds.append([current_bond])
+                    # two fragments
+                    elif len(current_frags) == len(exsiting_frags) == 2:
+                        if (
+                            current_frags[0].isomorphic_to(exsiting_frags[0])
+                            and current_frags[1].isomorphic_to(exsiting_frags[1])
+                        ) or (
+                            current_frags[0].isomorphic_to(exsiting_frags[1])
+                            and current_frags[1].isomorphic_to(exsiting_frags[0])
+                        ):
+                            group.append(current_bond)
+                            break
 
-        return iso_bonds
+                # current_bond not in any group, create a new group
+                else:
+                    iso_bonds.append([current_bond])
+
+            return iso_bonds
+        else:
+            return None
 
     def __repr__(self):
         output = [
