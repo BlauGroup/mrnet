@@ -2242,16 +2242,10 @@ class MetalHopReaction(Reaction):
             temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
-            self.pro0_energy,
-            self.pro0_enthalpy,
-            self.pro0_entropy,
-            temp=temperature
+            self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
         )
         pro1_free_energy = mol_free_energy(
-            self.pro1_energy,
-            self.pro1_enthalpy,
-            self.pro1_entropy,
-            temp=temperature
+            self.pro1_energy, self.pro1_enthalpy, self.pro1_entropy, temp=temperature
         )
 
         if (
