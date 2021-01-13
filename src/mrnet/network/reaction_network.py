@@ -2,7 +2,7 @@ import copy
 import heapq
 import itertools
 import time as time
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Any
 
 import networkx as nx
 from monty.json import MSONable
@@ -1759,7 +1759,7 @@ class ReactionNetwork(MSONable):
 
         reactions = [r.as_dict() for r in self.reactions]
 
-        families = dict()
+        families = dict()  # type: Dict[str, Dict[int, List[Reaction]]]
         for category in self.families.keys():
             families[category] = dict()
             for charge in self.families[category].keys():
