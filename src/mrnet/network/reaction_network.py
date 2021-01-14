@@ -757,7 +757,8 @@ class ReactionNetwork(MSONable):
         """
             A method to build the reaction network graph
 
-        :param reaction_types: set/frozenset of all the reactions class to include while building the graph
+        :param reaction_types: set/frozenset of all the reactions class to
+            include while building the graph
         :return: nx.DiGraph
         """
 
