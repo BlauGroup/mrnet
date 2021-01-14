@@ -145,7 +145,11 @@ class Reaction(MSONable, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def generate(cls, entries: MappingDict):
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ):
         pass
 
     @abstractmethod
@@ -218,9 +222,6 @@ class Reaction(MSONable, metaclass=ABCMeta):
         )
         reaction.rate_calculator = rate_calculator
         return reaction
-
-
-Mapping_Family_Dict = Dict[str, Dict[int, List[Reaction]]]
 
 
 class RedoxReaction(Reaction):
@@ -382,8 +383,10 @@ class RedoxReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict
-    ) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
         """
         A method to generate all the possible redox reactions from given entries
 
@@ -395,13 +398,9 @@ class RedoxReaction(Reaction):
             list of RedoxReaction class objects
         """
         reactions = list()  # type: List[Reaction]
-        families = dict()  # type: Mapping_Family_Dict
         for formula in entries:
-            families[formula] = dict()
             for Nbonds in entries[formula]:
                 charges = sorted(entries[formula][Nbonds].keys())
-                for charge in charges:
-                    families[formula][charge] = list()
                 if len(charges) > 1:
                     for ii in range(len(charges) - 1):
                         charge0 = charges[ii]
@@ -413,9 +412,13 @@ class RedoxReaction(Reaction):
                                         entry0.graph, entry1.graph
                                     )
                                     if isomorphic and node_mapping:
-                                        rct_mp, prdt_mp = generate_atom_mapping_1_1(
-                                            node_mapping
-                                        )
+                                        if determine_atom_mappings:
+                                            rct_mp, prdt_mp = generate_atom_mapping_1_1(
+                                                node_mapping
+                                            )
+                                        else:
+                                            rct_mp = None
+                                            prdt_mp = None
                                         r = cls(
                                             entry0,
                                             entry1,
@@ -423,9 +426,8 @@ class RedoxReaction(Reaction):
                                             product_atom_mapping=prdt_mp,
                                         )
                                         reactions.append(r)
-                                        families[formula][charge0].append(r)
 
-        return reactions, families
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -683,11 +685,11 @@ class IntramolSingleBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict
-    ) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
-        families = dict()  # type: Mapping_Family_Dict
-        templates = list()  # type: List[nx.Graph]
         for formula in entries:
             Nbonds_list = sorted(entries[formula].keys())
             if len(Nbonds_list) <= 1:
@@ -704,26 +706,21 @@ class IntramolSingleBondChangeReaction(Reaction):
                         continue
 
                     for entry1 in entries[formula][Nbonds1][charge]:
-                        rxns, subgs = cls._generate_one(
-                            entry1, entries, formula, Nbonds0, charge, cls
+                        rxns = cls._generate_one(
+                            entry1, entries, formula, Nbonds0, charge, determine_atom_mappings, cls
                         )
                         reactions.extend(rxns)
-                        for r, g in zip(rxns, subgs):
-                            families, templates = categorize(
-                                r, families, templates, g, charge
-                            )
 
-        return reactions, families
+        return reactions
 
     @staticmethod
     def _generate_one(
-        entry1, entries, formula, Nbonds0, charge, cls
-    ) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        entry1, entries, formula, Nbonds0, charge, determine_atom_mappings, cls
+    ) -> List[Reaction]:
         """
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
-        sub_graphs = []
         for bond in entry1.bonds:
             mg = copy.deepcopy(entry1.mol_graph)
             mg.break_edge(bond[0], bond[1], allow_reverse=True)
@@ -731,24 +728,23 @@ class IntramolSingleBondChangeReaction(Reaction):
                 for entry0 in entries[formula][Nbonds0][charge]:
                     isomorphic, node_mapping = is_isomorphic(entry0.graph, mg.graph)
                     if isomorphic and node_mapping:
-                        rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
+                        if determine_atom_mappings:
+                            rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
+                        else:
+                            rct_mp = None
+                            prdt_mp = None
                         r = cls(
                             entry0,
                             entry1,
                             reactant_atom_mapping=rct_mp,
                             product_atom_mapping=prdt_mp,
                         )
-                        indices = extract_bond_environment(entry1.mol_graph, [bond])
-                        subg = (
-                            entry1.graph.subgraph(list(indices)).copy().to_undirected()
-                        )
 
                         reactions.append(r)
-                        sub_graphs.append(subg)
 
                         break
 
-        return reactions, sub_graphs
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -993,11 +989,11 @@ class IntermolecularReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict
-    ) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
-        families = dict()  # type: Mapping_Family_Dict
-        templates = list()  # type: List[nx.Graph]
 
         for formula in entries:
             for Nbonds in entries[formula]:
@@ -1006,24 +1002,19 @@ class IntermolecularReaction(Reaction):
 
                 for charge in entries[formula][Nbonds]:
                     for entry in entries[formula][Nbonds][charge]:
-                        rxns, subgs = cls._generate_one(entry, entries, charge, cls)
+                        rxns = cls._generate_one(entry, entries, charge, determine_atom_mappings, cls)
                         reactions.extend(rxns)
-                        for r, g in zip(rxns, subgs):
-                            families, templates = categorize(
-                                r, families, templates, g, charge
-                            )
 
-        return reactions, families
+        return reactions
 
     @staticmethod
     def _generate_one(
-        entry, entries, charge, cls
-    ) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        entry, entries, charge, determine_atom_mappings, cls
+    ) -> List[Reaction]:
         """
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
-        sub_graphs = []
 
         for edge in entry.bonds:
             bond = [(edge[0], edge[1])]
@@ -1058,33 +1049,27 @@ class IntermolecularReaction(Reaction):
                                     frags[1].graph, entry1.graph
                                 )
                                 if isomorphic1:
-                                    rct_mp, prdts_mp = generate_atom_mapping_1_2(
-                                        entry, [entry0, entry1], [edge]
-                                    )
+                                    if determine_atom_mappings:
+                                        rct_mp, prdts_mp = generate_atom_mapping_1_2(
+                                            entry, [entry0, entry1], [edge]
+                                        )
+                                    else:
+                                        rct_mp = None
+                                        prdts_mp = None
                                     r = cls(
                                         entry,
                                         [entry0, entry1],
                                         reactant_atom_mapping=rct_mp,
                                         products_atom_mapping=prdts_mp,
                                     )
-
-                                    mg = entry.mol_graph
-                                    indices = extract_bond_environment(mg, [edge])
-                                    subg = (
-                                        mg.graph.subgraph(list(indices))
-                                        .copy()
-                                        .to_undirected()
-                                    )
-
                                     reactions.append(r)
-                                    sub_graphs.append(subg)
 
                                     break
                             break
             except MolGraphSplitError:
                 pass
 
-        return reactions, sub_graphs
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -1335,8 +1320,10 @@ class CoordinationBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict
-    ) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
 
         # find metal entries
         M_entries = dict()  # type: MappingDict
@@ -1349,11 +1336,9 @@ class CoordinationBondChangeReaction(Reaction):
                     M_entries[formula][charge] = entries[formula][0][charge][0]
 
         reactions = list()  # type: List[Reaction]
-        families = dict()  # type: Mapping_Family_Dict
-        templates = list()  # type: List[nx.Graph]
 
         if not M_entries:
-            return reactions, families
+            return reactions
 
         for formula in entries:
             if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
@@ -1364,21 +1349,17 @@ class CoordinationBondChangeReaction(Reaction):
 
                     for charge in entries[formula][Nbonds]:
                         for entry in entries[formula][Nbonds][charge]:
-                            rxns, subgs = cls._generate_one(
-                                entry, entries, M_entries, cls
+                            rxns = cls._generate_one(
+                                entry, entries, M_entries, determine_atom_mappings, cls
                             )
                             reactions.extend(rxns)
-                            for r, g in zip(rxns, subgs):
-                                families, templates = categorize(
-                                    r, families, templates, g, charge
-                                )
 
-        return reactions, families
+        return reactions
 
     @staticmethod
     def _generate_one(
-        entry, entries, M_entries, cls
-    ) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        entry, entries, M_entries, determine_atom_mappings, cls
+    ) -> List[Reaction]:
         """
         Helper function to generate reactions for one molecule entry.
         """
@@ -1448,9 +1429,13 @@ class CoordinationBondChangeReaction(Reaction):
                             if isomorphic:
                                 this_m = M_entries[M_formula][M_charge]
 
-                                rct_mp, prdts_mp = generate_atom_mapping_1_2(
-                                    entry, [nonM_entry, this_m], bond_pair
-                                )
+                                if determine_atom_mappings:
+                                    rct_mp, prdts_mp = generate_atom_mapping_1_2(
+                                        entry, [nonM_entry, this_m], bond_pair
+                                    )
+                                else:
+                                    rct_mp = None
+                                    prdts_mp = None
 
                                 r = cls(
                                     entry,
@@ -1458,23 +1443,14 @@ class CoordinationBondChangeReaction(Reaction):
                                     reactant_atom_mapping=rct_mp,
                                     products_atom_mapping=prdts_mp,
                                 )
-                                mg = entry.mol_graph
-                                indices = extract_bond_environment(mg, list(bond_pair))
-                                subg = (
-                                    mg.graph.subgraph(list(indices))
-                                    .copy()
-                                    .to_undirected()
-                                )
-
                                 reactions.append(r)
-                                sub_graphs.append(subg)
 
                                 break
 
             except MolGraphSplitError:
                 pass
 
-        return reactions, sub_graphs
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -1760,12 +1736,13 @@ class ConcertedReaction(Reaction):
     def generate(
         cls,
         entries: MappingDict,
+        determine_atom_mappings: bool = True,
         name="nothing",
         read_file=False,
         num_processors=16,
         reaction_type="break2_form2",
         allowed_charge_change=0,
-    ) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+    ) -> List[Reaction]:
 
         """
         A method to generate all the possible concerted reactions from given
@@ -1811,9 +1788,7 @@ class ConcertedReaction(Reaction):
                 r = cls(entries0, entries1)
                 reactions.append(r)
 
-        # TODO: implement concept of reaction families for concerted reactions
-        # with multiple reactants and multiple products
-        return reactions, dict()
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -2101,8 +2076,10 @@ class MetalHopReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict
-    ) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         M_entries = dict()  # type: MappingDict
         pairs = list()
@@ -2118,7 +2095,7 @@ class MetalHopReaction(Reaction):
 
         # TODO: implement concept of reaction families for concerted reactions
         if not M_entries:
-            return reactions, dict()
+            return reactions
 
         for formula in entries:
             if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
@@ -2143,7 +2120,7 @@ class MetalHopReaction(Reaction):
                         )
                     )
 
-        return reactions, dict()
+        return reactions
 
     @staticmethod
     def _generate_one(entry, entries, M_entries):
@@ -2478,12 +2455,16 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     return graph
 
 
-def categorize(reaction, families, templates, environment, charge):
+def categorize(
+        reaction: Reaction,
+        families: Dict[int, Dict[int, List[Reaction]]],
+        templates: List[nx.Graph],
+        environment: nx.Graph,
+        charge: int
+) -> Tuple[Dict[int, Dict[int, List[Reaction]]], List[nx.Graph]]:
     """
     Given reactants, products, and a local bonding environment, place a
-        reaction into a reaction class.
-
-    Note: This is not currently designed for redox reactions
+        reaction into a family of similar reactions.
 
     Args:
         reaction: Reaction object
@@ -2501,10 +2482,9 @@ def categorize(reaction, families, templates, environment, charge):
 
     match = False
 
-    for e, template in enumerate(templates):
+    for label, template in enumerate(templates):
         if nx.is_isomorphic(environment, template, node_match=nm):
             match = True
-            label = e
             if charge in families:
                 if label in families[charge]:
                     families[charge][label].append(reaction)
