@@ -2,7 +2,7 @@ import copy
 import heapq
 import itertools
 import time as time
-from typing import Dict, List, Tuple, Union, Any
+from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set
 
 import networkx as nx
 from monty.json import MSONable
@@ -548,7 +548,6 @@ class ReactionNetwork(MSONable):
         entries_list,
         graph,
         reactions,
-        families,
         PRs,
         PR_record,
         min_cost,
@@ -564,7 +563,6 @@ class ReactionNetwork(MSONable):
         :param entries_list: list of unique entries in entries_dict
         :param graph: nx.DiGraph representing connections in the network
         :param reactions: list of Reaction objects
-        :param families: dict containing reaction families
         :param PRs: dict containing prerequisite information
         :param PR_record: dict containing reaction prerequisites
         :param min_cost: dict containing costs of entries in the network
@@ -582,7 +580,6 @@ class ReactionNetwork(MSONable):
         self.graph = graph
         self.PR_record = PR_record
         self.reactions = reactions
-        self.families = families
 
         self.min_cost = min_cost
         self.num_starts = num_starts
@@ -714,7 +711,6 @@ class ReactionNetwork(MSONable):
             dict(),
             dict(),
             dict(),
-            dict(),
             0,
         )
 
@@ -745,7 +741,7 @@ class ReactionNetwork(MSONable):
 
     def build(
         self,
-        reaction_types=frozenset(
+        reaction_types: Union[Set, FrozenSet] = frozenset(
             {
                 "RedoxReaction",
                 "IntramolSingleBondChangeReaction",
@@ -753,12 +749,15 @@ class ReactionNetwork(MSONable):
                 "CoordinationBondChangeReaction",
             }
         ),
+        determine_atom_mappings: bool = True,
     ) -> nx.DiGraph:
         """
             A method to build the reaction network graph
 
-        :param reaction_types: set/frozenset of all the reactions class to
-            include while building the graph
+        :param reaction_types (set/frozenset): set/frozenset of all the reactions
+            class to include while building the graph
+        :param determine_atom_mappings (bool): If True (default), create an atom
+            mapping between reactants and products in a given reaction
         :return: nx.DiGraph
         """
 
@@ -768,16 +767,16 @@ class ReactionNetwork(MSONable):
         for entry in self.entries_list:
             self.graph.add_node(entry.parameters["ind"], bipartite=0)
 
-        reaction_types = [load_class(str(self.__module__), s) for s in reaction_types]
+        reaction_classes = [load_class(str(self.__module__), s) for s in reaction_types]
 
         all_reactions = list()
-        raw_families = dict()
 
         # Generate reactions
-        for r in reaction_types:
-            reactions, families = r.generate(self.entries)
+        for r in reaction_classes:
+            reactions = r.generate(
+                self.entries, determine_atom_mappings=determine_atom_mappings
+            )
             all_reactions.append(reactions)
-            raw_families[r.__name__] = families
 
         all_reactions = [i for i in all_reactions if i]
         self.reactions = list(itertools.chain.from_iterable(all_reactions))
@@ -786,14 +785,6 @@ class ReactionNetwork(MSONable):
         inter_c = 0
         intra_c = 0
         coord_c = 0
-
-        self.families = dict()
-        for label_1, grouping_1 in raw_families.items():
-            self.families[label_1] = dict()
-            for label_2, grouping_2 in grouping_1.items():
-                self.families[label_1][label_2] = dict()
-                for label_3 in grouping_2.keys():
-                    self.families[label_1][label_2][label_3] = set()
 
         for ii, r in enumerate(self.reactions):
             r.parameters["ind"] = ii
@@ -807,18 +798,6 @@ class ReactionNetwork(MSONable):
             elif r.__class__.__name__ == "CoordinationBondChangeReaction":
                 coord_c += 1
             self.add_reaction(r.graph_representation())
-
-            # TODO: concerted reactions?
-
-            this_class = r.__class__.__name__
-            for layer1, class1 in raw_families[this_class].items():
-                for layer2, class2 in class1.items():
-                    for rxn in class2:
-                        # Reactions identical - link by index
-                        cond_rct = sorted(r.reactant_ids) == sorted(rxn.reactant_ids)
-                        cond_pro = sorted(r.product_ids) == sorted(rxn.product_ids)
-                        if cond_rct and cond_pro:
-                            self.families[this_class][layer1][layer2].add(ii)
 
         print(
             "redox: ",
@@ -1896,23 +1875,12 @@ class ReactionNetwork(MSONable):
 
         reactions = [r.as_dict() for r in self.reactions]
 
-        families = dict()  # type: Dict[str, Dict[int, Dict[str, List[Reaction]]]]
-        for category in self.families.keys():
-            families[category] = dict()
-            for charge in self.families[category].keys():
-                families[category][charge] = dict()
-                for label in self.families[category][charge].keys():
-                    families[category][charge][label] = list()
-                    for reaction in self.families[category][charge][label]:
-                        families[category][charge][label].append(reaction)
-
         d = {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
             "entries_dict": entries,
             "entries_list": entries_list,
             "reactions": reactions,
-            "families": families,
             "electron_free_energy": self.electron_free_energy,
             "temperature": self.temperature,
             "solvent_dielectric": self.solvent_dielectric,
@@ -1951,16 +1919,6 @@ class ReactionNetwork(MSONable):
             rclass = load_class(str(cls.__module__), reaction["@class"])
             reactions.append(rclass.from_dict(reaction))
 
-        families = dict()
-        for category in d["families"].keys():
-            families[category] = dict()
-            for layer_one in d["families"][category].keys():
-                families[category][layer_one] = dict()
-                for layer_two in d["families"][category][layer_one].keys():
-                    families[category][layer_one][layer_two] = list()
-                    for reaction in d["families"][category][layer_one][layer_two]:
-                        families[category][layer_one][layer_two].append(reaction)
-
         graph = json_graph.adjacency_graph(d["graph"], directed=True)
 
         return cls(
@@ -1972,7 +1930,6 @@ class ReactionNetwork(MSONable):
             entries_list,
             graph,
             reactions,
-            families,
             d.get("PR_record", dict()),
             d.get("PRs", dict()),
             d.get("min_cost", dict()),
