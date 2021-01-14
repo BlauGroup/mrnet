@@ -28,7 +28,11 @@ __copyright__ = "Copyright 2020, The Materials Project"
 __version__ = "0.1"
 
 test_dir = os.path.join(
-    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "test_files",
+    "reaction_network_files",
 )
 
 
