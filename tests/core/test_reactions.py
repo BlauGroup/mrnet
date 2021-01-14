@@ -28,11 +28,7 @@ except ImportError:
 
 
 test_dir = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "test_files",
-    "reaction_network_files",
+    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
 )
 
 
@@ -317,9 +313,7 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions = IntramolSingleBondChangeReaction.generate(
-            entries["RN"].entries
-        )
+        reactions = IntramolSingleBondChangeReaction.generate(entries["RN"].entries)
         self.assertEqual(len(reactions), 93)
 
         for r in reactions:
@@ -566,9 +560,7 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions = CoordinationBondChangeReaction.generate(
-            entries["RN"].entries
-        )
+        reactions = CoordinationBondChangeReaction.generate(entries["RN"].entries)
         self.assertEqual(len(reactions), 50)
 
         for r in reactions:

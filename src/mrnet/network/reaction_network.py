@@ -772,8 +772,7 @@ class ReactionNetwork(MSONable):
         # Generate reactions
         for r in reaction_types:
             reactions = r.generate(
-                self.entries,
-                determine_atom_mappings=determine_atom_mappings
+                self.entries, determine_atom_mappings=determine_atom_mappings
             )
             all_reactions.append(reactions)
 

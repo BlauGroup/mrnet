@@ -146,9 +146,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ):
         pass
 
@@ -383,9 +381,7 @@ class RedoxReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         """
         A method to generate all the possible redox reactions from given entries
@@ -685,9 +681,7 @@ class IntramolSingleBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         for formula in entries:
@@ -707,7 +701,13 @@ class IntramolSingleBondChangeReaction(Reaction):
 
                     for entry1 in entries[formula][Nbonds1][charge]:
                         rxns = cls._generate_one(
-                            entry1, entries, formula, Nbonds0, charge, determine_atom_mappings, cls
+                            entry1,
+                            entries,
+                            formula,
+                            Nbonds0,
+                            charge,
+                            determine_atom_mappings,
+                            cls,
                         )
                         reactions.extend(rxns)
 
@@ -989,9 +989,7 @@ class IntermolecularReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
 
@@ -1002,7 +1000,9 @@ class IntermolecularReaction(Reaction):
 
                 for charge in entries[formula][Nbonds]:
                     for entry in entries[formula][Nbonds][charge]:
-                        rxns = cls._generate_one(entry, entries, charge, determine_atom_mappings, cls)
+                        rxns = cls._generate_one(
+                            entry, entries, charge, determine_atom_mappings, cls
+                        )
                         reactions.extend(rxns)
 
         return reactions
@@ -1320,9 +1320,7 @@ class CoordinationBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
 
         # find metal entries
@@ -2076,9 +2074,7 @@ class MetalHopReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         M_entries = dict()  # type: MappingDict
@@ -2207,16 +2203,10 @@ class MetalHopReaction(Reaction):
                 set_base = True
 
         rct0_free_energy = mol_free_energy(
-            self.rct0_energy,
-            self.rct0_enthalpy,
-            self.rct0_entropy,
-            temp=temperature,
+            self.rct0_energy, self.rct0_enthalpy, self.rct0_entropy, temp=temperature,
         )
         rct1_free_energy = mol_free_energy(
-            self.rct1_energy,
-            self.rct1_enthalpy,
-            self.rct1_entropy,
-            temp=temperature,
+            self.rct1_energy, self.rct1_enthalpy, self.rct1_entropy, temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
