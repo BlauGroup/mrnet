@@ -412,15 +412,18 @@ class RedoxReaction(Reaction):
                                             rct_mp, prdt_mp = generate_atom_mapping_1_1(
                                                 node_mapping
                                             )
+                                            r = cls(
+                                                entry0,
+                                                entry1,
+                                                reactant_atom_mapping=rct_mp,
+                                                product_atom_mapping=prdt_mp,
+                                            )
                                         else:
-                                            rct_mp = None
-                                            prdt_mp = None
-                                        r = cls(
-                                            entry0,
-                                            entry1,
-                                            reactant_atom_mapping=rct_mp,
-                                            product_atom_mapping=prdt_mp,
-                                        )
+                                            r = cls(
+                                                entry0,
+                                                entry1,
+                                            )
+
                                         reactions.append(r)
 
         return reactions
@@ -730,15 +733,17 @@ class IntramolSingleBondChangeReaction(Reaction):
                     if isomorphic and node_mapping:
                         if determine_atom_mappings:
                             rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
+                            r = cls(
+                                entry0,
+                                entry1,
+                                reactant_atom_mapping=rct_mp,
+                                product_atom_mapping=prdt_mp,
+                            )
                         else:
-                            rct_mp = None
-                            prdt_mp = None
-                        r = cls(
-                            entry0,
-                            entry1,
-                            reactant_atom_mapping=rct_mp,
-                            product_atom_mapping=prdt_mp,
-                        )
+                            r = cls(
+                                entry0,
+                                entry1,
+                            )
 
                         reactions.append(r)
 
@@ -1053,15 +1058,18 @@ class IntermolecularReaction(Reaction):
                                         rct_mp, prdts_mp = generate_atom_mapping_1_2(
                                             entry, [entry0, entry1], [edge]
                                         )
+                                        r = cls(
+                                            entry,
+                                            [entry0, entry1],
+                                            reactant_atom_mapping=rct_mp,
+                                            products_atom_mapping=prdts_mp,
+                                        )
                                     else:
-                                        rct_mp = None
-                                        prdts_mp = None
-                                    r = cls(
-                                        entry,
-                                        [entry0, entry1],
-                                        reactant_atom_mapping=rct_mp,
-                                        products_atom_mapping=prdts_mp,
-                                    )
+                                        r = cls(
+                                            entry,
+                                            [entry0, entry1],
+                                        )
+
                                     reactions.append(r)
 
                                     break
@@ -1362,7 +1370,6 @@ class CoordinationBondChangeReaction(Reaction):
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
-        sub_graphs = []
 
         nosplit_M_bonds = list()
 
@@ -1431,16 +1438,18 @@ class CoordinationBondChangeReaction(Reaction):
                                     rct_mp, prdts_mp = generate_atom_mapping_1_2(
                                         entry, [nonM_entry, this_m], bond_pair
                                     )
-                                else:
-                                    rct_mp = None
-                                    prdts_mp = None
 
-                                r = cls(
-                                    entry,
-                                    [nonM_entry, this_m],
-                                    reactant_atom_mapping=rct_mp,
-                                    products_atom_mapping=prdts_mp,
-                                )
+                                    r = cls(
+                                        entry,
+                                        [nonM_entry, this_m],
+                                        reactant_atom_mapping=rct_mp,
+                                        products_atom_mapping=prdts_mp,
+                                    )
+                                else:
+                                    r = cls(
+                                        entry,
+                                        [nonM_entry, this_m],
+                                    )
                                 reactions.append(r)
 
                                 break
