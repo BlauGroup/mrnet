@@ -754,8 +754,10 @@ class ReactionNetwork(MSONable):
         """
             A method to build the reaction network graph
 
-        :param reaction_types (set/frozenset): set/frozenset of all the reactions class to include while building the graph
-        :param determine_atom_mappings (bool): If True (default), create an atom mapping between reactants and products in a given reaction
+        :param reaction_types (set/frozenset): set/frozenset of all the reactions
+            class to include while building the graph
+        :param determine_atom_mappings (bool): If True (default), create an atom
+            mapping between reactants and products in a given reaction
         :return: nx.DiGraph
         """
 
