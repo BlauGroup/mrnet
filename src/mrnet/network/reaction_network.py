@@ -767,12 +767,12 @@ class ReactionNetwork(MSONable):
         for entry in self.entries_list:
             self.graph.add_node(entry.parameters["ind"], bipartite=0)
 
-        reaction_types = [load_class(str(self.__module__), s) for s in reaction_types]
+        reaction_classes = [load_class(str(self.__module__), s) for s in reaction_types]
 
         all_reactions = list()
 
         # Generate reactions
-        for r in reaction_types:
+        for r in reaction_classes:
             reactions = r.generate(
                 self.entries, determine_atom_mappings=determine_atom_mappings
             )

@@ -258,8 +258,8 @@ class RedoxReaction(Reaction):
         radius=None,
         electrode_dist=None,
         parameters=None,
-        reactant_atom_mapping: Atom_Mapping_Dict = None,
-        product_atom_mapping: Atom_Mapping_Dict = None,
+        reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
+        product_atom_mapping: Optional[Atom_Mapping_Dict] = None,
     ):
         self.reactant = reactant
         self.product = product
@@ -617,8 +617,8 @@ class IntramolSingleBondChangeReaction(Reaction):
         product: MoleculeEntry,
         transition_state: Optional[MoleculeEntry] = None,
         parameters: Optional[Dict] = None,
-        reactant_atom_mapping: Atom_Mapping_Dict = None,
-        product_atom_mapping: Atom_Mapping_Dict = None,
+        reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
+        product_atom_mapping: Optional[Atom_Mapping_Dict] = None,
     ):
         self.reactant = reactant
         self.product = product
