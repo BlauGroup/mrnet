@@ -2455,57 +2455,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     return graph
 
 
-def categorize(
-        reaction: Reaction,
-        families: Dict[int, Dict[int, List[Reaction]]],
-        templates: List[nx.Graph],
-        environment: nx.Graph,
-        charge: int
-) -> Tuple[Dict[int, Dict[int, List[Reaction]]], List[nx.Graph]]:
-    """
-    Given reactants, products, and a local bonding environment, place a
-        reaction into a family of similar reactions.
-
-    Args:
-        reaction: Reaction object
-        families: dict of dicts representing families of reactions
-        templates: list of nx.Graph objects that define other families
-        environment: a nx.Graph object representing a submolecule that
-            defines the type of reaction
-        charge: int representing the charge of the reaction
-    Returns:
-        families: nested dict containing categorized reactions
-        templates: list of graph representations of molecule "templates"
-    """
-
-    nm = iso.categorical_node_match("specie", "ERROR")
-
-    match = False
-
-    for label, template in enumerate(templates):
-        if nx.is_isomorphic(environment, template, node_match=nm):
-            match = True
-            if charge in families:
-                if label in families[charge]:
-                    families[charge][label].append(reaction)
-                else:
-                    families[charge][label] = [reaction]
-                break
-            else:
-                families[charge] = {label: [reaction]}
-                break
-    if not match:
-        label = len(templates)
-        if charge in families:
-            families[charge][label] = [reaction]
-        else:
-            families[charge] = {label: [reaction]}
-
-        templates.append(environment)
-
-    return families, templates
-
-
 def softplus(free_energy: float) -> float:
     """
     Method to determine edge weight using softplus cost function
