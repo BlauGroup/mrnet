@@ -20,6 +20,7 @@ from mrnet.core.reactions import (
     general_graph_rep,
     rexp,
     softplus,
+    MetalHopReaction
 )
 from mrnet.utils.classes import load_class
 

@@ -243,7 +243,7 @@ class RedoxReaction(Reaction):
         refractive (float): Refractive index of the solvent
         electron_free_energy (float): Free energy of the electron in the electrode, in eV
         radius (float): Solute cavity radius (including inner solvent shell)
-        electrode_dist (float): Distance from reactants to electrode, in Angstrom
+        electrode_distance (float): Distance from reactants to electrode, in Angstrom
         parameters (dict): Any additional data about this reaction
         reactant_atom_mapping: atom mapping number dict for reactant
         product_atom_mapping: atom mapping number dict for product
@@ -258,7 +258,7 @@ class RedoxReaction(Reaction):
         refractive=None,
         electron_free_energy=None,
         radius=None,
-        electrode_dist=None,
+        electrode_distance=None,
         parameters=None,
         reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
         product_atom_mapping: Optional[Atom_Mapping_Dict] = None,
@@ -283,7 +283,7 @@ class RedoxReaction(Reaction):
         self.refractive = refractive
         self.electron_free_energy = electron_free_energy
         self.radius = radius
-        self.electrode_dist = electrode_dist
+        self.electrode_distance = electrode_distance
 
         if all(
             [
@@ -294,7 +294,7 @@ class RedoxReaction(Reaction):
                     self.refractive,
                     self.electron_free_energy,
                     self.radius,
-                    self.electrode_dist,
+                    self.electrode_distance,
                 ]
             ]
         ):
@@ -306,7 +306,7 @@ class RedoxReaction(Reaction):
                 self.refractive,
                 self.electron_free_energy,
                 self.radius,
-                self.electrode_dist,
+                self.electrode_distance,
             )
 
         # Store necessary mol_entry attributes
@@ -371,7 +371,7 @@ class RedoxReaction(Reaction):
                     refractive: refractive index of the solvent
                     electron_free_energy: free energy of the electron, in eV
                     radius: radius of the reactant + inner solvation shell
-                    electrode_dist: distance from the reactant to the electrode
+                    electrode_distance: distance from the reactant to the electrode
         """
 
         if reference is None:
@@ -379,7 +379,14 @@ class RedoxReaction(Reaction):
         elif self.rate_calculator:
             self.rate_calculator.update_calc(reference)
         else:
-            pass
+            self.rate_calculator = RedoxRateCalculator(self.reactants,
+                                                       self.products,
+                                                       reference["lambda_inner"],
+                                                       reference["dielectric"],
+                                                       reference["refractive"],
+                                                       reference["electron_free_energy"],
+                                                       reference["radius"],
+                                                       reference["electrode_distance"])
 
     @classmethod
     def generate(
@@ -500,10 +507,10 @@ class RedoxReaction(Reaction):
             )
         else:
             self.set_free_energy(temperature=temperature)
-            if self.electrode_dist is None:
+            if self.electrode_distance is None:
                 kappa = 1
             else:
-                kappa = np.exp(-1.2 * self.electrode_dist)
+                kappa = np.exp(-1.2 * self.electrode_distance)
 
             if self.inner_reorganization_energy is None:
                 delta_g_a = self.free_energy_A
@@ -551,7 +558,7 @@ class RedoxReaction(Reaction):
             "refractive": self.refractive,
             "electron_free_energy": self.electron_free_energy,
             "radius": self.radius,
-            "electrode_dist": self.electrode_dist,
+            "electrode_distance": self.electrode_distance,
             "rate_calculator": rc,
             "parameters": self.parameters,
             "reactants_atom_mapping": self.reactant_atom_mapping,
@@ -585,7 +592,7 @@ class RedoxReaction(Reaction):
             d["refractive"],
             d["electron_free_energy"],
             d["radius"],
-            d["electrode_dist"],
+            d["electrode_distance"],
             parameters=d["parameters"],
             reactant_atom_mapping=reactants_atom_mapping[0],
             product_atom_mapping=products_atom_mapping[0],
@@ -813,13 +820,11 @@ class IntramolSingleBondChangeReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A = (
-                self.rate_calculator.calculate_rate_constant(temperature=temperature),
+            self.k_A = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature
             )
-            self.k_B = (
-                self.rate_calculator.calculate_rate_constant(
-                    temperature=temperature, reverse=True
-                ),
+            self.k_B = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature, reverse=True
             )
         else:
             self.set_free_energy(temperature=temperature)
@@ -1887,8 +1892,8 @@ class ConcertedReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A = (
-                self.rate_calculator.calculate_rate_constant(temperature=temperature),
+            self.k_A = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature
             )
             self.k_B = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True

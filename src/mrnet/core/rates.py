@@ -714,7 +714,7 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
     def update_calc(self, reference):
         """Update the rate calculator with a baseline reference values."""
-        for key in reference.keys():
+        for k in reference.keys():
             setattr(self, k, reference.get(k))
 
     def calculate_act_energy(self, reverse=False):
