@@ -718,8 +718,8 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
     def update_calc(self, reference):
         """Update the rate calculator with a baseline reference values."""
-        for k in reference.keys():
-            setattr(self, k, reference.get(k))
+        for kk in reference.keys():
+            setattr(self, kk, reference.get(kk))
 
     def calculate_act_energy(self, reverse=False):
         raise NotImplementedError(
