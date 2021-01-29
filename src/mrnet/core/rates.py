@@ -699,7 +699,7 @@ class RedoxRateCalculator(ReactionRateCalculator):
         radius,
         electrode_distance,
         adiabatic=False,
-        decay_constant=1.2
+        decay_constant=1.2,
     ):
 
         self.lambda_inner = lambda_inner

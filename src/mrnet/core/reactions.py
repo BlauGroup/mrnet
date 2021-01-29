@@ -146,9 +146,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ):
         pass
 
@@ -265,6 +263,12 @@ class RedoxReaction(Reaction):
     ):
         self.reactant = reactant
         self.product = product
+        self.inner_reorganization_energy = inner_reorganization_energy
+        self.dielectric = dielectric
+        self.refractive = refractive
+        self.electron_free_energy = electron_free_energy
+        self.radius = radius
+        self.electrode_distance = electrode_distance
 
         rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
         prdts_mp = [product_atom_mapping] if product_atom_mapping is not None else None
@@ -277,13 +281,6 @@ class RedoxReaction(Reaction):
             reactants_atom_mapping=rcts_mp,
             products_atom_mapping=prdts_mp,
         )
-
-        self.inner_reorganization_energy = inner_reorganization_energy
-        self.dielectric = dielectric
-        self.refractive = refractive
-        self.electron_free_energy = electron_free_energy
-        self.radius = radius
-        self.electrode_distance = electrode_distance
 
         if all(
             [
@@ -379,20 +376,20 @@ class RedoxReaction(Reaction):
         elif self.rate_calculator:
             self.rate_calculator.update_calc(reference)
         else:
-            self.rate_calculator = RedoxRateCalculator(self.reactants,
-                                                       self.products,
-                                                       reference["lambda_inner"],
-                                                       reference["dielectric"],
-                                                       reference["refractive"],
-                                                       reference["electron_free_energy"],
-                                                       reference["radius"],
-                                                       reference["electrode_distance"])
+            self.rate_calculator = RedoxRateCalculator(
+                self.reactants,
+                self.products,
+                reference["lambda_inner"],
+                reference["dielectric"],
+                reference["refractive"],
+                reference["electron_free_energy"],
+                reference["radius"],
+                reference["electrode_distance"],
+            )
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         """
         A method to generate all the possible redox reactions from given entries
@@ -430,10 +427,7 @@ class RedoxReaction(Reaction):
                                                 product_atom_mapping=prdt_mp,
                                             )
                                         else:
-                                            r = cls(
-                                                entry0,
-                                                entry1,
-                                            )
+                                            r = cls(entry0, entry1,)
 
                                         reactions.append(r)
 
@@ -695,9 +689,7 @@ class IntramolSingleBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         for formula in entries:
@@ -753,10 +745,7 @@ class IntramolSingleBondChangeReaction(Reaction):
                                 product_atom_mapping=prdt_mp,
                             )
                         else:
-                            r = cls(
-                                entry0,
-                                entry1,
-                            )
+                            r = cls(entry0, entry1,)
 
                         reactions.append(r)
 
@@ -1005,9 +994,7 @@ class IntermolecularReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
 
@@ -1078,10 +1065,7 @@ class IntermolecularReaction(Reaction):
                                             products_atom_mapping=prdts_mp,
                                         )
                                     else:
-                                        r = cls(
-                                            entry,
-                                            [entry0, entry1],
-                                        )
+                                        r = cls(entry, [entry0, entry1],)
 
                                     reactions.append(r)
 
@@ -1341,9 +1325,7 @@ class CoordinationBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
 
         # find metal entries
@@ -1461,10 +1443,7 @@ class CoordinationBondChangeReaction(Reaction):
                                         products_atom_mapping=prdts_mp,
                                     )
                                 else:
-                                    r = cls(
-                                        entry,
-                                        [nonM_entry, this_m],
-                                    )
+                                    r = cls(entry, [nonM_entry, this_m],)
                                 reactions.append(r)
 
                                 break
@@ -2098,9 +2077,7 @@ class MetalHopReaction(Reaction):
 
     @classmethod
     def generate(
-        cls,
-        entries: MappingDict,
-        determine_atom_mappings: bool = True,
+        cls, entries: MappingDict, determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         M_entries = dict()  # type: MappingDict
@@ -2229,16 +2206,10 @@ class MetalHopReaction(Reaction):
                 set_base = True
 
         rct0_free_energy = mol_free_energy(
-            self.rct0_energy,
-            self.rct0_enthalpy,
-            self.rct0_entropy,
-            temp=temperature,
+            self.rct0_energy, self.rct0_enthalpy, self.rct0_entropy, temp=temperature,
         )
         rct1_free_energy = mol_free_energy(
-            self.rct1_energy,
-            self.rct1_enthalpy,
-            self.rct1_entropy,
-            temp=temperature,
+            self.rct1_energy, self.rct1_enthalpy, self.rct1_entropy, temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature

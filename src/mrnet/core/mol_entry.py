@@ -173,8 +173,13 @@ class MoleculeEntry(MSONable):
             else:
                 molecule = Molecule.from_dict(doc["molecule"])
 
-            if thermo == "rrho_shifted" and doc["thermo"]["shifted_rrho_eV"] is not None:
-                energy = doc["thermo"]["shifted_rrho_eV"]["electronic_energy"] * 0.0367493
+            if (
+                thermo == "rrho_shifted"
+                and doc["thermo"]["shifted_rrho_eV"] is not None
+            ):
+                energy = (
+                    doc["thermo"]["shifted_rrho_eV"]["electronic_energy"] * 0.0367493
+                )
                 enthalpy = doc["thermo"]["shifted_rrho_eV"]["total_enthalpy"] * 23.061
                 entropy = doc["thermo"]["shifted_rrho_eV"]["total_entropy"] * 23061
             elif thermo == "qrrho" and doc["thermo"]["quasi_rrho_eV"] is not None:
