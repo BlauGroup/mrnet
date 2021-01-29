@@ -431,7 +431,10 @@ class RedoxReaction(Reaction):
                                                 product_atom_mapping=prdt_mp,
                                             )
                                         else:
-                                            r = cls(entry0, entry1,)
+                                            r = cls(
+                                                entry0,
+                                                entry1,
+                                            )
 
                                         reactions.append(r)
 
@@ -2242,13 +2245,13 @@ class MetalHopReaction(Reaction):
             self.pro0_energy,
             self.pro0_enthalpy,
             self.pro0_entropy,
-            temp=temperature
+            temp=temperature,
         )
         pro1_free_energy = mol_free_energy(
             self.pro1_energy,
             self.pro1_enthalpy,
             self.pro1_entropy,
-            temp=temperature
+            temp=temperature,
         )
 
         if (

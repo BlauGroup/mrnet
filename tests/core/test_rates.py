@@ -478,7 +478,7 @@ class RedoxRateCalculatorTest(unittest.TestCase):
                 -1.897,
                 7.5,
                 5,
-                adiabatic=True
+                adiabatic=True,
             )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
