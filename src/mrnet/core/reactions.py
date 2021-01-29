@@ -146,7 +146,9 @@ class Reaction(MSONable, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def generate(
-        cls, entries: MappingDict, determine_atom_mappings: bool = True,
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
     ):
         pass
 
@@ -389,7 +391,9 @@ class RedoxReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict, determine_atom_mappings: bool = True,
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         """
         A method to generate all the possible redox reactions from given entries
@@ -689,7 +693,9 @@ class IntramolSingleBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict, determine_atom_mappings: bool = True,
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         for formula in entries:
@@ -745,7 +751,10 @@ class IntramolSingleBondChangeReaction(Reaction):
                                 product_atom_mapping=prdt_mp,
                             )
                         else:
-                            r = cls(entry0, entry1,)
+                            r = cls(
+                                entry0,
+                                entry1,
+                            )
 
                         reactions.append(r)
 
@@ -994,7 +1003,9 @@ class IntermolecularReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict, determine_atom_mappings: bool = True,
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
 
@@ -1065,7 +1076,10 @@ class IntermolecularReaction(Reaction):
                                             products_atom_mapping=prdts_mp,
                                         )
                                     else:
-                                        r = cls(entry, [entry0, entry1],)
+                                        r = cls(
+                                            entry,
+                                            [entry0, entry1],
+                                        )
 
                                     reactions.append(r)
 
@@ -1325,7 +1339,9 @@ class CoordinationBondChangeReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict, determine_atom_mappings: bool = True,
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
 
         # find metal entries
@@ -1443,7 +1459,10 @@ class CoordinationBondChangeReaction(Reaction):
                                         products_atom_mapping=prdts_mp,
                                     )
                                 else:
-                                    r = cls(entry, [nonM_entry, this_m],)
+                                    r = cls(
+                                        entry,
+                                        [nonM_entry, this_m],
+                                    )
                                 reactions.append(r)
 
                                 break
@@ -2077,7 +2096,9 @@ class MetalHopReaction(Reaction):
 
     @classmethod
     def generate(
-        cls, entries: MappingDict, determine_atom_mappings: bool = True,
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         M_entries = dict()  # type: MappingDict
@@ -2206,16 +2227,28 @@ class MetalHopReaction(Reaction):
                 set_base = True
 
         rct0_free_energy = mol_free_energy(
-            self.rct0_energy, self.rct0_enthalpy, self.rct0_entropy, temp=temperature,
+            self.rct0_energy,
+            self.rct0_enthalpy,
+            self.rct0_entropy,
+            temp=temperature,
         )
         rct1_free_energy = mol_free_energy(
-            self.rct1_energy, self.rct1_enthalpy, self.rct1_entropy, temp=temperature,
+            self.rct1_energy,
+            self.rct1_enthalpy,
+            self.rct1_entropy,
+            temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
-            self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
+            self.pro0_energy,
+            self.pro0_enthalpy,
+            self.pro0_entropy,
+            temp=temperature
         )
         pro1_free_energy = mol_free_energy(
-            self.pro1_energy, self.pro1_enthalpy, self.pro1_entropy, temp=temperature
+            self.pro1_energy,
+            self.pro1_enthalpy,
+            self.pro1_entropy,
+            temp=temperature
         )
 
         if (

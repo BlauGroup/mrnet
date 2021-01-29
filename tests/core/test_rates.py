@@ -469,8 +469,17 @@ class RedoxRateCalculatorTest(unittest.TestCase):
                 [self.rct], [self.pro], 1.031373321805404, 18.5, 1.415, -1.897, 7.5, 5
             )
 
-            self.calc_adiabatic = RedoxRateCalculator([self.rct], [self.pro], 1.031373321805404, 18.5, 1.415, -1.897, 7.5, 5,
-                                                      adiabatic=True)
+            self.calc_adiabatic = RedoxRateCalculator(
+                [self.rct],
+                [self.pro],
+                1.031373321805404,
+                18.5,
+                1.415,
+                -1.897,
+                7.5,
+                5,
+                adiabatic=True
+            )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_act_properties(self):
@@ -513,9 +522,7 @@ class RedoxRateCalculatorTest(unittest.TestCase):
         )
 
         self.assertAlmostEqual(
-            self.calc_adiabatic.calculate_rate_constant() / 95631480.11437328,
-            1.0,
-            4
+            self.calc_adiabatic.calculate_rate_constant() / 95631480.11437328, 1.0, 4
         )
 
 

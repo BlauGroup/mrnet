@@ -47,7 +47,7 @@ class TestMolEntry:
         doc = loadfn(os.path.join(test_dir, "libe_entry.json"))
         entry = MoleculeEntry.from_dataset_entry(doc)
 
-        assert entry.entry_id == 'libe-120825'
+        assert entry.entry_id == "libe-120825"
         assert entry.get_free_energy() == -11366.853316264207
 
         entry_rrho = MoleculeEntry.from_dataset_entry(doc, use_thermo="rrho_shifted")
