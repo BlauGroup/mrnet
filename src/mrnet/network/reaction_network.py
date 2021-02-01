@@ -2,7 +2,7 @@ import copy
 import heapq
 import itertools
 import time as time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set
 
 import networkx as nx
 from monty.json import MSONable
@@ -29,7 +29,7 @@ __maintainer__ = "Sam Blau"
 __status__ = "Alpha"
 
 
-Mapping_Record_Dict = Dict[str, List[str]]
+Mapping_Record_Dict = Dict[int, List[str]]
 
 
 class ReactionPath(MSONable):
@@ -127,9 +127,9 @@ class ReactionPath(MSONable):
     @classmethod
     def characterize_path(
         cls,
-        path: List[str],
+        path: List[Union[str, int]],
         weight: str,
-        min_cost: Dict[str, float],
+        min_cost: Dict[int, float],
         graph: nx.DiGraph,
         old_solved_PRs=[],
         PR_byproduct_dict={},
@@ -155,6 +155,7 @@ class ReactionPath(MSONable):
             class_instance = cls(None)
         else:
             class_instance = cls(path)
+<<<<<<< HEAD
             pool = []
             pool.append(path[0])
             for ii, step in enumerate(path):  # iterate over all steps in the path
@@ -174,6 +175,18 @@ class ReactionPath(MSONable):
                             a = int(rxn[0].split("+PR_")[0])  # TODO: STR
                             # convert to list of PR elements?
                             PR_b = int(rxn[0].split("+PR_")[1])  # TODO: STR
+=======
+            pool = list()  # type: List[int]
+            pool.append(int(path[0]))
+            for ii, step in enumerate(path):
+                if ii != len(path) - 1:
+                    class_instance.cost += graph[step][path[ii + 1]][weight]
+                    if isinstance(step, str):
+                        rxn = step.split(",")
+                        if "+PR_" in rxn[0]:
+                            a = int(rxn[0].split("+PR_")[0])
+                            PR_b = int(rxn[0].split("+PR_")[1])
+>>>>>>> 64e4dc927b46710d1dc99a133c87e02817e63e2e
                             concerted = False
                             PR_b2 = None  # assume no third reactant
                             if rxn[0].count("PR_") == 2:  # TODO: STR
@@ -186,10 +199,19 @@ class ReactionPath(MSONable):
                                 c = int(rxn[1])
                             pool_modified = copy.deepcopy(pool)
                             pool_modified.remove(a)
+<<<<<<< HEAD
                             if PR_b2 is None:  # only 1 PR
                                 if PR_b in pool_modified:  # Have PR from previous iteration
                                     if PR_b in list(min_cost.keys()):  # actually used in path
                                         class_instance.cost = class_instance.cost - min_cost[PR_b]
+=======
+                            if PR_b2 is None:
+                                if PR_b in pool_modified:
+                                    if PR_b in list(min_cost.keys()):
+                                        class_instance.cost = (
+                                            class_instance.cost - min_cost[PR_b]
+                                        )
+>>>>>>> 64e4dc927b46710d1dc99a133c87e02817e63e2e
                                     else:
                                         pass
                                     pool.remove(a)  # processed A, PR of B
@@ -201,21 +223,34 @@ class ReactionPath(MSONable):
                                     if PR_b in old_solved_PRs:  # check if in old iter
                                         class_instance.solved_prereqs.append(PR_b)
                                         class_instance.all_prereqs.append(PR_b)
-                                        PR_b_byproducts = PR_byproduct_dict[PR_b]["byproducts"]
+                                        PR_b_byproducts = PR_byproduct_dict[PR_b][
+                                            "byproducts"
+                                        ]
                                         start = int(PR_byproduct_dict[PR_b]["start"])
                                         if a in PR_b_byproducts:
+<<<<<<< HEAD
                                             # print("path replacement happening")
                                             new_path_piece1 = actualPRs[PR_b][
                                                 start
                                             ].path  # need to get to start point
                                             # current step:
+=======
+                                            # print("path replacement happenning")
+                                            new_path_piece1 = actualPRs[PR_b][
+                                                start
+                                            ].path
+>>>>>>> 64e4dc927b46710d1dc99a133c87e02817e63e2e
                                             new_path_piece2 = [
                                                 str(PR_b)
                                                 + "+"
                                                 + "PR_"
                                                 + str(a)
                                                 + ","
+<<<<<<< HEAD
                                                 + str(c)  # TODO: str
+=======
+                                                + str(c)
+>>>>>>> 64e4dc927b46710d1dc99a133c87e02817e63e2e
                                             ]
                                             if concerted:
                                                 new_path_piece2 = [  # TODO: str
@@ -231,11 +266,20 @@ class ReactionPath(MSONable):
                                             # rest of the path (to be solved)
                                             new_path_piece3 = path[ii + 1 : :]
                                             new_path = (
-                                                new_path_piece1 + new_path_piece2 + new_path_piece3
+                                                new_path_piece1
+                                                + new_path_piece2
+                                                + new_path_piece3
                                             )
                                             # print(path, new_path_piece1, new_path_piece2,new_path_piece3 )
+<<<<<<< HEAD
                                             assert c == path[ii + 1] or d == path[ii + 1]
                                             if new_path_piece2[0] not in graph.nodes:  # TODO: str
+=======
+                                            assert (
+                                                c == path[ii + 1] or d == path[ii + 1]
+                                            )
+                                            if new_path_piece2[0] not in graph.nodes:
+>>>>>>> 64e4dc927b46710d1dc99a133c87e02817e63e2e
                                                 pool.remove(a)
                                                 pool = pool + PR_b_byproducts
                                                 pool.append(c)
@@ -267,15 +311,22 @@ class ReactionPath(MSONable):
                             else:  # nodes with 2 PRs
                                 if PR_b in pool_modified and PR_b2 in pool_modified:  # TODO: str
                                     # print("!!")
-                                    class_instance.cost = class_instance.cost - min_cost[PR_b]
-                                    class_instance.cost = class_instance.cost - min_cost[PR_b2]
+                                    class_instance.cost = (
+                                        class_instance.cost - min_cost[PR_b]
+                                    )
+                                    class_instance.cost = (
+                                        class_instance.cost - min_cost[PR_b2]
+                                    )
                                     pool.remove(a)
                                     pool.remove(PR_b)
                                     pool.remove(PR_b2)
                                     pool.append(c)
                                     pool.append(d)
 
-                                elif PR_b not in old_solved_PRs and PR_b2 not in old_solved_PRs:
+                                elif (
+                                    PR_b not in old_solved_PRs
+                                    and PR_b2 not in old_solved_PRs
+                                ):
                                     class_instance.unsolved_prereqs.append(PR_b)
                                     class_instance.unsolved_prereqs.append(PR_b2)
                                     class_instance.all_prereqs.append(PR_b)
@@ -284,8 +335,14 @@ class ReactionPath(MSONable):
                                     pool.append(c)
                                     pool.append(d)
 
-                                elif PR_b not in pool_modified and PR_b2 not in pool_modified:
-                                    if PR_b in old_solved_PRs and PR_b2 in old_solved_PRs:
+                                elif (
+                                    PR_b not in pool_modified
+                                    and PR_b2 not in pool_modified
+                                ):
+                                    if (
+                                        PR_b in old_solved_PRs
+                                        and PR_b2 in old_solved_PRs
+                                    ):
                                         pool.remove(a)
                                         pool.append(c)
                                         pool.append(d)
@@ -293,16 +350,25 @@ class ReactionPath(MSONable):
                                         class_instance.solved_prereqs.append(PR_b2)
                                         class_instance.all_prereqs.append(PR_b)
                                         class_instance.all_prereqs.append(PR_b2)
-                                        PR_b_byproducts = PR_byproduct_dict[PR_b]["byproducts"]
-                                        PR_b2_byproducts = PR_byproduct_dict[PR_b2]["byproducts"]
+                                        PR_b_byproducts = PR_byproduct_dict[PR_b][
+                                            "byproducts"
+                                        ]
+                                        PR_b2_byproducts = PR_byproduct_dict[PR_b2][
+                                            "byproducts"
+                                        ]
                                         pool = pool + PR_b_byproducts + PR_b2_byproducts
 
-                                    elif PR_b not in old_solved_PRs or PR_b2 not in old_solved_PRs:
+                                    elif (
+                                        PR_b not in old_solved_PRs
+                                        or PR_b2 not in old_solved_PRs
+                                    ):
                                         if PR_b not in old_solved_PRs:
                                             class_instance.unsolved_prereqs.append(PR_b)
                                             class_instance.all_prereqs.append(PR_b)
                                         elif PR_b2 not in old_solved_PRs:
-                                            class_instance.unsolved_prereqs.append(PR_b2)
+                                            class_instance.unsolved_prereqs.append(
+                                                PR_b2
+                                            )
                                             class_instance.all_prereqs.append(PR_b2)
                                         pool.remove(a)
                                         pool.append(c)
@@ -323,8 +389,12 @@ class ReactionPath(MSONable):
                                         pool.remove(PR_in_pool)
 
                                     elif PR_not_in_pool in old_solved_PRs:
-                                        class_instance.unsolved_prereqs.append(PR_not_in_pool)
-                                        class_instance.all_prereqs.append(PR_not_in_pool)
+                                        class_instance.unsolved_prereqs.append(
+                                            PR_not_in_pool
+                                        )
+                                        class_instance.all_prereqs.append(
+                                            PR_not_in_pool
+                                        )
                                     pool.remove(a)
                                     pool.append(c)
                                     pool.append(d)
@@ -343,7 +413,11 @@ class ReactionPath(MSONable):
                             b = int(rxn[1])
                             pool.remove(a)
                             pool.append(b)
+<<<<<<< HEAD
             pool.remove(path[-1])  # last element in path isn't a "byproduct"
+=======
+            pool.remove(int(path[-1]))
+>>>>>>> 64e4dc927b46710d1dc99a133c87e02817e63e2e
             class_instance.byproducts = pool
 
             class_instance.path_dict = {
@@ -366,9 +440,9 @@ class ReactionPath(MSONable):
     @classmethod
     def characterize_path_final(
         cls,
-        path: List[str],
+        path: List[Union[str, int]],
         weight: str,
-        min_cost: Dict[str, float],
+        min_cost: Dict[int, float],
         graph: nx.DiGraph,
         old_solved_PRs=[],
         PR_byproduct_dict={},
@@ -398,7 +472,13 @@ class ReactionPath(MSONable):
             class_instance = cls(None)
         else:
             class_instance = cls.characterize_path(
-                path, weight, min_cost, graph, old_solved_PRs, PR_byproduct_dict, PR_paths,
+                path,
+                weight,
+                min_cost,
+                graph,
+                old_solved_PRs,
+                PR_byproduct_dict,
+                PR_paths,
             )
             assert len(class_instance.solved_prereqs) == len(class_instance.all_prereqs)
             assert len(class_instance.unsolved_prereqs) == 0
@@ -409,16 +489,17 @@ class ReactionPath(MSONable):
                 new_PRs = []
                 for PR in PRs_to_join:
                     PR_path = None
-                    PR_min_cost = float("inf")  # 1000000000000000.0
+                    PR_min_cost = float("inf")
                     for start in PR_paths[PR]:
                         if PR_paths[PR][start].path is not None:
                             if PR_paths[PR][start].cost < PR_min_cost:
                                 PR_min_cost = PR_paths[PR][start].cost
                                 PR_path = PR_paths[PR][start]
-                    assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
-                    for new_PR in PR_path.all_prereqs:
-                        new_PRs.append(new_PR)
-                    full_path = PR_path.path + full_path
+                    if PR_path:
+                        assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
+                        for new_PR in PR_path.all_prereqs:
+                            new_PRs.append(new_PR)
+                        full_path = PR_path.path + full_path
                 PRs_to_join = copy.deepcopy(new_PRs)
 
             for PR in class_instance.all_prereqs:
@@ -440,12 +521,16 @@ class ReactionPath(MSONable):
                             graph.nodes[step]["free_energy"]
                         )
 
-                    class_instance.overall_free_energy_change += graph.nodes[step]["free_energy"]
+                    class_instance.overall_free_energy_change += graph.nodes[step][
+                        "free_energy"
+                    ]
 
                     if class_instance.description == "":
                         class_instance.description += graph.nodes[step]["rxn_type"]
                     else:
-                        class_instance.description += ", " + graph.nodes[step]["rxn_type"]
+                        class_instance.description += (
+                            ", " + graph.nodes[step]["rxn_type"]
+                        )
 
                     if class_instance.hardest_step is None:
                         class_instance.hardest_step = step
@@ -460,9 +545,9 @@ class ReactionPath(MSONable):
             if class_instance.hardest_step is None:
                 class_instance.hardest_step_deltaG = None
             else:
-                class_instance.hardest_step_deltaG = graph.nodes[class_instance.hardest_step][
-                    "free_energy"
-                ]
+                class_instance.hardest_step_deltaG = graph.nodes[
+                    class_instance.hardest_step
+                ]["free_energy"]
 
         class_instance.just_path_bp = []
         for ii, step in enumerate(class_instance.path):
@@ -513,7 +598,6 @@ class ReactionNetwork(MSONable):
         entries_list,
         graph,
         reactions,
-        families,
         PRs,
         PR_record,
         min_cost,
@@ -529,7 +613,6 @@ class ReactionNetwork(MSONable):
         :param entries_list: list of unique entries in entries_dict
         :param graph: nx.DiGraph representing connections in the network
         :param reactions: list of Reaction objects
-        :param families: dict containing reaction families
         :param PRs: dict containing prerequisite information
         :param PR_record: dict containing reaction prerequisites
         :param min_cost: dict containing costs of entries in the network
@@ -547,7 +630,6 @@ class ReactionNetwork(MSONable):
         self.graph = graph
         self.PR_record = PR_record
         self.reactions = reactions
-        self.families = families
 
         self.min_cost = min_cost
         self.num_starts = num_starts
@@ -589,6 +671,8 @@ class ReactionNetwork(MSONable):
 
         print(len(input_entries), "input entries")
 
+        # Filter out unconnected entries, aka those that contain distinctly
+        # separate molecules which are not connected via a bond
         connected_entries = list()
         for entry in input_entries:
             if len(entry.molecule) > 1:
@@ -610,19 +694,24 @@ class ReactionNetwork(MSONable):
         def get_free_energy(x):
             return x.get_free_energy(temperature=temperature)
 
+        # Sort by formula
         sorted_entries_0 = sorted(connected_entries, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
             sorted_entries_1 = sorted(list(g1), key=get_num_bonds)
             entries[k1] = dict()
+            # Sort by number of bonds
             for k2, g2 in itertools.groupby(sorted_entries_1, get_num_bonds):
                 sorted_entries_2 = sorted(list(g2), key=get_charge)
                 entries[k1][k2] = dict()
+                # Sort by charge
                 for k3, g3 in itertools.groupby(sorted_entries_2, get_charge):
                     sorted_entries_3 = sorted(list(g3), key=get_free_energy)
                     if len(sorted_entries_3) > 1:
                         unique = list()
                         for entry in sorted_entries_3:
                             isomorphic_found = False
+                            # Sort by graph isomorphism, taking the isomorphic
+                            # entry with the lowest free energy
                             for ii, Uentry in enumerate(unique):
                                 if entry.mol_graph.isomorphic_to(Uentry.mol_graph):
                                     isomorphic_found = True
@@ -648,6 +737,8 @@ class ReactionNetwork(MSONable):
                         entries_list.append(entry)
 
         print(len(entries_list), "unique entries")
+
+        # Add entry indices
         for ii, entry in enumerate(entries_list):
             if "ind" in entry.parameters.keys():
                 pass
@@ -670,7 +761,6 @@ class ReactionNetwork(MSONable):
             dict(),
             dict(),
             dict(),
-            dict(),
             0,
         )
 
@@ -680,6 +770,8 @@ class ReactionNetwork(MSONable):
     def softplus(free_energy: float) -> float:
         """
         Method to determine edge weight using softplus cost function
+        NOTE: This cost function is unphysical and should only be used when
+        neither rexp nor exponent allow prerequisite costs to be solved.
         """
         return softplus(free_energy)
 
@@ -699,7 +791,7 @@ class ReactionNetwork(MSONable):
 
     def build(
         self,
-        reaction_types=frozenset(
+        reaction_types: Union[Set, FrozenSet] = frozenset(
             {
                 "RedoxReaction",
                 "IntramolSingleBondChangeReaction",
@@ -707,49 +799,42 @@ class ReactionNetwork(MSONable):
                 "CoordinationBondChangeReaction",
             }
         ),
+        determine_atom_mappings: bool = True,
     ) -> nx.DiGraph:
         """
             A method to build the reaction network graph
 
-        :param reaction_types: set/frozenset of all the reactions class to include while building the graph
+        :param reaction_types (set/frozenset): set/frozenset of all the reactions
+            class to include while building the graph
+        :param determine_atom_mappings (bool): If True (default), create an atom
+            mapping between reactants and products in a given reaction
         :return: nx.DiGraph
         """
 
         print("build() start", time.time())
+
+        # Add molecule nodes
         for entry in self.entries_list:
             self.graph.add_node(entry.parameters["ind"], bipartite=0)
 
-        reaction_types = [load_class(str(self.__module__), s) for s in reaction_types]
+        reaction_classes = [load_class(str(self.__module__), s) for s in reaction_types]
 
         all_reactions = list()
-        raw_families = dict()
 
-        for r in reaction_types:
-            if r.__name__ == "ConcertedReaction":
-                reactions, families = r.generate(self.entries_list)
-                all_reactions.append(reactions)
-                raw_families[r.__name__] = families
-            else:
-                reactions, families = r.generate(self.entries)
-                all_reactions.append(reactions)
-                raw_families[r.__name__] = families
+        # Generate reactions
+        for r in reaction_classes:
+            reactions = r.generate(
+                self.entries, determine_atom_mappings=determine_atom_mappings
+            )
+            all_reactions.append(reactions)
 
         all_reactions = [i for i in all_reactions if i]
         self.reactions = list(itertools.chain.from_iterable(all_reactions))
-        self.graph.add_nodes_from(range(len(self.entries_list)), bipartite=0)
 
         redox_c = 0
         inter_c = 0
         intra_c = 0
         coord_c = 0
-
-        self.families = dict()
-        for label_1, grouping_1 in raw_families.items():
-            self.families[label_1] = dict()
-            for label_2, grouping_2 in grouping_1.items():
-                self.families[label_1][label_2] = dict()
-                for label_3 in grouping_2.keys():
-                    self.families[label_1][label_2][label_3] = set()
 
         for ii, r in enumerate(self.reactions):
             r.parameters["ind"] = ii
@@ -764,19 +849,16 @@ class ReactionNetwork(MSONable):
                 coord_c += 1
             self.add_reaction(r.graph_representation())
 
-            # TODO: concerted reactions?
-
-            this_class = r.__class__.__name__
-            for layer1, class1 in raw_families[this_class].items():
-                for layer2, class2 in class1.items():
-                    for rxn in class2:
-                        # Reactions identical - link by index
-                        cond_rct = sorted(r.reactant_ids) == sorted(rxn.reactant_ids)
-                        cond_pro = sorted(r.product_ids) == sorted(rxn.product_ids)
-                        if cond_rct and cond_pro:
-                            self.families[this_class][layer1][layer2].add(ii)
-
-        print("redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c)
+        print(
+            "redox: ",
+            redox_c,
+            "inter: ",
+            inter_c,
+            "intra: ",
+            intra_c,
+            "coord: ",
+            coord_c,
+        )
         self.PR_record = self.build_PR_record()
         self.Reactant_record = self.build_reactant_record()
 
@@ -800,7 +882,7 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         PR of node1, ex "2+PR_node1, 3"]}
         """
-        PR_record = {}
+        PR_record = {}  # type: Mapping_Record_Dict
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 0:
                 PR_record[node] = []
@@ -820,7 +902,7 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         non PR reactant of node1, ex "node1+PR_2, 3"]}
         """
-        Reactant_record = {}
+        Reactant_record = {}  # type: Mapping_Record_Dict
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 0:
                 Reactant_record[node] = []
@@ -833,16 +915,19 @@ class ReactionNetwork(MSONable):
 
     def solve_prerequisites(
         self, starts: List[int], weight: str, max_iter=25
-    ):  # -> Tuple[Union[Dict[Union[int,
-        # Any], dict], Any], Any]:
+    ):  # -> Tuple[Union[Dict[Union[int, Any], dict], Any], Any]:
         """
+<<<<<<< HEAD
             A method to solve all the prerequisites found in
+=======
+            A method to solve all of the prerequisites found in
+>>>>>>> 64e4dc927b46710d1dc99a133c87e02817e63e2e
             ReactionNetwork.graph. By solving all PRs, it gives information on
-            whether 1. if a path exist from any of the starts to all other
-            molecule nodes, 2. if so what is the min cost to reach that node
-            from any of the start, 3. if there is no path from any of the starts
-            to a any of the molecule node, 4. for molecule nodes where the path
-            exist, characterize the in the form of ReactionPath
+            1. whether a path exists from any of the starts to each other
+            molecule node, 2. if so, what is the min cost to reach that node
+            from any of the starts, 3. if there is no path from any of the starts
+            to a given molecule node, 4. for molecule nodes where the path
+            exists, characterize it in the form of ReactionPath
         :param starts: List(molecular nodes), list of molecular nodes of type
             int found in the ReactionNetwork.graph
         :param weight: "softplus" or "exponent", type of cost function to use
@@ -856,14 +941,14 @@ class ReactionNetwork(MSONable):
         """
 
         print("start solve_prerequisities", time.time())
-        PRs = {}
+        PRs = {}  # type: Dict[int, Dict[int, ReactionPath]]
         old_solved_PRs = []
         new_solved_PRs = ["placeholder"]
-        old_attrs = {}
-        new_attrs = {}
+        old_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
+        new_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
         self.weight = weight
         self.num_starts = len(starts)
-        self.PR_byproducts = {}
+        self.PR_byproducts = {}  # type: Dict[int, Dict[str, int]]
 
         if len(self.graph.nodes) == 0:
             self.build()  # actually construct the graph
@@ -897,10 +982,10 @@ class ReactionNetwork(MSONable):
             print(ii, len(new_solved_PRs) > 0, old_attrs != new_attrs, ii < max_iter)
 
             min_cost = {}
-            cost_from_start = {}
+            cost_from_start = {}  # type: Dict[int, Dict[int, Union[float, str]]]
             for PR in PRs:
                 cost_from_start[PR] = {}
-                min_cost[PR] = float("inf")  # 10000000000000000.0
+                min_cost[PR] = float("inf")
                 self.PR_byproducts[PR] = {}
                 for start in PRs[PR]:
                     if PRs[PR][start] == {}:
@@ -911,7 +996,9 @@ class ReactionNetwork(MSONable):
                         cost_from_start[PR][start] = PRs[PR][start].cost
                         if PRs[PR][start].cost < min_cost[PR]:
                             min_cost[PR] = PRs[PR][start].cost
-                            self.PR_byproducts[PR]["byproducts"] = PRs[PR][start].byproducts
+                            self.PR_byproducts[PR]["byproducts"] = PRs[PR][
+                                start
+                            ].byproducts
                             self.PR_byproducts[PR]["start"] = start
                 for start in starts:
                     if start not in cost_from_start[PR]:
@@ -982,7 +1069,9 @@ class ReactionNetwork(MSONable):
             nodes.pop(-1)
         return nodes, PR, Reactants
 
-    def find_path_cost(self, starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs):
+    def find_path_cost(
+        self, starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs
+    ):
         """
             A method to characterize the path to all the PRs. Characterize by
             determining if the path exist or not, and
@@ -1045,11 +1134,17 @@ class ReactionNetwork(MSONable):
                             if step.count("+") == 1:
                                 nodes = nodes + [step.split("+")[0]]
                                 Reactants.append(int(step.split("+")[0]))
-                                PR.append(int(step.split("+")[1].split("PR_")[1].split(",")[0]))
+                                PR.append(
+                                    int(
+                                        step.split("+")[1].split("PR_")[1].split(",")[0]
+                                    )
+                                )
                                 if node in PR:
                                     if node not in wrong_paths[start]:
                                         wrong_paths[start].append(int(node))
-                                nodes = nodes + step.split("+")[1].split("PR_")[1].split(",")
+                                nodes = nodes + step.split("+")[1].split("PR_")[
+                                    1
+                                ].split(",")
                             elif step.count("+") == 2:
                                 nodes = nodes + [step.split(",")[0].split("+PR_")[0]]
                                 Reactants.append(step.split(",")[0].split("+PR_")[0])
@@ -1096,7 +1191,10 @@ class ReactionNetwork(MSONable):
             for node in wrong_paths[start]:
                 fixed_paths[start][node] = {}
                 try:
-                    (length, dij_path,) = nx.algorithms.simple_paths._bidirectional_dijkstra(
+                    (
+                        length,
+                        dij_path,
+                    ) = nx.algorithms.simple_paths._bidirectional_dijkstra(
                         self.graph,
                         source=hash(start),
                         target=hash(node),
@@ -1120,9 +1218,15 @@ class ReactionNetwork(MSONable):
                     self.unsolvable_PRs_per_start[start].append(node)
                     pass
                 else:
-                    dist_and_path[start][node]["cost"] = fixed_paths[start][node]["cost"]
-                    dist_and_path[start][node]["path"] = fixed_paths[start][node]["path"]
-                    nodes, PR, reactant = self.parse_path(dist_and_path[start][node]["path"])
+                    dist_and_path[start][node]["cost"] = fixed_paths[start][node][
+                        "cost"
+                    ]
+                    dist_and_path[start][node]["path"] = fixed_paths[start][node][
+                        "path"
+                    ]
+                    nodes, PR, reactant = self.parse_path(
+                        dist_and_path[start][node]["path"]
+                    )
                     dist_and_path[start][node]["all_nodes"] = nodes
                     dist_and_path[start][node]["PRs"] = PR
                     dist_and_path[start][node]["reactant"] = reactant
@@ -1139,9 +1243,7 @@ class ReactionNetwork(MSONable):
                     if dist_and_path[start][node] == {}:
                         PRs[node][start] = ReactionPath(None)
                         cost_from_start[node][start] = "no_path"
-                    elif dist_and_path[start][node]["cost"] == float(
-                        "inf"
-                    ):  # >= 10000000000000000.0:
+                    elif dist_and_path[start][node]["cost"] == float("inf"):
                         PRs[node][start] = ReactionPath(None)
                     else:
                         path_class = ReactionPath.characterize_path(
@@ -1158,7 +1260,9 @@ class ReactionNetwork(MSONable):
                             PRs[node][start] = path_class
                         if path_class.cost < min_cost[node]:
                             min_cost[node] = path_class.cost
-                            self.PR_byproducts[node]["byproducts"] = path_class.byproducts
+                            self.PR_byproducts[node][
+                                "byproducts"
+                            ] = path_class.byproducts
                             self.PR_byproducts[node]["start"] = start
 
         return PRs, cost_from_start, min_cost
@@ -1189,9 +1293,9 @@ class ReactionNetwork(MSONable):
                 if len(PRs[PR].keys()) == self.num_starts:
                     new_solved_PRs.append(PR)
                 else:
-                    best_start_so_far = [None, float("inf")]  # 10000000000000000.0]
+                    best_start_so_far = [None, float("inf")]
                     for start in PRs[PR]:
-                        if PRs[PR][start] is not None:  # ALWAYS TRUE shoudl be != {}
+                        if PRs[PR][start] is not None:  # ALWAYS TRUE should be != {}
                             if PRs[PR][start].cost < best_start_so_far[1]:
                                 best_start_so_far[0] = start
                                 best_start_so_far[1] = PRs[PR][start].cost
@@ -1258,7 +1362,7 @@ class ReactionNetwork(MSONable):
             path_found = False
             if PRs[PR] != {}:
                 for start in PRs[PR]:
-                    if PRs[PR][start].cost == float("inf"):  # 10000000000000000.0:
+                    if PRs[PR][start].cost == float("inf"):
                         PRs[PR][start] = ReactionPath(None)
                     if PRs[PR][start].path is not None:
                         path_found = True
@@ -1272,7 +1376,10 @@ class ReactionNetwork(MSONable):
                             PR_paths=PRs,
                         )
                         PRs[PR][start] = path_dict_class
-                        if abs(path_dict_class.cost - path_dict_class.pure_cost) > 0.0001:
+                        if (
+                            abs(path_dict_class.cost - path_dict_class.pure_cost)
+                            > 0.0001
+                        ):
                             print(
                                 "WARNING: cost mismatch for PR",
                                 PR,
@@ -1292,7 +1399,8 @@ class ReactionNetwork(MSONable):
 
     def remove_node(self, node_ind):
         """
-        Remove a species from self.graph. Also remove all the reaction nodes with that species. Used for removing Li0.
+        Remove a species from self.graph. Also remove all the reaction nodes with that species.
+        Used for e.g. removing Li0.
         :param: list of node numbers to remove
         """
         for n in node_ind:
@@ -1318,8 +1426,8 @@ class ReactionNetwork(MSONable):
             self.Product_record.pop(n, None)
 
     def find_or_remove_bad_nodes(
-        self, nodes: List[str], remove_nodes=False
-    ) -> List[str] or nx.DiGraph:
+        self, nodes: List[int], remove_nodes=False
+    ) -> Union[List[str], nx.DiGraph]:
         """
             A method to either create a list of the nodes a path solving method
             should ignore or generate a graph without all the nodes it a path
@@ -1363,13 +1471,15 @@ class ReactionNetwork(MSONable):
         :return: nx.path_generator of type generator
         """
         valid_graph = self.find_or_remove_bad_nodes([target], remove_nodes=True)
-        valid_graph.remove_nodes_from(PRs)
+        valid_graph.remove_nodes_from(PRs)  # type: ignore
 
-        return nx.shortest_simple_paths(valid_graph, hash(start), hash(target), weight=self.weight)
+        return nx.shortest_simple_paths(
+            valid_graph, hash(start), hash(target), weight=self.weight
+        )
 
     def find_paths(self, starts, target, weight, num_paths=10, ignorenode=[]):  # -> ??
         """
-            A method to find the shorted parth from given starts to a target
+            A method to find the shorted path from given starts to a target
 
         :param starts: starts: List(molecular nodes), list of molecular nodes
             of type int found in the ReactionNetwork.graph
@@ -1435,7 +1545,9 @@ class ReactionNetwork(MSONable):
                             PR_byproduct_dict=self.PR_byproducts,
                             PR_paths=self.PRs,
                         )
-                        heapq.heappush(my_heapq, (path_dict_class2.cost, next(c), path_dict_class2))
+                        heapq.heappush(
+                            my_heapq, (path_dict_class2.cost, next(c), path_dict_class2)
+                        )
         except Exception:
             print("ind", ind)
         top_path_list = []
@@ -1472,11 +1584,19 @@ class ReactionNetwork(MSONable):
 
         pruned_PRs = {}
         for PR_node in RN_pr_solved.PR_byproducts:
-            if RN_pr_solved.PRs[PR_node] != {} and RN_pr_solved.PR_byproducts[PR_node] != {}:
+            if (
+                RN_pr_solved.PRs[PR_node] != {}
+                and RN_pr_solved.PR_byproducts[PR_node] != {}
+            ):
                 min_start = RN_pr_solved.PR_byproducts[PR_node]["start"]
-                if RN_pr_solved.PRs[PR_node][min_start].overall_free_energy_change <= cutoff:
+                if (
+                    RN_pr_solved.PRs[PR_node][min_start].overall_free_energy_change
+                    <= cutoff
+                ):
                     pruned_PRs[PR_node] = {}
-                    pruned_PRs[PR_node][min_start] = RN_pr_solved.PRs[PR_node][min_start]
+                    pruned_PRs[PR_node][min_start] = RN_pr_solved.PRs[PR_node][
+                        min_start
+                    ]
 
         nodes_to_keep = []
         for PR_node in pruned_PRs:
@@ -1543,7 +1663,9 @@ class ReactionNetwork(MSONable):
                 for out_node in out_nodes:
                     for in_node in in_nodes:
                         rxn1_dG = RN_pr_solved.graph.nodes[in_node]["free_energy"]
-                        total_dG = rxn1_dG + RN_pr_solved.graph.nodes[out_node]["free_energy"]
+                        total_dG = (
+                            rxn1_dG + RN_pr_solved.graph.nodes[out_node]["free_energy"]
+                        )
                         if rxn1_dG > 0 and total_dG < 0:
                             if "PR" in out_node and "PR" in in_node:
                                 pass
@@ -1563,7 +1685,11 @@ class ReactionNetwork(MSONable):
                                         if set(glist).issubset(set(mols_to_keep)):
                                             count = count + 1
                                             reactions.append(
-                                                ([reactant], [product], [in_node, out_node])
+                                                (
+                                                    [reactant],
+                                                    [product],
+                                                    [in_node, out_node],
+                                                )
                                             )
                                             # print(([reactant], [product]), in_node, out_node)
                                 elif "+" in in_node and "+" not in out_node:
@@ -1572,26 +1698,46 @@ class ReactionNetwork(MSONable):
                                     product1.remove(str(node))
                                     product1 = int(product1[0])
                                     product2 = int(out_node.split(",")[1])
-                                    glist = [int(reactant), int(product1), int(product2)]
+                                    glist = [
+                                        int(reactant),
+                                        int(product1),
+                                        int(product2),
+                                    ]
                                     if set(glist).issubset(set(mols_to_keep)):
                                         count = count + 1
                                         reactions.append(
-                                            ([reactant], [product1, product2], [in_node, out_node])
+                                            (
+                                                [reactant],
+                                                [product1, product2],
+                                                [in_node, out_node],
+                                            )
                                         )
                                 elif "+" not in in_node and "+" in out_node:
                                     reactant = int(in_node.split(",")[0])
                                     product1 = int(out_node.split(",")[1].split("+")[0])
                                     product2 = int(out_node.split(",")[1].split("+")[1])
-                                    glist = [int(reactant), int(product1), int(product2)]
+                                    glist = [
+                                        int(reactant),
+                                        int(product1),
+                                        int(product2),
+                                    ]
                                     if set(glist).issubset(set(mols_to_keep)):
                                         count = count + 1
                                         reactions.append(
-                                            ([reactant], [product1, product2], [in_node, out_node])
+                                            (
+                                                [reactant],
+                                                [product1, product2],
+                                                [in_node, out_node],
+                                            )
                                         )
                             elif "PR" in in_node and "PR" not in out_node:
                                 if "+" in out_node:
-                                    p1 = list(map(int, out_node.split(",")[1].split("+")))[0]
-                                    p2 = list(map(int, out_node.split(",")[1].split("+")))[1]
+                                    p1 = list(
+                                        map(int, out_node.split(",")[1].split("+"))
+                                    )[0]
+                                    p2 = list(
+                                        map(int, out_node.split(",")[1].split("+"))
+                                    )[1]
                                 else:
                                     p2 = out_node.split(",")[1]
                                     p1 = None
@@ -1622,9 +1768,13 @@ class ReactionNetwork(MSONable):
                                         )
                                     )
                             elif "PR" not in in_node and "PR" in out_node:
-                                if "+" in in_node:  # want this: 2441,2426''2426+PR_148,3669'
+                                if (
+                                    "+" in in_node
+                                ):  # want this: 2441,2426''2426+PR_148,3669'
                                     start = in_node.split(",")[0]
-                                    p1 = list(map(int, in_node.split(",")[1].split("+")))
+                                    p1 = list(
+                                        map(int, in_node.split(",")[1].split("+"))
+                                    )
                                     p1.remove(node)
                                     p1 = p1[0]
                                 else:
@@ -1721,7 +1871,9 @@ class ReactionNetwork(MSONable):
                 else:
                     assert int(reaction[1][1]) in pruned_network_build.graph.nodes
                 if not new_node:
-                    reactant_0 = full_network_pr_solved.entries_list[int(reaction[0][0])]
+                    reactant_0 = full_network_pr_solved.entries_list[
+                        int(reaction[0][0])
+                    ]
                     PR = full_network_pr_solved.entries_list[int(reaction[0][1])]
                     product_0 = full_network_pr_solved.entries_list[int(reaction[1][0])]
                     product_1 = full_network_pr_solved.entries_list[int(reaction[1][1])]
@@ -1729,30 +1881,40 @@ class ReactionNetwork(MSONable):
                     cr.electron_free_energy = -2.15
                     g = cr.graph_representation()
                     for node in list(g.nodes):
-                        if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
+                        if (
+                            not isinstance(node, int)
+                            and g.nodes[node]["free_energy"] > 0
+                        ):
                             g.remove_node(node)
                     pruned_network_build.add_reaction(g)
                     c3 = c3 + 1
                 elif new_node:
-                    reactant_0 = full_network_pr_solved.entries_list[int(reaction[0][0])]
+                    reactant_0 = full_network_pr_solved.entries_list[
+                        int(reaction[0][0])
+                    ]
                     PR = full_network_pr_solved.entries_list[int(reaction[0][1])]
                     product_0 = full_network_pr_solved.entries_list[int(reaction[1][0])]
                     cr = ConcertedReaction([reactant_0, PR], [product_0])
                     cr.electron_free_energy = -2.15
                     g = cr.graph_representation()
                     for node in list(g.nodes):
-                        if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
+                        if (
+                            not isinstance(node, int)
+                            and g.nodes[node]["free_energy"] > 0
+                        ):
                             g.remove_node(node)
                     pruned_network_build.add_reaction(g)
                     c3 = c3 + 1
 
         pruned_network_build.PR_record = pruned_network_build.build_PR_record()
-        pruned_network_build.Reactant_record = pruned_network_build.build_reactant_record()
+        pruned_network_build.Reactant_record = (
+            pruned_network_build.build_reactant_record()
+        )
         print("add_concerted_rxns end", time.time())
         return pruned_network_build
 
     def as_dict(self) -> dict:
-        entries = dict()
+        entries = dict()  # type: Dict[str, Dict[int, Dict[int, List[Dict[str, Any]]]]]
         for formula in self.entries.keys():
             entries[formula] = dict()
             for bonds in self.entries[formula].keys():
@@ -1766,23 +1928,12 @@ class ReactionNetwork(MSONable):
 
         reactions = [r.as_dict() for r in self.reactions]
 
-        families = dict()
-        for category in self.families.keys():
-            families[category] = dict()
-            for charge in self.families[category].keys():
-                families[category][charge] = dict()
-                for label in self.families[category][charge].keys():
-                    families[category][charge][label] = list()
-                    for reaction in self.families[category][charge][label]:
-                        families[category][charge][label].append(reaction)
-
         d = {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
             "entries_dict": entries,
             "entries_list": entries_list,
             "reactions": reactions,
-            "families": families,
             "electron_free_energy": self.electron_free_energy,
             "temperature": self.temperature,
             "solvent_dielectric": self.solvent_dielectric,
@@ -1821,16 +1972,6 @@ class ReactionNetwork(MSONable):
             rclass = load_class(str(cls.__module__), reaction["@class"])
             reactions.append(rclass.from_dict(reaction))
 
-        families = dict()
-        for category in d["families"].keys():
-            families[category] = dict()
-            for layer_one in d["families"][category].keys():
-                families[category][layer_one] = dict()
-                for layer_two in d["families"][category][layer_one].keys():
-                    families[category][layer_one][layer_two] = list()
-                    for reaction in d["families"][category][layer_one][layer_two]:
-                        families[category][layer_one][layer_two].append(reaction)
-
         graph = json_graph.adjacency_graph(d["graph"], directed=True)
 
         return cls(
@@ -1842,7 +1983,6 @@ class ReactionNetwork(MSONable):
             entries_list,
             graph,
             reactions,
-            families,
             d.get("PR_record", dict()),
             d.get("PRs", dict()),
             d.get("min_cost", dict()),

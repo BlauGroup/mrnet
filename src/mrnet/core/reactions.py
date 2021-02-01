@@ -14,7 +14,11 @@ from scipy.constants import R, h, k
 
 from mrnet.core.extract_reactions import FindConcertedReactions
 from mrnet.core.mol_entry import MoleculeEntry
-from mrnet.core.rates import ExpandedBEPRateCalculator, ReactionRateCalculator, RedoxRateCalculator
+from mrnet.core.rates import (
+    ExpandedBEPRateCalculator,
+    ReactionRateCalculator,
+    RedoxRateCalculator,
+)
 from mrnet.utils.graphs import extract_bond_environment
 from mrnet.utils.mols import mol_free_energy
 
@@ -96,7 +100,9 @@ class Reaction(MSONable, metaclass=ABCMeta):
         return entry.entry_id in self.reactant_ids or entry.entry_id in self.product_ids
 
     def update_calculator(
-        self, transition_state: Optional[MoleculeEntry] = None, reference: Optional[Dict] = None,
+        self,
+        transition_state: Optional[MoleculeEntry] = None,
+        reference: Optional[Dict] = None,
     ):
         """
         Update the rate calculator with either a transition state (or a new
@@ -139,7 +145,11 @@ class Reaction(MSONable, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def generate(cls, entries: MappingDict):
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ):
         pass
 
     @abstractmethod
@@ -188,7 +198,9 @@ class Reaction(MSONable, metaclass=ABCMeta):
             if d["rate_calculator"] is None:
                 rate_calculator = None
             else:
-                rate_calculator = ExpandedBEPRateCalculator.from_dict(d["rate_calculator"])
+                rate_calculator = ExpandedBEPRateCalculator.from_dict(
+                    d["rate_calculator"]
+                )
         else:
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
@@ -210,9 +222,6 @@ class Reaction(MSONable, metaclass=ABCMeta):
         )
         reaction.rate_calculator = rate_calculator
         return reaction
-
-
-Mapping_Family_Dict = Dict[str, Dict[int, Dict[int, List[Reaction]]]]
 
 
 class RedoxReaction(Reaction):
@@ -251,8 +260,8 @@ class RedoxReaction(Reaction):
         radius=None,
         electrode_dist=None,
         parameters=None,
-        reactant_atom_mapping: Atom_Mapping_Dict = None,
-        product_atom_mapping: Atom_Mapping_Dict = None,
+        reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
+        product_atom_mapping: Optional[Atom_Mapping_Dict] = None,
     ):
         self.reactant = reactant
         self.product = product
@@ -344,7 +353,9 @@ class RedoxReaction(Reaction):
         return general_graph_rep(self)
 
     def update_calculator(
-        self, transition_state: Optional[MoleculeEntry] = None, reference: Optional[Dict] = None,
+        self,
+        transition_state: Optional[MoleculeEntry] = None,
+        reference: Optional[Dict] = None,
     ):
         """
         Update the rate calculator with either a transition state (or a new
@@ -365,11 +376,17 @@ class RedoxReaction(Reaction):
 
         if reference is None:
             pass
-        else:
+        elif self.rate_calculator:
             self.rate_calculator.update_calc(reference)
+        else:
+            pass
 
     @classmethod
-    def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
         """
         A method to generate all the possible redox reactions from given entries
 
@@ -380,14 +397,10 @@ class RedoxReaction(Reaction):
         Returns:
             list of RedoxReaction class objects
         """
-        reactions = list()
-        families = dict()
+        reactions = list()  # type: List[Reaction]
         for formula in entries:
-            families[formula] = dict()
             for Nbonds in entries[formula]:
                 charges = sorted(entries[formula][Nbonds].keys())
-                for charge in charges:
-                    families[formula][charge] = list()
                 if len(charges) > 1:
                     for ii in range(len(charges) - 1):
                         charge0 = charges[ii]
@@ -398,18 +411,26 @@ class RedoxReaction(Reaction):
                                     isomorphic, node_mapping = is_isomorphic(
                                         entry0.graph, entry1.graph
                                     )
-                                    if isomorphic:
-                                        rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
-                                        r = cls(
-                                            entry0,
-                                            entry1,
-                                            reactant_atom_mapping=rct_mp,
-                                            product_atom_mapping=prdt_mp,
-                                        )
-                                        reactions.append(r)
-                                        families[formula][charge0].append(r)
+                                    if isomorphic and node_mapping:
+                                        if determine_atom_mappings:
+                                            rct_mp, prdt_mp = generate_atom_mapping_1_1(
+                                                node_mapping
+                                            )
+                                            r = cls(
+                                                entry0,
+                                                entry1,
+                                                reactant_atom_mapping=rct_mp,
+                                                product_atom_mapping=prdt_mp,
+                                            )
+                                        else:
+                                            r = cls(
+                                                entry0,
+                                                entry1,
+                                            )
 
-        return reactions, families
+                                        reactions.append(r)
+
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -427,7 +448,10 @@ class RedoxReaction(Reaction):
         """
         set_base = False
         if temperature is None or temperature == 298.15:
-            if self.base_free_energy_A is not None and self.base_free_energy_B is not None:
+            if (
+                self.base_free_energy_A is not None
+                and self.base_free_energy_B is not None
+            ):
                 self.free_energy_A = self.base_free_energy_A
                 self.free_energy_B = self.base_free_energy_B
                 return
@@ -435,10 +459,16 @@ class RedoxReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
+            self.reactant_energy,
+            self.reactant_enthalpy,
+            self.reactant_entropy,
+            temp=temperature,
         )
         pro_free_energy = mol_free_energy(
-            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature,
+            self.product_energy,
+            self.product_enthalpy,
+            self.product_entropy,
+            temp=temperature,
         )
 
         if rct_free_energy is not None and pro_free_energy is not None:
@@ -462,7 +492,9 @@ class RedoxReaction(Reaction):
 
     def set_rate_constant(self, temperature=298.15):
         if isinstance(self.rate_calculator, RedoxRateCalculator):
-            self.k_A = self.rate_calculator.calculate_rate_constant(temperature=temperature)
+            self.k_A = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature
+            )
             self.k_B = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True
             )
@@ -485,14 +517,22 @@ class RedoxReaction(Reaction):
                 self.k_A = kappa * k * temperature / h
             else:
                 self.k_A = (
-                    kappa * k * temperature / h * np.exp(-96487 * delta_g_a / (R * temperature))
+                    kappa
+                    * k
+                    * temperature
+                    / h
+                    * np.exp(-96487 * delta_g_a / (R * temperature))
                 )
 
             if self.inner_reorganization_energy is None and self.free_energy_B < 0:
                 self.k_B = kappa * k * temperature / h
             else:
                 self.k_B = (
-                    kappa * k * temperature / h * np.exp(-96487 * delta_g_b / (R * temperature))
+                    kappa
+                    * k
+                    * temperature
+                    / h
+                    * np.exp(-96487 * delta_g_b / (R * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -584,8 +624,8 @@ class IntramolSingleBondChangeReaction(Reaction):
         product: MoleculeEntry,
         transition_state: Optional[MoleculeEntry] = None,
         parameters: Optional[Dict] = None,
-        reactant_atom_mapping: Atom_Mapping_Dict = None,
-        product_atom_mapping: Atom_Mapping_Dict = None,
+        reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
+        product_atom_mapping: Optional[Atom_Mapping_Dict] = None,
     ):
         self.reactant = reactant
         self.product = product
@@ -647,10 +687,12 @@ class IntramolSingleBondChangeReaction(Reaction):
         return general_graph_rep(self)
 
     @classmethod
-    def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
-        reactions = list()
-        families = dict()
-        templates = list()
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
+        reactions = list()  # type: List[Reaction]
         for formula in entries:
             Nbonds_list = sorted(entries[formula].keys())
             if len(Nbonds_list) <= 1:
@@ -667,47 +709,53 @@ class IntramolSingleBondChangeReaction(Reaction):
                         continue
 
                     for entry1 in entries[formula][Nbonds1][charge]:
-                        rxns, subgs = cls._generate_one(
-                            entry1, entries, formula, Nbonds0, charge, cls
+                        rxns = cls._generate_one(
+                            entry1,
+                            entries,
+                            formula,
+                            Nbonds0,
+                            charge,
+                            determine_atom_mappings,
+                            cls,
                         )
                         reactions.extend(rxns)
-                        for r, g in zip(rxns, subgs):
-                            families, templates = categorize(r, families, templates, g, charge)
 
-        return reactions, families
+        return reactions
 
     @staticmethod
     def _generate_one(
-        entry1, entries, formula, Nbonds0, charge, cls
-    ) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        entry1, entries, formula, Nbonds0, charge, determine_atom_mappings, cls
+    ) -> List[Reaction]:
         """
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
-        sub_graphs = []
         for bond in entry1.bonds:
             mg = copy.deepcopy(entry1.mol_graph)
             mg.break_edge(bond[0], bond[1], allow_reverse=True)
             if nx.is_weakly_connected(mg.graph):
                 for entry0 in entries[formula][Nbonds0][charge]:
                     isomorphic, node_mapping = is_isomorphic(entry0.graph, mg.graph)
-                    if isomorphic:
-                        rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
-                        r = cls(
-                            entry0,
-                            entry1,
-                            reactant_atom_mapping=rct_mp,
-                            product_atom_mapping=prdt_mp,
-                        )
-                        indices = extract_bond_environment(entry1.mol_graph, [tuple(bond)])
-                        subg = entry1.graph.subgraph(list(indices)).copy().to_undirected()
+                    if isomorphic and node_mapping:
+                        if determine_atom_mappings:
+                            rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
+                            r = cls(
+                                entry0,
+                                entry1,
+                                reactant_atom_mapping=rct_mp,
+                                product_atom_mapping=prdt_mp,
+                            )
+                        else:
+                            r = cls(
+                                entry0,
+                                entry1,
+                            )
 
                         reactions.append(r)
-                        sub_graphs.append(subg)
 
                         break
 
-        return reactions, sub_graphs
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -726,7 +774,10 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         set_base = False
         if temperature is None or temperature == 298.15:
-            if self.base_free_energy_A is not None and self.base_free_energy_B is not None:
+            if (
+                self.base_free_energy_A is not None
+                and self.base_free_energy_B is not None
+            ):
                 self.free_energy_A = self.base_free_energy_A
                 self.free_energy_B = self.base_free_energy_B
                 return
@@ -734,10 +785,16 @@ class IntramolSingleBondChangeReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
+            self.reactant_energy,
+            self.reactant_enthalpy,
+            self.reactant_entropy,
+            temp=temperature,
         )
         pro_free_energy = mol_free_energy(
-            self.product_energy, self.product_enthalpy, self.product_entropy, temp=temperature,
+            self.product_energy,
+            self.product_enthalpy,
+            self.product_entropy,
+            temp=temperature,
         )
 
         if rct_free_energy is not None and pro_free_energy is not None:
@@ -756,9 +813,13 @@ class IntramolSingleBondChangeReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A = (self.rate_calculator.calculate_rate_constant(temperature=temperature),)
+            self.k_A = (
+                self.rate_calculator.calculate_rate_constant(temperature=temperature),
+            )
             self.k_B = (
-                self.rate_calculator.calculate_rate_constant(temperature=temperature, reverse=True),
+                self.rate_calculator.calculate_rate_constant(
+                    temperature=temperature, reverse=True
+                ),
             )
         else:
             self.set_free_energy(temperature=temperature)
@@ -769,12 +830,16 @@ class IntramolSingleBondChangeReaction(Reaction):
             if ga < 0:
                 self.k_A = k * temperature / h
             else:
-                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                self.k_A = (
+                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                )
 
             if gb < 0:
                 self.k_B = k * temperature / h
             else:
-                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                self.k_B = (
+                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                )
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -812,7 +877,9 @@ class IntramolSingleBondChangeReaction(Reaction):
             if d["rate_calculator"] is None:
                 rate_calculator = None
             else:
-                rate_calculator = ExpandedBEPRateCalculator.from_dict(d["rate_calculator"])
+                rate_calculator = ExpandedBEPRateCalculator.from_dict(
+                    d["rate_calculator"]
+                )
         else:
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
@@ -932,10 +999,12 @@ class IntermolecularReaction(Reaction):
         return general_graph_rep(self)
 
     @classmethod
-    def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
-        reactions = list()
-        families = dict()
-        templates = list()
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
+        reactions = list()  # type: List[Reaction]
 
         for formula in entries:
             for Nbonds in entries[formula]:
@@ -944,25 +1013,28 @@ class IntermolecularReaction(Reaction):
 
                 for charge in entries[formula][Nbonds]:
                     for entry in entries[formula][Nbonds][charge]:
-                        rxns, subgs = cls._generate_one(entry, entries, charge, cls)
+                        rxns = cls._generate_one(
+                            entry, entries, charge, determine_atom_mappings, cls
+                        )
                         reactions.extend(rxns)
-                        for r, g in zip(rxns, subgs):
-                            families, templates = categorize(r, families, templates, g, charge)
 
-        return reactions, families
+        return reactions
 
     @staticmethod
-    def _generate_one(entry, entries, charge, cls) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+    def _generate_one(
+        entry, entries, charge, determine_atom_mappings, cls
+    ) -> List[Reaction]:
         """
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
-        sub_graphs = []
 
         for edge in entry.bonds:
             bond = [(edge[0], edge[1])]
             try:
-                frags = entry.mol_graph.split_molecule_subgraphs(bond, allow_reverse=True)
+                frags = entry.mol_graph.split_molecule_subgraphs(
+                    bond, allow_reverse=True
+                )
                 formula0 = frags[0].molecule.composition.alphabetical_formula
                 Nbonds0 = len(frags[0].graph.edges())
                 formula1 = frags[1].molecule.composition.alphabetical_formula
@@ -986,31 +1058,34 @@ class IntermolecularReaction(Reaction):
                         if isomorphic0:
 
                             for entry1 in entries[formula1][Nbonds1][charge1]:
-                                isomorphic1, _ = is_isomorphic(frags[1].graph, entry1.graph)
+                                isomorphic1, _ = is_isomorphic(
+                                    frags[1].graph, entry1.graph
+                                )
                                 if isomorphic1:
-                                    rct_mp, prdts_mp = generate_atom_mapping_1_2(
-                                        entry, [entry0, entry1], [edge]
-                                    )
-                                    r = cls(
-                                        entry,
-                                        [entry0, entry1],
-                                        reactant_atom_mapping=rct_mp,
-                                        products_atom_mapping=prdts_mp,
-                                    )
-
-                                    mg = entry.mol_graph
-                                    indices = extract_bond_environment(mg, [tuple(edge)])
-                                    subg = mg.graph.subgraph(list(indices)).copy().to_undirected()
+                                    if determine_atom_mappings:
+                                        rct_mp, prdts_mp = generate_atom_mapping_1_2(
+                                            entry, [entry0, entry1], [edge]
+                                        )
+                                        r = cls(
+                                            entry,
+                                            [entry0, entry1],
+                                            reactant_atom_mapping=rct_mp,
+                                            products_atom_mapping=prdts_mp,
+                                        )
+                                    else:
+                                        r = cls(
+                                            entry,
+                                            [entry0, entry1],
+                                        )
 
                                     reactions.append(r)
-                                    sub_graphs.append(subg)
 
                                     break
                             break
             except MolGraphSplitError:
                 pass
 
-        return reactions, sub_graphs
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -1029,7 +1104,10 @@ class IntermolecularReaction(Reaction):
 
         set_base = False
         if temperature is None or temperature == 298.15:
-            if self.base_free_energy_A is not None and self.base_free_energy_B is not None:
+            if (
+                self.base_free_energy_A is not None
+                and self.base_free_energy_B is not None
+            ):
                 self.free_energy_A = self.base_free_energy_A
                 self.free_energy_B = self.base_free_energy_B
                 return
@@ -1037,7 +1115,10 @@ class IntermolecularReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
+            self.reactant_energy,
+            self.reactant_enthalpy,
+            self.reactant_entropy,
+            temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
@@ -1066,7 +1147,9 @@ class IntermolecularReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A = self.rate_calculator.calculate_rate_constant(temperature=temperature)
+            self.k_A = self.rate_calculator.calculate_rate_constant(
+                temperature=temperature
+            )
             self.k_B = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True
             )
@@ -1079,12 +1162,16 @@ class IntermolecularReaction(Reaction):
             if ga < 0:
                 self.k_A = k * temperature / h
             else:
-                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                self.k_A = (
+                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                )
 
             if gb < 0:
                 self.k_B = k * temperature / h
             else:
-                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                self.k_B = (
+                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                )
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -1124,7 +1211,9 @@ class IntermolecularReaction(Reaction):
             if d["rate_calculator"] is None:
                 rate_calculator = None
             else:
-                rate_calculator = ExpandedBEPRateCalculator.from_dict(d["rate_calculator"])
+                rate_calculator = ExpandedBEPRateCalculator.from_dict(
+                    d["rate_calculator"]
+                )
         else:
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
@@ -1246,10 +1335,14 @@ class CoordinationBondChangeReaction(Reaction):
         return general_graph_rep(self)
 
     @classmethod
-    def generate(cls, entries: MappingDict) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
 
         # find metal entries
-        M_entries = dict()
+        M_entries = dict()  # type: MappingDict
         for formula in entries:
             if formula in ["Li1", "Mg1", "Ca1", "Zn1"]:
                 if formula not in M_entries:
@@ -1258,12 +1351,10 @@ class CoordinationBondChangeReaction(Reaction):
                     assert len(entries[formula][0][charge]) == 1
                     M_entries[formula][charge] = entries[formula][0][charge][0]
 
-        reactions = list()
-        families = dict()
-        templates = list()
+        reactions = list()  # type: List[Reaction]
 
         if not M_entries:
-            return reactions, families
+            return reactions
 
         for formula in entries:
             if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
@@ -1274,22 +1365,21 @@ class CoordinationBondChangeReaction(Reaction):
 
                     for charge in entries[formula][Nbonds]:
                         for entry in entries[formula][Nbonds][charge]:
-                            rxns, subgs = cls._generate_one(entry, entries, M_entries, cls)
+                            rxns = cls._generate_one(
+                                entry, entries, M_entries, determine_atom_mappings, cls
+                            )
                             reactions.extend(rxns)
-                            for r, g in zip(rxns, subgs):
-                                families, templates = categorize(r, families, templates, g, charge)
 
-        return reactions, families
+        return reactions
 
     @staticmethod
     def _generate_one(
-        entry, entries, M_entries, cls
-    ) -> Tuple[List[Reaction], List[nx.MultiDiGraph]]:
+        entry, entries, M_entries, determine_atom_mappings, cls
+    ) -> List[Reaction]:
         """
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
-        sub_graphs = []
 
         nosplit_M_bonds = list()
 
@@ -1300,15 +1390,23 @@ class CoordinationBondChangeReaction(Reaction):
             ):
                 M_bond = (bond[0], bond[1])
                 try:
-                    entry.mol_graph.split_molecule_subgraphs([M_bond], allow_reverse=True)
+                    entry.mol_graph.split_molecule_subgraphs(
+                        [M_bond], allow_reverse=True
+                    )
                 except MolGraphSplitError:
                     nosplit_M_bonds.append(M_bond)
 
         bond_pairs = itertools.combinations(nosplit_M_bonds, 2)
 
-        for bond_pair in bond_pairs:
+        for bond_pair_entry in bond_pairs:
+            bond_pair = [
+                (int(bond_pair_entry[0][0]), int(bond_pair_entry[0][1])),
+                (int(bond_pair_entry[1][0]), int(bond_pair_entry[1][1])),
+            ]
             try:
-                frags = entry.mol_graph.split_molecule_subgraphs(bond_pair, allow_reverse=True)
+                frags = entry.mol_graph.split_molecule_subgraphs(
+                    bond_pair, allow_reverse=True
+                )
                 M_ind = None
                 M_formula = None
 
@@ -1328,7 +1426,10 @@ class CoordinationBondChangeReaction(Reaction):
 
                     nonM_formula = frag.molecule.composition.alphabetical_formula
                     nonM_Nbonds = len(frag.graph.edges())
-                    if nonM_formula not in entries or nonM_Nbonds not in entries[nonM_formula]:
+                    if (
+                        nonM_formula not in entries
+                        or nonM_Nbonds not in entries[nonM_formula]
+                    ):
                         continue
 
                     for nonM_charge in entries[nonM_formula][nonM_Nbonds]:
@@ -1336,46 +1437,37 @@ class CoordinationBondChangeReaction(Reaction):
                         if M_charge not in M_entries[M_formula]:
                             continue
 
-                        for nonM_entry in entries[nonM_formula][nonM_Nbonds][nonM_charge]:
+                        for nonM_entry in entries[nonM_formula][nonM_Nbonds][
+                            nonM_charge
+                        ]:
                             isomorphic, _ = is_isomorphic(frag.graph, nonM_entry.graph)
                             if isomorphic:
                                 this_m = M_entries[M_formula][M_charge]
 
-                                rct_mp, prdts_mp = generate_atom_mapping_1_2(
-                                    entry, [nonM_entry, this_m], bond_pair
-                                )
+                                if determine_atom_mappings:
+                                    rct_mp, prdts_mp = generate_atom_mapping_1_2(
+                                        entry, [nonM_entry, this_m], bond_pair
+                                    )
 
-                                r = cls(
-                                    entry,
-                                    [nonM_entry, this_m],
-                                    reactant_atom_mapping=rct_mp,
-                                    products_atom_mapping=prdts_mp,
-                                )
-                                mg = entry.mol_graph
-                                indices = extract_bond_environment(mg, list(bond_pair))
-                                subg = mg.graph.subgraph(list(indices)).copy().to_undirected()
-
+                                    r = cls(
+                                        entry,
+                                        [nonM_entry, this_m],
+                                        reactant_atom_mapping=rct_mp,
+                                        products_atom_mapping=prdts_mp,
+                                    )
+                                else:
+                                    r = cls(
+                                        entry,
+                                        [nonM_entry, this_m],
+                                    )
                                 reactions.append(r)
-                                sub_graphs.append(subg)
 
                                 break
 
             except MolGraphSplitError:
                 pass
 
-        return reactions, sub_graphs
-
-    def reaction_type(self):
-        """
-        A method to identify type of coordination bond change reaction (bond breaking
-        from one to two or forming from two to one molecules)
-        Sets attributes rxn_type_A and rxn_type_B, where rxn_type_A is the primary type of the reaction based on the
-        reactant and product of the CoordinationBondChangeReaction
-        object, and rxn_type_B is the reverse.
-
-        Returns: None
-        """
-        return
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -1391,7 +1483,10 @@ class CoordinationBondChangeReaction(Reaction):
 
         set_base = False
         if temperature is None or temperature == 298.15:
-            if self.base_free_energy_A is not None and self.base_free_energy_B is not None:
+            if (
+                self.base_free_energy_A is not None
+                and self.base_free_energy_B is not None
+            ):
                 self.free_energy_A = self.base_free_energy_A
                 self.free_energy_B = self.base_free_energy_B
                 return
@@ -1399,7 +1494,10 @@ class CoordinationBondChangeReaction(Reaction):
                 set_base = True
 
         rct_free_energy = mol_free_energy(
-            self.reactant_energy, self.reactant_enthalpy, self.reactant_entropy, temp=temperature,
+            self.reactant_energy,
+            self.reactant_enthalpy,
+            self.reactant_entropy,
+            temp=temperature,
         )
         pro0_free_energy = mol_free_energy(
             self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
@@ -1428,7 +1526,9 @@ class CoordinationBondChangeReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A: self.rate_calculator.calculate_rate_constant(temperature=temperature)
+            self.k_A: self.rate_calculator.calculate_rate_constant(
+                temperature=temperature
+            )
             self.k_B: self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True
             )
@@ -1441,12 +1541,16 @@ class CoordinationBondChangeReaction(Reaction):
             if ga < 0:
                 self.k_A = k * temperature / h
             else:
-                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                self.k_A = (
+                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                )
 
             if gb < 0:
                 self.k_B = k * temperature / h
             else:
-                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                self.k_B = (
+                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                )
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -1486,7 +1590,9 @@ class CoordinationBondChangeReaction(Reaction):
             if d["rate_calculator"] is None:
                 rate_calculator = None
             else:
-                rate_calculator = ExpandedBEPRateCalculator.from_dict(d["rate_calculator"])
+                rate_calculator = ExpandedBEPRateCalculator.from_dict(
+                    d["rate_calculator"]
+                )
         else:
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
@@ -1595,7 +1701,9 @@ class ConcertedReaction(Reaction):
         self.set_free_energy()
         self.set_rate_constant()
 
-    def graph_representation(self,) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
+    def graph_representation(
+        self,
+    ) -> nx.DiGraph:  # temp here, use graph_rep_1_2 instead
 
         """
         A method to convert a Concerted class object into graph
@@ -1644,19 +1752,20 @@ class ConcertedReaction(Reaction):
     @classmethod
     def generate(
         cls,
-        entries_list: [MoleculeEntry],
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
         name="nothing",
         read_file=False,
         num_processors=16,
         reaction_type="break2_form2",
         allowed_charge_change=0,
-    ) -> Tuple[List[Reaction], Mapping_Family_Dict]:
+    ) -> List[Reaction]:
 
         """
         A method to generate all the possible concerted reactions from given
         entries_list.
         Args:
-           :param entries_list, entries_list = [MoleculeEntry]
+           :param entries(MappingDict)
            :param name(str): The name to put in FindConcertedReactions class. For
                  reading in the files generated from that class.
            :param read_file(bool): whether to read in the file generated from
@@ -1674,6 +1783,7 @@ class ConcertedReaction(Reaction):
                  allow n-electron redox reactions.
            :return list of IntermolecularReaction class objects
         """
+        entries_list = unbucket_mol_entries(entries)
         if read_file:
             all_concerted_reactions = loadfn(name + "_concerted_rxns.json")
         else:
@@ -1695,9 +1805,7 @@ class ConcertedReaction(Reaction):
                 r = cls(entries0, entries1)
                 reactions.append(r)
 
-        # TODO: implement concept of reaction families for concerted reactions
-        # with multiple reactants and multiple products
-        return reactions, dict()
+        return reactions
 
     def set_free_energy(self, temperature=298.15):
         """
@@ -1714,7 +1822,10 @@ class ConcertedReaction(Reaction):
 
         set_base = False
         if temperature is None or temperature == 298.15:
-            if self.base_free_energy_A is not None and self.base_free_energy_B is not None:
+            if (
+                self.base_free_energy_A is not None
+                and self.base_free_energy_B is not None
+            ):
                 self.free_energy_A = self.base_free_energy_A
                 self.free_energy_B = self.base_free_energy_B
             else:
@@ -1754,10 +1865,14 @@ class ConcertedReaction(Reaction):
             product_free_energy = np.sum(pro_free_energies)
             total_charge_change = product_charge - reactant_charge
             self.free_energy_A = (
-                product_free_energy - reactant_free_energy + total_charge_change * electron_free
+                product_free_energy
+                - reactant_free_energy
+                + total_charge_change * electron_free
             )
             self.free_energy_B = (
-                reactant_free_energy - product_free_energy - total_charge_change * electron_free
+                reactant_free_energy
+                - product_free_energy
+                - total_charge_change * electron_free
             )
         else:
             self.free_energy_A = None
@@ -1772,7 +1887,9 @@ class ConcertedReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A = (self.rate_calculator.calculate_rate_constant(temperature=temperature),)
+            self.k_A = (
+                self.rate_calculator.calculate_rate_constant(temperature=temperature),
+            )
             self.k_B = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True
             )
@@ -1785,12 +1902,16 @@ class ConcertedReaction(Reaction):
             if ga < 0:
                 self.k_A = k * temperature / h
             else:
-                self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                self.k_A = (
+                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                )
 
             if gb < 0:
                 self.k_B = k * temperature / h
             else:
-                self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                self.k_B = (
+                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                )
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -1824,7 +1945,9 @@ class ConcertedReaction(Reaction):
             if d["rate_calculator"] is None:
                 rate_calculator = None
             else:
-                rate_calculator = ExpandedBEPRateCalculator.from_dict(d["rate_calculator"])
+                rate_calculator = ExpandedBEPRateCalculator.from_dict(
+                    d["rate_calculator"]
+                )
         else:
             ts = MoleculeEntry.from_dict(d["transition_state"])
             rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
@@ -1833,6 +1956,381 @@ class ConcertedReaction(Reaction):
 
         reaction = cls(reactants, products, transition_state=ts, parameters=parameters)
         reaction.rate_calculator = rate_calculator
+        return reaction
+
+
+class MetalHopReaction(Reaction):
+    """
+    A class to define metal "hopping" bond change as follows:
+        Breaking one coordination bond (AM -> A + M) while simultaneously
+        forming another (B + M -> BM), with overall stoichiometry
+        AM + B <-> BM + A
+        Four entries with:
+            M = Li or Mg
+            comp(AM) = comp(A) + comp(M)
+            comp(BM) + comp(B) + comp(M)
+            charge(AM) = charge(A) + charge(M)
+            charge(BM) = charge(B) + charge(M)
+            removing all edges containing M in AM yields two disconnected
+            subgraphs that are isomorphic to A and M, and likewise for BM
+
+    NOTE: This class assumes that the reactants and products are in the order:
+        reactants: AM, B
+        products: BM, A
+
+    Args:
+        reactant([MoleculeEntry]): list of single molecular entry
+        product([MoleculeEntry]): list of two molecular entries
+        transition_state (MoleculeEntry or None): A MoleculeEntry representing a
+            transition state for the reaction.
+        parameters (dict): Any additional data about this reaction
+    """
+
+    def __init__(
+        self,
+        reactants: List[MoleculeEntry],
+        products: List[MoleculeEntry],
+        metal: MoleculeEntry,
+        transition_state: Optional[MoleculeEntry] = None,
+        parameters: Optional[Dict] = None,
+        neutral_hop_barrier: Optional[float] = 0.130,
+        anion_hop_barrier: Optional[float] = 0.239,
+    ):
+        """
+        Initializes MetalHopReaction.reactant to be in the form of a
+            [MoleculeEntry], MetalHopReaction.product to be in the form of
+            [MoleculeEntry],
+
+        Args:
+            reactants: list of MoleculeEntry objects of length 2
+            products: list of MoleculeEntry objects of length 2
+            transition_state (MoleculeEntry or None): A MoleculeEntry
+                representing a transition state for the reaction.
+            parameters (dict): Any additional data about this reaction
+            neutral_hop_barrier (float): Energy barrier (in eV) for a metal ion
+                to de-coordinate from a neutral species
+            anion_hop_barrier (float): Energy barrier (in eV) for a metal ion
+                to de-coordinate from an anionic species
+
+        """
+
+        self.reactant_0 = reactants[0]
+        self.reactant_1 = reactants[1]
+
+        self.product_0 = products[0]
+        self.product_1 = products[1]
+
+        super().__init__(
+            [self.reactant_0, self.reactant_1],
+            [self.product_0, self.product_1],
+            transition_state=transition_state,
+            parameters=parameters,
+            reactants_atom_mapping=None,
+            products_atom_mapping=None,
+        )
+
+        self.metal = metal
+
+        self.neutral_hop_barrier = neutral_hop_barrier
+        self.anion_hop_barrier = anion_hop_barrier
+
+        # Store necessary mol_entry attributes
+        self.rct0_energy = self.reactant_0.energy
+        self.rct1_energy = self.reactant_1.energy
+        self.pro0_energy = self.product_0.energy
+        self.pro1_energy = self.product_1.energy
+
+        self.rct0_enthalpy = self.reactant_0.enthalpy
+        self.rct1_enthalpy = self.reactant_1.enthalpy
+        self.pro0_enthalpy = self.product_0.enthalpy
+        self.pro1_enthalpy = self.product_1.enthalpy
+
+        self.rct0_entropy = self.reactant_0.entropy
+        self.rct1_entropy = self.reactant_1.entropy
+        self.pro0_entropy = self.product_0.entropy
+        self.pro1_entropy = self.product_1.entropy
+
+        self.rxn_type_A = "Metal hopping reaction AM + B <-> A + BM"
+        self.rxn_type_B = "Metal hopping reaction AM + B <-> A + BM"
+
+        if (
+            self.pro1_energy is not None
+            and self.pro0_energy is not None
+            and self.rct0_energy is not None
+            and self.rct1_energy is not None
+        ):
+            self.energy_A = (
+                self.pro0_energy
+                + self.pro1_energy
+                - self.rct0_energy
+                - self.rct1_energy
+            )
+            self.energy_B = self.energy_A * -1
+
+        else:
+            self.energy_A = None
+            self.energy_B = None
+
+        # These store the free energy at 298.15 K.
+        # Initialized to none, generally overwritten by self.set_free_energy()
+        self.base_free_energy_A = None
+        self.base_free_energy_B = None
+        self.set_free_energy()
+        self.set_rate_constant()
+
+    def graph_representation(self) -> nx.DiGraph:
+        """
+        A method to convert a CoordinationBondChangeReaction class object
+            into graph representation (nx.Digraph object).
+        CoordinationBondChangeReaction must be of type 1 reactant -> 2 products
+
+        :return nx.Digraph object of a single CoordinationBondChangeReaction object
+        """
+
+        assert len(self.reactant_ids) == 2
+        assert len(self.product_ids) == 2
+        return general_graph_rep(self)
+
+    @classmethod
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
+        reactions = list()  # type: List[Reaction]
+        M_entries = dict()  # type: MappingDict
+        pairs = list()
+        for formula in entries:
+            if formula in ["Li1", "Mg1", "Ca1", "Zn1"]:
+                if formula not in M_entries:
+                    M_entries[formula] = dict()
+                for charge in entries[formula][0]:
+                    # Only allow cations - neutral/anionic metals probably won't be re-coordinating
+                    if charge > 0:
+                        assert len(entries[formula][0][charge]) == 1
+                        M_entries[formula][charge] = entries[formula][0][charge][0]
+
+        # TODO: implement concept of reaction families for concerted reactions
+        if not M_entries:
+            return reactions
+
+        for formula in entries:
+            if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
+                for Nbonds in entries[formula]:
+                    if Nbonds <= 2:
+                        continue
+                    for charge in entries[formula][Nbonds]:
+                        for entry in entries[formula][Nbonds][charge]:
+                            pairs.extend(cls._generate_one(entry, entries, M_entries))
+
+        if len(pairs) > 1:
+            for combo in itertools.combinations(pairs, 2):
+                m_one = combo[0][2]
+                m_two = combo[1][2]
+                # Only allow if metal ion is the same on both sides
+                if m_one.charge == m_two.charge and m_one.formula == m_two.formula:
+                    reactions.append(
+                        cls(
+                            [combo[0][0], combo[1][1]],
+                            [combo[1][0], combo[0][1]],
+                            m_one,
+                        )
+                    )
+
+        return reactions
+
+    @staticmethod
+    def _generate_one(entry, entries, M_entries):
+        pairs = list()
+        for aa, atom in enumerate(entry.molecule):
+            if str(atom.specie) in ["Li", "Mg", "Zn", "Ca"]:
+                edge_list = list()
+                for edge in entry.mol_graph.graph.edges():
+                    if aa in edge:
+                        edge_list.append(edge)
+
+                try:
+                    frags = entry.mol_graph.split_molecule_subgraphs(
+                        edge_list, allow_reverse=True
+                    )
+                    M_ind = None
+                    M_formula = None
+                    for ii, frag in enumerate(frags):
+                        frag_formula = frag.molecule.composition.alphabetical_formula
+                        if frag_formula in M_entries:
+                            M_ind = ii
+                            M_formula = frag_formula
+                            break
+                    if M_ind is not None:
+                        for ii, frag in enumerate(frags):
+                            if ii != M_ind:
+                                nonM_formula = (
+                                    frag.molecule.composition.alphabetical_formula
+                                )
+                                nonM_Nbonds = len(frag.graph.edges())
+                                if nonM_formula in entries:
+                                    if nonM_Nbonds in entries[nonM_formula]:
+                                        for nonM_charge in entries[nonM_formula][
+                                            nonM_Nbonds
+                                        ]:
+                                            M_charge = entry.charge - nonM_charge
+                                            if (
+                                                M_charge in M_entries[M_formula]
+                                                and M_charge > 0
+                                            ):
+                                                for nonM_entry in entries[nonM_formula][
+                                                    nonM_Nbonds
+                                                ][nonM_charge]:
+                                                    if frag.isomorphic_to(
+                                                        nonM_entry.mol_graph
+                                                    ):
+                                                        pairs.append(
+                                                            (
+                                                                entry,
+                                                                nonM_entry,
+                                                                M_entries[M_formula][
+                                                                    M_charge
+                                                                ],
+                                                            )
+                                                        )
+                                                        break
+                except MolGraphSplitError:
+                    pass
+
+        return pairs
+
+    def set_free_energy(self, temperature=298.15):
+        """
+        A method to determine the free energy of the coordination bond change reaction
+        Sets free_energy_A and free_energy_B
+        where free_energy_A is the primary type of the reaction based
+        on the reactant and product of the CoordinationBondChangeReaction
+        object, and the backwards of this reaction would be free_energy_B.
+
+        Args:
+            temperature:
+        """
+
+        set_base = False
+        if temperature is None or temperature == 298.15:
+            if (
+                self.base_free_energy_A is not None
+                and self.base_free_energy_B is not None
+            ):
+                self.free_energy_A = self.base_free_energy_A
+                self.free_energy_B = self.base_free_energy_B
+                return
+            else:
+                set_base = True
+
+        rct0_free_energy = mol_free_energy(
+            self.rct0_energy,
+            self.rct0_enthalpy,
+            self.rct0_entropy,
+            temp=temperature,
+        )
+        rct1_free_energy = mol_free_energy(
+            self.rct1_energy,
+            self.rct1_enthalpy,
+            self.rct1_entropy,
+            temp=temperature,
+        )
+        pro0_free_energy = mol_free_energy(
+            self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
+        )
+        pro1_free_energy = mol_free_energy(
+            self.pro1_energy, self.pro1_enthalpy, self.pro1_entropy, temp=temperature
+        )
+
+        if (
+            rct0_free_energy is not None
+            and rct1_free_energy is not None
+            and pro0_free_energy is not None
+            and pro1_free_energy is not None
+        ):
+            self.free_energy_A = (
+                pro0_free_energy
+                + pro1_free_energy
+                - rct0_free_energy
+                - rct1_free_energy
+            )
+            self.free_energy_B = self.free_energy_A * -1
+        else:
+            self.free_energy_A = None
+            self.free_energy_B = None
+
+        if set_base:
+            self.base_free_energy_A = self.free_energy_A
+            self.base_free_energy_B = self.free_energy_B
+        return
+
+    def set_rate_constant(self, temperature=298.15):
+
+        ga = self.free_energy_A
+        gb = self.free_energy_B
+
+        q_no_m_a = self.reactants[0].charge - self.metal.charge
+        q_no_m_b = self.products[0].charge - self.metal.charge
+
+        if q_no_m_a == 0:
+            barrier_a = self.neutral_hop_barrier
+        else:
+            barrier_a = self.anion_hop_barrier
+
+        if q_no_m_b == 0:
+            barrier_b = self.neutral_hop_barrier
+        else:
+            barrier_b = self.anion_hop_barrier
+
+        if ga < barrier_a:
+            self.k_A = (
+                k * temperature / h * np.exp(-1 * barrier_a * 96487 / (R * temperature))
+            )
+        else:
+            self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+
+        if gb < barrier_b:
+            self.k_B = (
+                k * temperature / h * np.exp(-1 * barrier_b * 96487 / (R * temperature))
+            )
+        else:
+            self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+
+    def as_dict(self) -> dict:
+
+        d = {
+            "@module": self.__class__.__module__,
+            "@class": self.__class__.__name__,
+            "reactants": [r.as_dict() for r in self.reactants],
+            "products": [p.as_dict() for p in self.products],
+            "reactant_0": self.reactant_0.as_dict(),
+            "reactant_1": self.reactant_1.as_dict(),
+            "product_0": self.product_0.as_dict(),
+            "product_1": self.product_1.as_dict(),
+            "metal": self.metal.as_dict(),
+            "transition_state": None,
+            "rate_calculator": None,
+            "parameters": self.parameters,
+            "neutral_hop_barrier": self.neutral_hop_barrier,
+            "anion_hop_barrier": self.anion_hop_barrier,
+        }
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        reactants = [MoleculeEntry.from_dict(m) for m in d["reactants"]]
+        products = [MoleculeEntry.from_dict(m) for m in d["products"]]
+        metal = MoleculeEntry.from_dict(d["metal"])
+
+        reaction = cls(
+            reactants,
+            products,
+            metal,
+            neutral_hop_barrier=d["neutral_hop_barrier"],
+            anion_hop_barrier=d["anion_hop_barrier"],
+        )
+
         return reaction
 
 
@@ -1870,18 +2368,24 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
         for index in range(len(reaction.reactant_indices))
     ]
     # Here, create the 'base' names/ids for products and reactants (sorted by index)
-    base_pro_name = "+".join([str(reaction.product_indices[i]) for i in pro_sorted_indices])
+    base_pro_name = "+".join(
+        [str(reaction.product_indices[i]) for i in pro_sorted_indices]
+    )
     base_pro_ids = "+".join([str(reaction.product_ids[i]) for i in pro_sorted_indices])
 
-    base_rct_name = "+".join([str(reaction.reactant_indices[i]) for i in rct_sorted_indices])
+    base_rct_name = "+".join(
+        [str(reaction.reactant_indices[i]) for i in rct_sorted_indices]
+    )
     base_rct_ids = "+".join([str(reaction.reactant_ids[i]) for i in rct_sorted_indices])
 
     # This will give the "PR" part of the name for the nodes, e.g. A+PR_B
     pro_names_PR = [
-        "+PR_".join([str(reaction.product_indices[i]) for i in el]) for el in pro_node_indices
+        "+PR_".join([str(reaction.product_indices[i]) for i in el])
+        for el in pro_node_indices
     ]
     rct_names_PR = [
-        "+PR_".join([str(reaction.reactant_indices[i]) for i in el]) for el in rct_node_indices
+        "+PR_".join([str(reaction.reactant_indices[i]) for i in el])
+        for el in rct_node_indices
     ]
 
     # This will give the full names for the products and reactants (used in the graph)
@@ -1890,10 +2394,12 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
     # This will give the "PR" part of the id for the products and reactants
     pro_ids_PR = [
-        "+PR_".join([str(reaction.product_ids[i]) for i in el]) for el in pro_node_indices
+        "+PR_".join([str(reaction.product_ids[i]) for i in el])
+        for el in pro_node_indices
     ]
     rct_ids_PR = [
-        "+PR_".join([str(reaction.reactant_ids[i]) for i in el]) for el in rct_node_indices
+        "+PR_".join([str(reaction.reactant_ids[i]) for i in el])
+        for el in rct_node_indices
     ]
 
     # This will give the full ids for the products and reactants (used in the graph)
@@ -1969,54 +2475,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             )
 
     return graph
-
-
-def categorize(reaction, families, templates, environment, charge):
-    """
-    Given reactants, products, and a local bonding environment, place a
-        reaction into a reaction class.
-
-    Note: This is not currently designed for redox reactions
-
-    Args:
-        reaction: Reaction object
-        families: dict of dicts representing families of reactions
-        templates: list of nx.Graph objects that define other families
-        environment: a nx.Graph object representing a submolecule that
-            defines the type of reaction
-        charge: int representing the charge of the reaction
-    Returns:
-        families: nested dict containing categorized reactions
-        templates: list of graph representations of molecule "templates"
-    """
-
-    nm = iso.categorical_node_match("specie", "ERROR")
-
-    match = False
-
-    for e, template in enumerate(templates):
-        if nx.is_isomorphic(environment, template, node_match=nm):
-            match = True
-            label = e
-            if charge in families:
-                if label in families[charge]:
-                    families[charge][label].append(reaction)
-                else:
-                    families[charge][label] = [reaction]
-                break
-            else:
-                families[charge] = {label: [reaction]}
-                break
-    if not match:
-        label = len(templates)
-        if charge in families:
-            families[charge][label] = [reaction]
-        else:
-            families[charge] = {label: [reaction]}
-
-        templates.append(environment)
-
-    return families, templates
 
 
 def softplus(free_energy: float) -> float:
@@ -2194,7 +2652,7 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     keys = ["formula", "num_bonds", "charge"] if keys is None else keys
 
     num_keys = len(keys)
-    buckets = {}
+    buckets = {}  # type: ignore
     for m in entries:
         b = buckets
         for i, j in enumerate(keys):
@@ -2208,7 +2666,7 @@ def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] =
     return buckets
 
 
-def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
+def unbucket_mol_entries(entries: MappingDict) -> List[MoleculeEntry]:
     """
     Unbucket molecule entries stored in a nested dictionary to a list.
 
@@ -2233,7 +2691,7 @@ def unbucket_mol_entries(entries: Dict) -> List[MoleculeEntry]:
                     f"Cannot unbucket molecule entries. Unsupported data type `{type(v)}`"
                 )
 
-    entries_list = []
+    entries_list = []  # type: List[MoleculeEntry]
     unbucket(entries)
 
     return entries_list
