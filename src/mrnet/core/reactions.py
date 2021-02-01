@@ -2236,7 +2236,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             energy=energy_A,
             free_energy=free_energy_A,
             entry_ids=rct_node_ids[node_ind],
-            species=[str(reaction.reactant_indices[i]) for i in rct_sorted_indices],
         )
         # Add an edge from the reactant node to its "reactant" (i.e. Molecule Node)
         # TODO: Destination should be the sole node created before.
@@ -2248,7 +2247,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             exponent=exponent(free_energy_A),
             rexp=rexp(free_energy_A),
             weight=1.0,
-            foo=2.0,
         )
 
         # Add edges from the reactant node to the products (i.e. Product Molecule Node)
@@ -2260,7 +2258,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
                 exponent=0.0,
                 rexp=0.0,
                 weight=1.0,
-                foo=2.0,
             )
 
     for node_ind in range(len(pro_node_names)):
@@ -2273,7 +2270,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             energy=energy_B,
             free_energy=free_energy_B,
             entry_ids=pro_node_ids[node_ind],
-            species=[str(reaction.product_indices[i]) for i in pro_sorted_indices],
         )
 
         # Add an edge from the product node to its corresponding "product" Molecule Node
@@ -2284,7 +2280,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             exponent=exponent(free_energy_B),
             rexp=rexp(free_energy_B),
             weight=1.0,
-            foo=2.0,
         )
         for r_ind in reaction.reactant_indices:
             # Add an edge from the product node to the reactant Molecule Nodes
@@ -2295,7 +2290,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
                 exponent=0.0,
                 rexp=0.0,
                 weight=1.0,
-                foo=2.0,
             )
 
     return graph

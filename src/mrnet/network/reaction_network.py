@@ -164,17 +164,19 @@ class ReactionPath(MSONable):
             class_instance = cls(path)
             pool = list()  # type: List[int]
             pool.append(int(path[0]))
+            print(path)
+            print(pool)
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
                     if isinstance(step, str):
-                        rxn = step.split(",")
-                        if "+PR_" in rxn[0]:
+                        rxn = step.split(",")  # ['456+PR_556', '424']
+                        if "+" in rxn[0]:  # PR(s) in reactants
                             a = int(rxn[0].split("+PR_")[0])
                             PR_b = int(rxn[0].split("+PR_")[1])
                             concerted = False
                             PR_b2 = None  # assume no third reactant
-                            if rxn[0].count("PR_") == 2:  # TODO: STR
+                            if rxn[0].count("+") == 2:  # 2 PRs (3 reac)
                                 PR_b2 = int(rxn[0].split("+PR_")[2])  # assign third reactant
                             if "+" in rxn[1]:  # Check if multiple products
                                 concerted = True
@@ -183,8 +185,9 @@ class ReactionPath(MSONable):
                             else:
                                 c = int(rxn[1])
                             pool_modified = copy.deepcopy(pool)
-                            pool_modified.remove(a)
-                            if PR_b2 is None:
+                            pool_modified.remove(a)  # don't need PR of A
+                            print(pool_modified)
+                            if PR_b2 is None:  # only 2 reactants
                                 if PR_b in pool_modified:
                                     if PR_b in list(min_cost.keys()):
                                         class_instance.cost = class_instance.cost - min_cost[PR_b]
@@ -195,6 +198,7 @@ class ReactionPath(MSONable):
                                     pool.append(c)
                                     if concerted:
                                         pool.append(d)  # need to deal with C + D
+                                    print(pool)
                                 elif PR_b not in pool_modified:  # haven't calculated it here yet
                                     if PR_b in old_solved_PRs:  # check if in old iter
                                         class_instance.solved_prereqs.append(PR_b)
@@ -223,7 +227,7 @@ class ReactionPath(MSONable):
                                             new_path = (
                                                 new_path_piece1 + new_path_piece2 + new_path_piece3
                                             )
-                                            # print(path, new_path_piece1, new_path_piece2,new_path_piece3 )
+                                            # print(path, new_path_piece1, new_path_piece2,new_path_piece3)
                                             assert c == path[ii + 1] or d == path[ii + 1]
                                             if new_path_piece2[0] not in graph.nodes:
                                                 pool.remove(a)
@@ -254,6 +258,7 @@ class ReactionPath(MSONable):
                                         pool.append(c)
                                         if concerted:
                                             pool.append(d)
+                                    print(pool)
                             else:  # nodes with 2 PRs
                                 if PR_b in pool_modified and PR_b2 in pool_modified:  # TODO: str
                                     # print("!!")
@@ -264,7 +269,6 @@ class ReactionPath(MSONable):
                                     pool.remove(PR_b2)
                                     pool.append(c)
                                     pool.append(d)
-
                                 elif PR_b not in old_solved_PRs and PR_b2 not in old_solved_PRs:
                                     class_instance.unsolved_prereqs.append(PR_b)
                                     class_instance.unsolved_prereqs.append(PR_b2)
@@ -318,7 +322,7 @@ class ReactionPath(MSONable):
                                     pool.remove(a)
                                     pool.append(c)
                                     pool.append(d)
-
+                                print(pool)
                         elif "+" in rxn[1]:
                             # node = A,B+C
                             a = int(rxn[0])
@@ -327,12 +331,14 @@ class ReactionPath(MSONable):
                             pool.remove(a)
                             pool.append(b)
                             pool.append(c)
+                            print(pool)
                         else:
                             # node = A,B
                             a = int(rxn[0])
                             b = int(rxn[1])
                             pool.remove(a)
                             pool.append(b)
+                            print(pool)
             pool.remove(int(path[-1]))
             class_instance.byproducts = pool
 
@@ -894,6 +900,12 @@ class ReactionNetwork(MSONable):
                 for start in starts:
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
+            if ii == 4:
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
+                    "wb",
+                )
+                pickle.dump(reaction_network, pickle_in)
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs
             )
@@ -903,6 +915,12 @@ class ReactionNetwork(MSONable):
             )
 
             print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
+            if ii == 4:
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
+                    "wb",
+                )
+                pickle.dump(reaction_network, pickle_in)
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
             self.min_cost = copy.deepcopy(min_cost)
