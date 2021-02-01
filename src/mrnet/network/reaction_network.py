@@ -167,7 +167,6 @@ class ReactionPath(MSONable):
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
-                    print(graph[step][path[ii + 1]]["foo"])
                     if isinstance(step, str):
                         rxn = step.split(",")
                         if "+PR_" in rxn[0]:

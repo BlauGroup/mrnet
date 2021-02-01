@@ -466,7 +466,7 @@ class TestReactionNetwork(PymatgenTest):
         # set up RN
 
         with open(
-            os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights.pkl"), "rb",
+            os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"), "rb",
         ) as input:
             RN_pr_ii_4 = pickle.load(input)
 
