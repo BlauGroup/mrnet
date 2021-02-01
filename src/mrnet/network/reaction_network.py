@@ -1,5 +1,7 @@
 import copy
 import heapq
+import os
+import pickle
 import itertools
 import time as time
 from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set
@@ -30,6 +32,11 @@ __status__ = "Alpha"
 
 
 Mapping_Record_Dict = Dict[int, List[str]]
+
+
+test_dir = os.path.join(
+    os.path.dirname(__file__), "..", "..", "..", "test_files", "reaction_network_files",
+)
 
 
 class ReactionPath(MSONable):
@@ -160,6 +167,7 @@ class ReactionPath(MSONable):
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
+                    print(graph[step][path[ii + 1]]["foo"])
                     if isinstance(step, str):
                         rxn = step.split(",")
                         if "+PR_" in rxn[0]:
