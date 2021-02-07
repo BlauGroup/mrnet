@@ -164,14 +164,12 @@ class ReactionPath(MSONable):
             class_instance = cls(path)
             pool = list()  # type: List[int]
             pool.append(int(path[0]))
-            print(path)
-            print(pool)
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
                     if isinstance(step, str):
                         rxn = step.split(",")  # ['456+PR_556', '424']
-                        if "+" in rxn[0]:  # PR(s) in reactants
+                        if "+" in rxn[0]:  # PR(s) in reactants (flag)
                             a = int(rxn[0].split("+PR_")[0])
                             PR_b = int(rxn[0].split("+PR_")[1])
                             concerted = False
@@ -186,7 +184,6 @@ class ReactionPath(MSONable):
                                 c = int(rxn[1])
                             pool_modified = copy.deepcopy(pool)
                             pool_modified.remove(a)  # don't need PR of A
-                            print(pool_modified)
                             if PR_b2 is None:  # only 2 reactants
                                 if PR_b in pool_modified:
                                     if PR_b in list(min_cost.keys()):
@@ -198,7 +195,6 @@ class ReactionPath(MSONable):
                                     pool.append(c)
                                     if concerted:
                                         pool.append(d)  # need to deal with C + D
-                                    print(pool)
                                 elif PR_b not in pool_modified:  # haven't calculated it here yet
                                     if PR_b in old_solved_PRs:  # check if in old iter
                                         class_instance.solved_prereqs.append(PR_b)
@@ -258,7 +254,6 @@ class ReactionPath(MSONable):
                                         pool.append(c)
                                         if concerted:
                                             pool.append(d)
-                                    print(pool)
                             else:  # nodes with 2 PRs
                                 if PR_b in pool_modified and PR_b2 in pool_modified:  # TODO: str
                                     # print("!!")
@@ -322,7 +317,6 @@ class ReactionPath(MSONable):
                                     pool.remove(a)
                                     pool.append(c)
                                     pool.append(d)
-                                print(pool)
                         elif "+" in rxn[1]:
                             # node = A,B+C
                             a = int(rxn[0])
@@ -331,14 +325,12 @@ class ReactionPath(MSONable):
                             pool.remove(a)
                             pool.append(b)
                             pool.append(c)
-                            print(pool)
                         else:
                             # node = A,B
                             a = int(rxn[0])
                             b = int(rxn[1])
                             pool.remove(a)
                             pool.append(b)
-                            print(pool)
             pool.remove(int(path[-1]))
             class_instance.byproducts = pool
 
@@ -735,7 +727,9 @@ class ReactionNetwork(MSONable):
 
         # Generate reactions
         for r in reaction_classes:
-            reactions = r.generate(self.entries, determine_atom_mappings=determine_atom_mappings)
+            reactions = r.generate(
+                self.entries, determine_atom_mappings=determine_atom_mappings
+            )  # review
             all_reactions.append(reactions)
 
         all_reactions = [i for i in all_reactions if i]
@@ -757,13 +751,14 @@ class ReactionNetwork(MSONable):
                 inter_c += 1
             elif r.__class__.__name__ == "CoordinationBondChangeReaction":
                 coord_c += 1
-            self.add_reaction(r.graph_representation())
+            self.add_reaction(r.graph_representation())  # add graph element here
 
         print(
             "redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c,
         )
-        self.PR_record = self.build_PR_record()
-        self.Reactant_record = self.build_reactant_record()
+        # BULK OF EFFORT IS HERE:
+        self.PR_record = self.build_PR_record()  # begin creating PR list
+        self.Reactant_record = self.build_reactant_record()  # begin creating rct list
 
         return self.graph
 
@@ -791,7 +786,7 @@ class ReactionNetwork(MSONable):
                 PR_record[node] = []
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 1:
-                if "+PR_" in node.split(",")[0]:
+                if "+" in node.split(",")[0]:  # flag
                     PR = int(node.split(",")[0].split("+PR_")[1])
                     PR_record[PR].append(node)
         self.PR_record = PR_record
@@ -811,7 +806,7 @@ class ReactionNetwork(MSONable):
                 Reactant_record[node] = []
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 1:
-                non_PR_reactant = node.split(",")[0].split("+PR_")[0]
+                non_PR_reactant = node.split(",")[0].split("+PR_")[0]  # flag
                 Reactant_record[int(non_PR_reactant)].append(node)
         self.Reactant_record = Reactant_record
         return Reactant_record
@@ -900,12 +895,12 @@ class ReactionNetwork(MSONable):
                 for start in starts:
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
-            if ii == 4:
-                pickle_in = open(
-                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
-                    "wb",
-                )
-                pickle.dump(reaction_network, pickle_in)
+            # if ii == 4:
+            #    pickle_in = open(
+            #        os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
+            #        "wb",
+            #    )
+            #    pickle.dump(reaction_network, pickle_in)
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs
             )
@@ -915,12 +910,12 @@ class ReactionNetwork(MSONable):
             )
 
             print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
-            if ii == 4:
-                pickle_in = open(
-                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
-                    "wb",
-                )
-                pickle.dump(reaction_network, pickle_in)
+            # if ii == 4:
+            # pickle_in = open(
+            #    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
+            #    "wb",
+            # )
+            # pickle.dump(reaction_network, pickle_in)
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
             self.min_cost = copy.deepcopy(min_cost)
@@ -957,7 +952,7 @@ class ReactionNetwork(MSONable):
         for step in path:
             if isinstance(step, int):
                 nodes.append(step)
-            elif "PR_" in step:
+            elif "PR_" in step:  # flag
                 if step.count("+") == 1:
                     nodes = nodes + [step.split("+")[0]]
                     Reactants.append(int(step.split("+")[0]))
@@ -1037,7 +1032,7 @@ class ReactionNetwork(MSONable):
                     for step in paths[node]:
                         if isinstance(step, int):
                             nodes.append(step)
-                        elif "PR_" in step:
+                        elif "PR_" in step:  # flag
                             if step.count("+") == 1:
                                 nodes = nodes + [step.split("+")[0]]
                                 Reactants.append(int(step.split("+")[0]))
@@ -1230,7 +1225,7 @@ class ReactionNetwork(MSONable):
         attrs = {}
         for PR_ind in min_cost:
             for rxn_node in self.PR_record[PR_ind]:
-                non_PR_reactant_node = int(rxn_node.split(",")[0].split("+PR_")[0])
+                non_PR_reactant_node = int(rxn_node.split(",")[0].split("+PR_")[0])  # flag
                 attrs[(non_PR_reactant_node, rxn_node)] = {
                     self.weight: orig_graph[non_PR_reactant_node][rxn_node][self.weight]
                     + min_cost[PR_ind]
@@ -1296,7 +1291,7 @@ class ReactionNetwork(MSONable):
             for node in nodes:
                 if self.graph.nodes[node]["bipartite"] == 1:
                     reactants = node.split(",")[0].split("+")
-                    reactants = [reac.replace("PR_", "") for reac in reactants]
+                    reactants = [reac.replace("PR_", "") for reac in reactants]  # flag
                     products = node.split(",")[1].split("+")
                     if str(n) in products:
                         if len(reactants) == 2:
@@ -1504,7 +1499,7 @@ class ReactionNetwork(MSONable):
         RN_pr_solved, mols_to_keep, single_elem_interm_ignore=["C1", "H1", "O1", "Li1"]
     ):
         """
-            A method to identify concerted reactions by looping through high enery intermediates
+            A method to identify concerted reactions by looping through high energy intermediates
         :param RN_pr_solved: ReactionNetwork that is PR solved
         :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes in the
         RN_pr_solved
@@ -1539,10 +1534,10 @@ class ReactionNetwork(MSONable):
                     for in_node in in_nodes:
                         rxn1_dG = RN_pr_solved.graph.nodes[in_node]["free_energy"]
                         total_dG = rxn1_dG + RN_pr_solved.graph.nodes[out_node]["free_energy"]
-                        if rxn1_dG > 0 and total_dG < 0:
-                            if "PR" in out_node and "PR" in in_node:
+                        if rxn1_dG > 0 and total_dG < 0:  # flag
+                            if "PR" in out_node and "PR" in in_node:  # "+ PR" in both
                                 pass
-                            elif "PR" not in out_node and "PR" not in in_node:
+                            elif "PR" not in out_node and "PR" not in in_node:  # no "PR" but has +
                                 if "+" in out_node and "+" in in_node:
                                     pass
                                 elif "+" not in out_node and "+" not in in_node:
