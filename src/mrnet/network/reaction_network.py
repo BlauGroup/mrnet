@@ -161,12 +161,14 @@ class ReactionPath(MSONable):
         if path is None:
             class_instance = cls(None)
         else:
-            class_instance = cls(path)
+            class_instance = cls(path)  # init ReactionPath instance
             pool = list()  # type: List[int]
-            pool.append(int(path[0]))
-            for ii, step in enumerate(path):
-                if ii != len(path) - 1:
-                    class_instance.cost += graph[step][path[ii + 1]][weight]
+            pool.append(int(path[0]))  # pool begins with just our start point
+            for ii, step in enumerate(path):  # counter, element
+                if ii != len(path) - 1:  # not last element
+                    class_instance.cost += graph[step][path[ii + 1]][
+                        weight
+                    ]  # cost increases by weight of next element in path (mol -> reaction edge weight)
                     if isinstance(step, str):
                         rxn = step.split(",")  # ['456+PR_556', '424']
                         if "+" in rxn[0]:  # PR(s) in reactants (flag)
@@ -331,8 +333,8 @@ class ReactionPath(MSONable):
                             b = int(rxn[1])
                             pool.remove(a)
                             pool.append(b)
-            pool.remove(int(path[-1]))
-            class_instance.byproducts = pool
+            pool.remove(int(path[-1]))  # remove final element in path
+            class_instance.byproducts = pool  # remaining elements in pool are byprod
 
             class_instance.path_dict = {
                 "byproducts": class_instance.byproducts,
@@ -774,19 +776,25 @@ class ReactionNetwork(MSONable):
 
     def build_PR_record(self) -> Mapping_Record_Dict:
         """
-        A method to determine all the reaction nodes that have a the same
+        A method to determine all the reaction nodes that have the same
         PR in the ReactionNetwork.graph
 
         :return: a dict of the form {int(node1): [all the reaction nodes with
         PR of node1, ex "2+PR_node1, 3"]}
         """
+        # Should every reactant become a PR?
         PR_record = {}  # type: Mapping_Record_Dict
+        PR_record_ak = {}
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 0:
                 PR_record[node] = []
-        for node in self.graph.nodes():
+                PR_record_ak = []
             if self.graph.nodes[node]["bipartite"] == 1:
                 if "+" in node.split(",")[0]:  # flag
+                    # rct = node.split(",")[0]  # get reactant side
+                    # species = rct.split("+PR_")  # get reactants
+                    # for specie in species:  # every reactant is a "PR" in this model
+                    #    PR_record_ak[int(specie)].append(node)
                     PR = int(node.split(",")[0].split("+PR_")[1])
                     PR_record[PR].append(node)
         self.PR_record = PR_record
@@ -800,6 +808,8 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         non PR reactant of node1, ex "node1+PR_2, 3"]}
         """
+
+        # nothing should be a reactant
         Reactant_record = {}  # type: Mapping_Record_Dict
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 0:
@@ -847,21 +857,23 @@ class ReactionNetwork(MSONable):
         if len(self.graph.nodes) == 0:
             self.build()  # actually construct the graph
         if self.PR_record is None:
-            self.PR_record = self.build_PR_record()  # get a dict of desired PRs
+            self.PR_record = self.build_PR_record()  # get a dict of PRs
         if self.Reactant_record is None:
-            self.Reactant_record = self.build_reactant_record()  # get a dict of desired reactants
+            self.Reactant_record = self.build_reactant_record()  # get a dict of non-PR reactants
         orig_graph = copy.deepcopy(self.graph)
 
-        for start in starts:  # all the reactant (non-reaction) nodes
-            PRs[start] = {}
-        for PR in PRs:
-            for start in starts:
-                if start == PR:  # need to compute the PR of this reactant
+        for start in starts:  # all the molecular nodes
+            PRs[start] = {}  # no PRs necessary @init
+        for PR in PRs:  # iter over each PR (eq to molecular nodes) [keys]
+            for start in starts:  # iter over molecular nodes
+                if start == PR:
                     PRs[PR][start] = ReactionPath.characterize_path(
                         [start], weight, self.min_cost, self.graph
-                    )
+                    )  # PRs[mol][mol]
+                    # Path starts as just [mol],
                 else:
-                    PRs[PR][start] = ReactionPath(None)
+                    PRs[PR][start] = ReactionPath(None)  # PRs[mol][other_mol]
+                    # NO PATH
 
             old_solved_PRs.append(PR)
             self.min_cost[PR] = PRs[PR][PR].cost
@@ -895,12 +907,12 @@ class ReactionNetwork(MSONable):
                 for start in starts:
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
-            # if ii == 4:
-            #    pickle_in = open(
-            #        os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
-            #        "wb",
-            #    )
-            #    pickle.dump(reaction_network, pickle_in)
+            if ii == 4:
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
+                    "wb",
+                )
+                pickle.dump(self, pickle_in)
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs
             )
@@ -910,12 +922,12 @@ class ReactionNetwork(MSONable):
             )
 
             print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
-            # if ii == 4:
-            # pickle_in = open(
-            #    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
-            #    "wb",
-            # )
-            # pickle.dump(reaction_network, pickle_in)
+            if ii == 4:
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
+                    "wb",
+                )
+                pickle.dump(self, pickle_in)
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
             self.min_cost = copy.deepcopy(min_cost)
