@@ -395,11 +395,10 @@ class TestIntermolecularReaction(PymatgenTest):
                 C2H4_ind,
                 C1Li1O3_ind,
                 str(LiEC_RO_ind) + "," + str(C1Li1O3_ind) + "+" + str(C2H4_ind),
-                str(C2H4_ind) + "+PR_" + str(C1Li1O3_ind) + "," + str(LiEC_RO_ind),
-                str(C1Li1O3_ind) + "+PR_" + str(C2H4_ind) + "," + str(LiEC_RO_ind),
+                str(C1Li1O3_ind) + "+" + str(C2H4_ind) + "," + str(LiEC_RO_ind),
             ],
         )
-        self.assertEqual(len(graph.edges), 7)
+        self.assertEqual(len(graph.edges), 6)
         self.assertEqual(
             graph.get_edge_data(
                 LiEC_RO_ind, str(LiEC_RO_ind) + "," + str(C1Li1O3_ind) + "+" + str(C2H4_ind),
@@ -408,7 +407,7 @@ class TestIntermolecularReaction(PymatgenTest):
         )
         self.assertEqual(
             graph.get_edge_data(
-                LiEC_RO_ind, str(C2H4_ind) + "+PR_" + str(C1Li1O3_ind) + "," + str(LiEC_RO_ind),
+                LiEC_RO_ind, str(C2H4_ind) + "+" + str(C1Li1O3_ind) + "," + str(LiEC_RO_ind),
             ),
             None,
         )
@@ -506,11 +505,10 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                 EC_minus_ind,
                 Li_ind,
                 str(LiEC_ind) + "," + str(EC_minus_ind) + "+" + str(Li_ind),
-                str(EC_minus_ind) + "+PR_" + str(Li_ind) + "," + str(LiEC_ind),
-                str(Li_ind) + "+PR_" + str(EC_minus_ind) + "," + str(LiEC_ind),
+                str(EC_minus_ind) + "+" + str(Li_ind) + "," + str(LiEC_ind),
             ],
         )
-        self.assertEqual(len(graph.edges), 7)
+        self.assertEqual(len(graph.edges), 6)
         self.assertEqual(
             graph.get_edge_data(
                 LiEC_ind, str(LiEC_ind) + "," + str(EC_minus_ind) + "+" + str(Li_ind)
@@ -519,7 +517,7 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         )
         self.assertEqual(
             graph.get_edge_data(
-                LiEC_ind, str(Li_ind) + "+PR_" + str(EC_minus_ind) + "," + str(LiEC_ind)
+                LiEC_ind, str(EC_minus_ind) + "+" + str(Li_ind) + "," + str(LiEC_ind)
             ),
             None,
         )
@@ -623,28 +621,14 @@ class TestMetalHopReaction(PymatgenTest):
                 liec_plus_ind,
                 ec_minus_ind,
                 str(liec_ind)
-                + "+PR_"
+                + "+"
                 + str(ec_ind)
                 + ","
                 + str(liec_plus_ind)
                 + "+"
                 + str(ec_minus_ind),
-                str(ec_ind)
-                + "+PR_"
-                + str(liec_ind)
-                + ","
-                + str(liec_plus_ind)
-                + "+"
-                + str(ec_minus_ind),
-                str(ec_minus_ind)
-                + "+PR_"
-                + str(liec_plus_ind)
-                + ","
-                + str(liec_ind)
-                + "+"
-                + str(ec_ind),
                 str(liec_plus_ind)
-                + "+PR_"
+                + "+"
                 + str(ec_minus_ind)
                 + ","
                 + str(liec_ind)
@@ -652,12 +636,12 @@ class TestMetalHopReaction(PymatgenTest):
                 + str(ec_ind),
             ],
         )
-        self.assertEqual(len(graph.edges), 12)
+        self.assertEqual(len(graph.edges), 8)
         self.assertEqual(
             graph.get_edge_data(
                 liec_ind,
                 str(liec_ind)
-                + "+PR_"
+                + "+"
                 + str(ec_ind)
                 + ","
                 + str(liec_plus_ind)
@@ -670,7 +654,7 @@ class TestMetalHopReaction(PymatgenTest):
             graph.get_edge_data(
                 liec_ind,
                 str(ec_minus_ind)
-                + "+PR_"
+                + "+"
                 + str(liec_plus_ind)
                 + ","
                 + str(liec_ind)

@@ -170,6 +170,7 @@ class ReactionPath(MSONable):
                         weight
                     ]  # cost increases by weight of next element in path (mol -> reaction edge weight)
                     if isinstance(step, str):
+                        print(step)
                         rxn = step.split(",")  # ['456+PR_556', '424']
                         if "+" in rxn[0]:  # PR(s) in reactants (flag)
                             a = int(rxn[0].split("+PR_")[0])
@@ -187,9 +188,13 @@ class ReactionPath(MSONable):
                             pool_modified = copy.deepcopy(pool)
                             pool_modified.remove(a)  # don't need PR of A
                             if PR_b2 is None:  # only 2 reactants
-                                if PR_b in pool_modified:
-                                    if PR_b in list(min_cost.keys()):
-                                        class_instance.cost = class_instance.cost - min_cost[PR_b]
+                                if PR_b in pool_modified:  # b has been seen
+                                    if PR_b in list(
+                                        min_cost.keys()
+                                    ):  # have a cost to get to b already
+                                        class_instance.cost = (
+                                            class_instance.cost - min_cost[PR_b]
+                                        )  # already paid b cost if in min_cost.keys
                                     else:
                                         pass
                                     pool.remove(a)  # processed A, PR of B
@@ -204,8 +209,11 @@ class ReactionPath(MSONable):
                                         PR_b_byproducts = PR_byproduct_dict[PR_b]["byproducts"]
                                         start = int(PR_byproduct_dict[PR_b]["start"])
                                         if a in PR_b_byproducts:
-                                            # print("path replacement happenning")
-                                            new_path_piece1 = actualPRs[PR_b][start].path
+                                            # print("path replacement happening")
+                                            new_path_piece1 = actualPRs[PR_b][
+                                                start
+                                            ].path  # get path to the new start point from PR_b
+                                            # begin path from b
                                             new_path_piece2 = [
                                                 str(PR_b) + "+" + "PR_" + str(a) + "," + str(c)
                                             ]
@@ -783,9 +791,13 @@ class ReactionNetwork(MSONable):
         PR of node1, ex "2+PR_node1, 3"]}
         """
         # Should every reactant become a PR?
+        # identifying PR nodes -> move to PR edges
+        # A + B -> C + D
+        # Edge from mol node A to reaction node A + B will have PR_B
+        # update_edge_weight
         PR_record = {}  # type: Mapping_Record_Dict
         PR_record_ak = {}
-        for node in self.graph.nodes():
+        for node in self.graph.nodes():  #
             if self.graph.nodes[node]["bipartite"] == 0:
                 PR_record[node] = []
                 PR_record_ak = []
