@@ -254,8 +254,10 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(Li1_ind, 556)
         self.assertEqual(LiEC_ind, 424)
 
-        self.assertEqual(len(RN.graph.nodes), 10481)
+        print("Delta nodes = ", len(RN.graph.nodes) - 10481)
+        print("Delta edges = ", len(RN.graph.edges) - 22890)
         self.assertEqual(len(RN.graph.edges), 22890)
+        self.assertEqual(len(RN.graph.nodes), 10481)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_build_PR_record(self):

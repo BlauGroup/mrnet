@@ -766,7 +766,6 @@ class ReactionNetwork(MSONable):
         print(
             "redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c,
         )
-        # BULK OF EFFORT IS HERE:
         self.PR_record = self.build_PR_record()  # begin creating PR list
         self.Reactant_record = self.build_reactant_record()  # begin creating rct list
 
@@ -790,17 +789,9 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         PR of node1, ex "2+PR_node1, 3"]}
         """
-        # Should every reactant become a PR?
-        # identifying PR nodes -> move to PR edges
-        # A + B -> C + D
-        # Edge from mol node A to reaction node A + B will have PR_B
-        # update_edge_weight
         PR_record = {}  # type: Mapping_Record_Dict
-        all_e_counter = 0
-        pr_e_counter = 0
         for edge in filter(lambda e: not isinstance(e[1], int), self.graph.edges()):
             # for edge (u,v), PR is all species in reaction v other than u
-            pr_e_counter += 1
             edge_prs = self.graph[edge[0]][edge[1]]["PRs"]
             for pr in edge_prs:
                 if pr in PR_record.keys():
@@ -808,8 +799,6 @@ class ReactionNetwork(MSONable):
                 else:
                     PR_record[pr] = [edge]
         self.PR_record = PR_record
-        print(all_e_counter)
-        print(pr_e_counter)
         return PR_record
 
     def build_reactant_record(self) -> Mapping_Record_Dict:
@@ -820,16 +809,16 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         non PR reactant of node1, ex "node1+PR_2, 3"]}
         """
-
-        # nothing should be a reactant
         Reactant_record = {}  # type: Mapping_Record_Dict
-        for node in self.graph.nodes():
-            if self.graph.nodes[node]["bipartite"] == 0:
-                Reactant_record[node] = []
-        for node in self.graph.nodes():
-            if self.graph.nodes[node]["bipartite"] == 1:
-                non_PR_reactant = node.split(",")[0].split("+PR_")[0]  # flag
-                Reactant_record[int(non_PR_reactant)].append(node)
+
+        def add_to_dict(edge):
+            if reac in Reactant_record.keys():
+                Reactant_record[reac].append(edge)
+            else:
+                Reactant_record[pr] = [edge]
+
+        # filter to just get weighted edges, then add u of (u,v) to reactant record
+        map(add_to_dict, filter(lambda e: not isinstance(e[1], int), self.graph.edges()))
         self.Reactant_record = Reactant_record
         return Reactant_record
 
@@ -1247,14 +1236,12 @@ class ReactionNetwork(MSONable):
             self.PR_record = self.build_PR_record()
 
         attrs = {}
-        for PR_ind in min_cost:
-            for rxn_node in self.PR_record[PR_ind]:
-                non_PR_reactant_node = int(rxn_node.split(",")[0].split("+PR_")[0])  # flag
-                attrs[(non_PR_reactant_node, rxn_node)] = {
-                    self.weight: orig_graph[non_PR_reactant_node][rxn_node][self.weight]
+        for PR_ind in min_cost:  # all PRs in path
+            for weighted_edge in self.PR_record[PR_ind]:  # all edges with this PR
+                attrs[weighted_edge] = {
+                    self.weight: orig_graph[weighted_edge[0]][weighted_edge[1]][self.weight]
                     + min_cost[PR_ind]
                 }
-
         nx.set_edge_attributes(self.graph, attrs)
         return attrs
 
