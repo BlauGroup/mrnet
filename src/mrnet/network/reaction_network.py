@@ -796,20 +796,20 @@ class ReactionNetwork(MSONable):
         # Edge from mol node A to reaction node A + B will have PR_B
         # update_edge_weight
         PR_record = {}  # type: Mapping_Record_Dict
-        PR_record_ak = {}
-        for node in self.graph.nodes():  #
-            if self.graph.nodes[node]["bipartite"] == 0:
-                PR_record[node] = []
-                PR_record_ak = []
-            if self.graph.nodes[node]["bipartite"] == 1:
-                if "+" in node.split(",")[0]:  # flag
-                    # rct = node.split(",")[0]  # get reactant side
-                    # species = rct.split("+PR_")  # get reactants
-                    # for specie in species:  # every reactant is a "PR" in this model
-                    #    PR_record_ak[int(specie)].append(node)
-                    PR = int(node.split(",")[0].split("+PR_")[1])
-                    PR_record[PR].append(node)
+        all_e_counter = 0
+        pr_e_counter = 0
+        for edge in filter(lambda e: not isinstance(e[1], int), self.graph.edges()):
+            # for edge (u,v), PR is all species in reaction v other than u
+            pr_e_counter += 1
+            edge_prs = self.graph[edge[0]][edge[1]]["PRs"]
+            for pr in edge_prs:
+                if pr in PR_record.keys():
+                    PR_record[pr].append(edge)
+                else:
+                    PR_record[pr] = [edge]
         self.PR_record = PR_record
+        print(all_e_counter)
+        print(pr_e_counter)
         return PR_record
 
     def build_reactant_record(self) -> Mapping_Record_Dict:
