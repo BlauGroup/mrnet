@@ -67,10 +67,9 @@ class ReactionRateCalculatorTest(unittest.TestCase):
             self.ts = MoleculeEntry(
                 mol_placeholder, -350.099875862606, enthalpy=48.560, entropy=83.607
             )
-
-            self.calc = ReactionRateCalculator(
-                [self.rct_1, self.rct_2], [self.pro], self.ts
-            )
+            self.reactants = [self.rct_1, self.rct_2]
+            self.products = [self.pro]
+            self.calc = ReactionRateCalculator(self.reactants, self.products, self.ts)
 
     def tearDown(self) -> None:
         if ob:
@@ -104,12 +103,11 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         gibbs_300 = self.pro.get_free_energy(300) - (
             self.rct_1.get_free_energy(300) + self.rct_2.get_free_energy(300)
         )
-        self.assertEqual(self.calc.calculate_net_gibbs(300), gibbs_300)
+        self.assertAlmostEqual(self.calc.calculate_net_gibbs(300), gibbs_300, 10)
         gibbs_100 = self.pro.get_free_energy(100) - (
             self.rct_1.get_free_energy(100) + self.rct_2.get_free_energy(100)
         )
-        self.assertEqual(self.calc.calculate_net_gibbs(100.00), gibbs_100)
-
+        self.assertAlmostEqual(self.calc.calculate_net_gibbs(100.00), gibbs_100, 10)
         self.assertDictEqual(
             self.calc.calculate_net_thermo(),
             {
@@ -126,12 +124,12 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         trans_enthalpy = self.ts.enthalpy
         trans_entropy = self.ts.entropy
 
-        pro_energies = [p.energy for p in self.calc.products]
-        rct_energies = [r.energy for r in self.calc.reactants]
-        pro_enthalpies = [p.enthalpy for p in self.calc.products]
-        rct_enthalpies = [r.enthalpy for r in self.calc.reactants]
-        pro_entropies = [p.entropy for p in self.calc.products]
-        rct_entropies = [r.entropy for r in self.calc.reactants]
+        pro_energies = [p.energy for p in self.products]
+        rct_energies = [r.energy for r in self.reactants]
+        pro_enthalpies = [p.enthalpy for p in self.products]
+        rct_enthalpies = [r.enthalpy for r in self.reactants]
+        pro_entropies = [p.entropy for p in self.products]
+        rct_entropies = [r.entropy for r in self.reactants]
 
         self.assertAlmostEqual(
             self.calc.calculate_act_energy(),
@@ -495,15 +493,20 @@ class RedoxRateCalculatorTest(unittest.TestCase):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_rate_constant(self):
         self.assertAlmostEqual(
-            self.calc.calculate_rate_constant(temperature=300), 255536.74880926133, 4
-        )
-        self.assertAlmostEqual(
-            self.calc.calculate_rate_constant(temperature=300, reverse=True),
-            258172.2056825794,
+            self.calc.calculate_rate_constant(temperature=300) / 255536.74880926133,
+            1.0,
             4,
         )
         self.assertAlmostEqual(
-            self.calc.calculate_rate_constant(temperature=600), 82962806.19389883, 4
+            self.calc.calculate_rate_constant(temperature=300, reverse=True)
+            / 258172.2056825794,
+            1.0,
+            4,
+        )
+        self.assertAlmostEqual(
+            self.calc.calculate_rate_constant(temperature=600) / 82962806.19389883,
+            1.0,
+            4,
         )
 
 

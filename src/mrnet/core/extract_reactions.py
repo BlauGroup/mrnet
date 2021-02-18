@@ -1,17 +1,15 @@
-from pymatgen.analysis.local_env import OpenBabelNN
-
-from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
-from pymatgen import Molecule
 import copy
 from itertools import combinations_with_replacement
-from pymatgen.analysis.fragmenter import open_ring
-from monty.serialization import dumpfn
+
 import numpy as np
+from monty.serialization import dumpfn
+from pymatgen.analysis.fragmenter import open_ring
+from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
+from pymatgen.analysis.local_env import OpenBabelNN
 
 
 def convert_atomic_numbers_to_stoi_dict(atomic_numbers):
     """
-
     :param atomic_numbers: a list of atomic numbers
     :return: {'Li':1, '110':0,'C':3,...} zero padding for non-existing elements
     """
@@ -316,7 +314,7 @@ def open_ring_in_one_mol(mol_graph):
                 frag = open_ring(mol_graph, bond, 10000)
                 if not check_in_list(frag, all_possible_fragments):
                     all_possible_fragments.append(frag)
-            except:
+            except MolGraphSplitError:
                 continue
     return all_possible_fragments
 
@@ -607,8 +605,6 @@ def identify_reactions_AB_C_record_one_bond_breakage(
     A = mol_graphs1[0]
     B = mol_graphs1[1]
     C = mol_graphs2[0]
-    num_A = nums1[0]
-    num_B = nums1[1]
     num_C = nums2[0]
 
     if num_C in one_bond_dict.keys():
@@ -1087,9 +1083,8 @@ class FindConcertedReactions:
                  The number correspond to the index of a mol_graph in
                  self.unique_mol_graphs_new.
         """
-        i, name = args[0], args[1]
+        i = args[0]
         valid_reactions = []
-
         reac = self.concerted_rxns_to_determine[i][0]
         prod = self.concerted_rxns_to_determine[i][1]
 
@@ -1269,7 +1264,7 @@ class FindConcertedReactions:
         elif reaction_type == "break1_form1":
             func = self.find_concerted_break1_form1
             print("Reaction type: break1 form1")
-        from pathos.multiprocessing import ProcessingPool as Pool
+        from pathos.multiprocessing import ProcessingPool as Pool  # type: ignore
 
         nums = list(np.arange(len(self.concerted_rxns_to_determine)))
         args = [(i) for i in nums]

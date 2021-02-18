@@ -7,8 +7,6 @@ import math
 import numpy as np
 from scipy.constants import N_A
 
-from monty.serialization import dumpfn
-
 from pymatgen.util.testing import PymatgenTest
 
 from mrnet.stochastic.kmc import (
@@ -29,12 +27,18 @@ __email__ = "kamronald@berkeley.edu"
 __copyright__ = "Copyright 2020, The Materials Project"
 __version__ = "0.1"
 
-test_dir = os.path.dirname(__file__)
+test_dir = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "test_files",
+    "reaction_network_files",
+)
 
 
 class TestKMCReactionPropagatorFxns(PymatgenTest):
     def setUp(self):
-        """ Create an initial state and reaction network, based on H2O molecule.
+        """Create an initial state and reaction network, based on H2O molecule.
         Species include H2, H2O, H, O, O2, OH, H3O
         """
         self.volume = 10 ** -24  # m^3
@@ -44,7 +48,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
         self.concentration = self.num_mols / N_A / self.volume / 1000
 
         if ob:
-            pickle_in = open("h2o_test_network.pickle", "rb")
+            pickle_in = open(os.path.join(test_dir, "h2o_test_network.pickle"), "rb")
             self.reaction_network = pickle.load(pickle_in)
             pickle_in.close()
 
@@ -97,8 +101,9 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
                     num_reactants_rev.append(self.initial_state[mol_ind])
                     species_rxn_mapping_list[mol_ind].append(2 * ind + 1)
 
-                self.rate_constants[2 * ind] = reaction.rate_constant()["k_A"]
-                self.rate_constants[2 * ind + 1] = reaction.rate_constant()["k_B"]
+                reaction.set_rate_constant()
+                self.rate_constants[2 * ind] = reaction.k_A
+                self.rate_constants[2 * ind + 1] = reaction.k_B
                 # set up coordination array
                 if len(reaction.reactants) == 1:
                     self.coord_array[2 * ind] = num_reactants_for[0]
@@ -347,7 +352,7 @@ class TestKMCReactionPropagatorFxns(PymatgenTest):
 
 class TestKmcDataAnalyzer(PymatgenTest):
     def setUp(self):
-        """ Create an initial state and reaction network, based on H2O molecule.
+        """Create an initial state and reaction network, based on H2O molecule.
         Species include H2, H2O, H, O, O2, OH, H3O
         """
         self.volume = 10 ** -24  # m^3
@@ -357,7 +362,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
         self.concentration = self.num_mols / N_A / self.volume / 1000
 
         if ob:
-            pickle_in = open("h2o_test_network.pickle", "rb")
+            pickle_in = open(os.path.join(test_dir, "h2o_test_network.pickle"), "rb")
             self.reaction_network = pickle.load(pickle_in)
             pickle_in.close()
 
@@ -406,9 +411,9 @@ class TestKmcDataAnalyzer(PymatgenTest):
                     self.products[ind, idx] = mol_ind
                     num_reactants_rev.append(self.initial_state[mol_ind])
                     species_rxn_mapping_list[mol_ind].append(2 * ind + 1)
-
-                self.rate_constants[2 * ind] = reaction.rate_constant()["k_A"]
-                self.rate_constants[2 * ind + 1] = reaction.rate_constant()["k_B"]
+                reaction.set_rate_constant()
+                self.rate_constants[2 * ind] = reaction.k_A
+                self.rate_constants[2 * ind + 1] = reaction.k_B
                 # set up coordination array
                 if len(reaction.reactants) == 1:
                     self.coord_array[2 * ind] = num_reactants_for[0]
@@ -712,7 +717,7 @@ class TestKmcDataAnalyzer(PymatgenTest):
             },
         }
         rxn_correlations = self.analyzer.correlate_reactions([self.rxn_a, self.rxn_b])
-        self.assertDictsAlmostEqual(expected_correlation, rxn_correlations)
+        self.assertDictEqual(expected_correlation, rxn_correlations)
 
 
 if __name__ == "__main__":

@@ -71,8 +71,8 @@ def initialize_simulation(reaction_network, initial_cond, volume=10 ** -24):
         # Keep track of reactant amounts, for later calculating coordination number
         num_reactants_for = list()
         num_reactants_rev = list()
-        rate_constants[2 * id] = reaction.rate_constant()["k_A"]
-        rate_constants[2 * id + 1] = reaction.rate_constant()["k_B"]
+        rate_constants[2 * id] = reaction.k_A
+        rate_constants[2 * id + 1] = reaction.k_B
         for idx, react in enumerate(reaction.reactants):
             # for each reactant, need to find the corresponding mol_id with the index
             mol_ind = molid_index_mapping[react.entry_id]
@@ -172,7 +172,6 @@ def kmc_simulate(
     """
 
     total_propensity = np.sum(propensity_array)
-    t = 0.0
     reaction_history = [0 for step in range(time_steps)]
     times = [0.0 for step in range(time_steps)]
     relevant_ind = np.where(propensity_array > 0)[
@@ -195,7 +194,7 @@ def kmc_simulate(
 
         state = update_state(reactants, products, state, converted_rxn_ind, reverse)
         # Log the reactions that need to be altered after reaction is performed, for the coordination array
-        reactions_to_change: List[int] = list()
+        reactions_to_change = list()
         for reactant_id in reactants[converted_rxn_ind, :]:
             if reactant_id == -1:
                 continue
@@ -784,7 +783,6 @@ class KmcDataAnalyzer:
                     rxns_of_type.append(2 * ind)
                 elif rxn.reaction_type()["rxn_type_B"] == reaction_type:
                     rxns_of_type.append(2 * ind + 1)
-        reaction_counts = dict()  # a growing count of all reactions fired
         reaction_data = dict()  # keeping record of each iteration
         # Loop to count all reactions fired
         for n_sim in range(self.num_sims):
