@@ -177,7 +177,7 @@ class TestReactionNetwork(PymatgenTest):
 
             # dumpfn(cls.LiEC_reextended_entries, "unittest_input_molentries.json")
 
-            with open(os.path.join(test_dir, "unittest_RN_build_ak.pkl"), "rb") as input:
+            with open(os.path.join(test_dir, "unittest_rn_build_ak.pkl"), "rb") as input:
                 cls.RN_build = pickle.load(input)
 
             with open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb") as input:
@@ -213,11 +213,11 @@ class TestReactionNetwork(PymatgenTest):
         # run calc
         RN.add_reaction(redox_graph)
 
-        # assert
-        self.assertEqual(list(RN.graph.nodes), ["456,455", 456, 455, "455,456"])
+        # assert (use set to be ordering-agnostic)
+        self.assertEqual(set(RN.graph.nodes), set(["456,455", 456, 455, "455,456"]))
         self.assertEqual(
-            list(RN.graph.edges),
-            [("456,455", 455), (456, "456,455"), (455, "455,456"), ("455,456", 456)],
+            set(RN.graph.edges),
+            set([("456,455", 455), (456, "456,455"), (455, "455,456"), ("455,456", 456)]),
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -254,25 +254,25 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(Li1_ind, 556)
         self.assertEqual(LiEC_ind, 424)
 
-        print("Delta nodes = ", len(RN.graph.nodes) - 10481)
-        print("Delta edges = ", len(RN.graph.edges) - 22890)
-        self.assertEqual(len(RN.graph.edges), 22890)
-        self.assertEqual(len(RN.graph.nodes), 10481)
+        self.assertEqual(len(RN.graph.edges), 19824)
+        self.assertEqual(len(RN.graph.nodes), 7415)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_build_PR_record(self):
         # set up RN
         RN = copy.deepcopy(self.RN_build)
-
         # run calc
         PR_record = RN.build_PR_record()
-
+        with open(os.path.join(test_dir, "unittest_RN_pr_record_old.pkl"), "rb") as input:
+            old_PR_record = pickle.load(input)
+        assert len(old_PR_record[564]) == 165
         # assert
         self.assertEqual(len(PR_record[0]), 42)
-        self.assertEqual(PR_record[44], ["165+PR_44,434"])
-        self.assertEqual(len(PR_record[529]), 0)
+        self.assertEqual(PR_record[44], [(165, "44+165,434")])
+        self.assertTrue(529 not in PR_record.keys())
         self.assertEqual(len(PR_record[556]), 104)
-        self.assertEqual(len(PR_record[564]), 165)
+        self.assertEqual(len([edge[1] for edge in PR_record[564]]), len(old_PR_record[564]))
+        # self.assertEqual(len(PR_record[564]), 165)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_build_reactant_record(self):

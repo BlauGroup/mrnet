@@ -82,8 +82,8 @@ Li1_ind = reaction_network.entries["Li1"][0][1][0].parameters["ind"]
 pickle_in = open(os.path.join(test_dir, "unittest_RN_build_ak.pkl"), "wb")
 pickle.dump(reaction_network, pickle_in)
 pickle_in.close()
-reaction_network.solve_prerequisites([EC_ind, Li1_ind], weight="softplus")
-pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "wb")
-pickle.dump(reaction_network, pickle_in)
-pickle_in.close()
+#reaction_network.solve_prerequisites([EC_ind, Li1_ind], weight="softplus")
+#pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "wb")
+#pickle.dump(reaction_network, pickle_in)
+#pickle_in.close()
 
