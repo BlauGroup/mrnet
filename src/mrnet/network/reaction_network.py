@@ -1293,7 +1293,7 @@ class ReactionNetwork(MSONable):
                 non_PR_reactant_node = int(rxn_node.split(",")[0].split("+PR_")[0])
                 attrs[(non_PR_reactant_node, rxn_node)] = {
                     self.weight: orig_graph[non_PR_reactant_node][rxn_node][self.weight]
-                                 + min_cost[PR_ind]
+                    + min_cost[PR_ind]
                 }
 
         nx.set_edge_attributes(self.graph, attrs)
@@ -1639,9 +1639,11 @@ class ReactionNetwork(MSONable):
         :param RN: Reaction network built
         :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes in the
         RN_pr_solved
-        :param single_elem_interm_ignore: single_elem_interm_ignore: List of formula of high energy intermediates to ignore
+        :param single_elem_interm_ignore: single_elem_interm_ignore: List of formula of high energy
+        intermediates to ignore
         :return: list of unique reactions, list of reactions and its incoming and outgoing reaction nodes
         """
+
         print("identify_concerted_rxns_via_intermediates start", time.time())
         if mols_to_keep is None:
             mols_to_keep = list(range(0, len(RN.entries_list)))
@@ -1662,16 +1664,18 @@ class ReactionNetwork(MSONable):
         return all_unique_reactions, reactions
 
     @staticmethod
-    def identify_concerted_rxns_for_specific_intermediate(entry:MoleculeEntry, RN, mols_to_keep=None,
-                                                          single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1",
-                                                                                     "F1"]):
+    def identify_concerted_rxns_for_specific_intermediate(entry: MoleculeEntry, RN, mols_to_keep=None,
+                                                          single_elem_interm_ignore=["C1", "H1", "O1",
+                                                                                     "Li1", "P1","F1"]):
+
         """
             A method to identify concerted reactions via specific high enery intermediate molecule
         :param entry: MoleculeEntry to act as high energy intermediate
         :param RN: Reaction network built
-        :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes in the
-        RN_pr_solved
-        :param single_elem_interm_ignore: single_elem_interm_ignore: List of formula of high energy intermediates to ignore
+        :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes
+        in the RN_pr_solved
+        :param single_elem_interm_ignore: single_elem_interm_ignore: List of formula of high energy
+        intermediates to ignore
         :return: list of reactions
         """
 
@@ -1682,8 +1686,9 @@ class ReactionNetwork(MSONable):
         reactions_with_in_out_nodes = []
         unique_reactions = []
         node = entry.parameters["ind"]
-        if RN.entries_list[node].formula not in not_wanted_formula and RN.graph.nodes[node][
-            "bipartite"] == 0 and node not in RN.not_reachable_nodes and node not in RN.unsolvable_PRs:
+        if RN.entries_list[node].formula not in not_wanted_formula and \
+                RN.graph.nodes[node]["bipartite"] == 0 and \
+                node not in RN.not_reachable_nodes and node not in RN.unsolvable_PRs:
             out_nodes = []
             for rxn in list(RN.graph.neighbors(node)):
                 if "electron" not in RN.graph.nodes[rxn]["rxn_type"]:
@@ -1695,8 +1700,8 @@ class ReactionNetwork(MSONable):
                     in_nodes.append(in_rxn)
             for out_node in out_nodes:
                 for in_node in in_nodes:
-                    if "Concerted" in RN.graph.nodes[in_node]["rxn_type"] and "Concerted" in RN.graph.nodes[
-                        out_node]["rxn_type"]:
+                    if "Concerted" in RN.graph.nodes[in_node]["rxn_type"] and \
+                            "Concerted" in RN.graph.nodes[out_node]["rxn_type"]:
                         pass
                     else:
                         rxn1_dG = RN.graph.nodes[in_node]["free_energy"]

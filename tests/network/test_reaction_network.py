@@ -847,7 +847,6 @@ class TestReactionNetwork(PymatgenTest):
 
         self.assertListEqual(node_strings,['19+PR_32,673', '41,992', '1+PR_652,40+53', '4,5+6'])
 
-
     def test_identify_concerted_rxns_via_intermediates(self):
 
         v1 = loadfn(os.path.join(test_dir,"identify_concerted_intermediate_list_v1.json"))
@@ -900,7 +899,6 @@ class TestReactionNetwork(PymatgenTest):
         inter_iter2 = list(v1_set.intersection(v2_set_iter2))
         self.assertEqual(len(inter_iter2), 0)
         self.assertEqual(len(v2_unique_iter2), 2100)
-
 
     def test_add_concerted_rxns(self):
         with open(os.path.join(test_dir, 'identify_concerted_via_intermediate_unittest_RN.pkl'), 'rb') as input:
