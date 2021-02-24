@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (c) Pymatgen Development Team.
+# Copyright (c) MR.Net Development Team.
 # Distributed under the terms of the MIT License.
 
 import copy
