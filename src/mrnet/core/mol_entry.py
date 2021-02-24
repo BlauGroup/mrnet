@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (c) Pymatgen Development Team.
+# Copyright (c) MR.Net Development Team.
 # Distributed under the terms of the MIT License.
 
 import copy
@@ -8,9 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import networkx as nx
 import numpy as np
 from monty.json import MSONable
-from pymatgen.analysis.fragmenter import metal_edge_extender
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
-from pymatgen.analysis.local_env import OpenBabelNN
+from pymatgen.analysis.local_env import OpenBabelNN, metal_edge_extender
 from pymatgen.core.structure import Molecule
 
 __author__ = "Sam Blau, Mingjian Wen"
@@ -121,6 +120,91 @@ class MoleculeEntry(MSONable):
             molecule=molecule,
             energy=energy,
             correction=correction,
+            enthalpy=enthalpy,
+            entropy=entropy,
+            parameters=parameters,
+            entry_id=entry_id,
+            attribute=attribute,
+            mol_graph=mol_graph,
+        )
+
+    @classmethod
+    def from_dataset_entry(
+        cls,
+        doc: Dict,
+        use_thermo: str = "raw",
+        parameters: Optional[Dict] = None,
+        attribute=None,
+    ):
+        """
+        Initialize a MoleculeEntry from a document in the LIBE (Lithium-Ion
+        Battery Electrolyte) or MADEIRA (MAgnesium Dataset of Electrolyte and
+        Interphase ReAgents) datasets.
+
+        Args:
+            doc: Dictionary representing an entry from LIBE or MADEIRA
+            use_thermo: One of "raw" (meaning raw, uncorrected thermo data will
+                be used), "rrho_shifted" (meaning that a slightly modified
+                Rigid-Rotor Harmonic Oscillator approximation will be used -
+                see Ribiero et al., J. Phys. Chem. B 2011, 115, 14556-14562), or
+                "qrrho" (meaning that Grimme's Quasi-Rigid Rotor Harmonic
+                Oscillator - see Grimme, Chem. Eur. J. 2012, 18, 9955-9964) will
+                be used.
+            parameters: An optional dict of parameters associated with
+                the molecule. Defaults to None.
+            attribute: Optional attribute of the entry. This can be used to
+                specify that the entry is a newly found compound, or to specify
+                a particular label for the entry, or else ... Used for further
+                analysis and plotting purposes. An attribute can be anything
+                but must be MSONable.
+        """
+
+        thermo = use_thermo.lower()
+
+        if thermo not in ["raw", "rrho_shifted", "qrrho"]:
+            raise ValueError(
+                "Only allowed values for use_thermo are 'raw', 'rrho_shifted', "
+                "and 'qrrho'!"
+            )
+        try:
+            if isinstance(doc["molecule"], Molecule):
+                molecule = doc["molecule"]
+            else:
+                molecule = Molecule.from_dict(doc["molecule"])
+
+            if (
+                thermo == "rrho_shifted"
+                and doc["thermo"]["shifted_rrho_eV"] is not None
+            ):
+                energy = (
+                    doc["thermo"]["shifted_rrho_eV"]["electronic_energy"] * 0.0367493
+                )
+                enthalpy = doc["thermo"]["shifted_rrho_eV"]["total_enthalpy"] * 23.061
+                entropy = doc["thermo"]["shifted_rrho_eV"]["total_entropy"] * 23061
+            elif thermo == "qrrho" and doc["thermo"]["quasi_rrho_eV"] is not None:
+                energy = doc["thermo"]["quasi_rrho_eV"]["electronic_energy"] * 0.0367493
+                enthalpy = doc["thermo"]["quasi_rrho_eV"]["total_enthalpy"] * 23.061
+                entropy = doc["thermo"]["quasi_rrho_eV"]["total_entropy"] * 23061
+            else:
+                energy = doc["thermo"]["raw"]["electronic_energy_Ha"]
+                enthalpy = doc["thermo"]["raw"]["total_enthalpy_kcal/mol"]
+                entropy = doc["thermo"]["raw"]["total_entropy_cal/molK"]
+
+            entry_id = doc["molecule_id"]
+
+            if isinstance(doc["molecule_graph"], MoleculeGraph):
+                mol_graph = doc["molecule_graph"]
+            else:
+                mol_graph = MoleculeGraph.from_dict(doc["molecule_graph"])
+        except KeyError as e:
+            raise MoleculeEntryError(
+                "Unable to construct molecule entry from molecule document; missing "
+                f"attribute {e} in `doc`."
+            )
+
+        return cls(
+            molecule=molecule,
+            energy=energy,
             enthalpy=enthalpy,
             entropy=entropy,
             parameters=parameters,

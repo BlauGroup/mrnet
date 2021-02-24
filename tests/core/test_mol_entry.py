@@ -43,6 +43,21 @@ def make_a_mol_entry():
 class TestMolEntry:
     @staticmethod
     @pytest.mark.skipif(not ob, reason="OpenBabel not present. Skipping...")
+    def test_from_libe():
+        doc = loadfn(os.path.join(test_dir, "libe_entry.json"))
+        entry = MoleculeEntry.from_dataset_entry(doc)
+
+        assert entry.entry_id == "libe-120825"
+        assert entry.get_free_energy() == -11366.853316264207
+
+        entry_rrho = MoleculeEntry.from_dataset_entry(doc, use_thermo="rrho_shifted")
+        assert entry_rrho.get_free_energy() == -11366.84673089201
+
+        entry_qrrho = MoleculeEntry.from_dataset_entry(doc, use_thermo="qrrho")
+        assert entry_qrrho.get_free_energy() == -11366.846521648069
+
+    @staticmethod
+    @pytest.mark.skipif(not ob, reason="OpenBabel not present. Skipping...")
     def test_property():
         mol_doc = loadfn(os.path.join(test_dir, "mol_doc_C1H1O2.json"))
         entry = MoleculeEntry.from_molecule_document(mol_doc)
