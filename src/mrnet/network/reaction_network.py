@@ -1347,7 +1347,7 @@ class ReactionNetwork(MSONable):
         self.PRs = PRs
         return PRs
 
-    def remove_node(self, node_ind: int):
+    def remove_node(self, node_ind: List[int]):
         """
         Remove a species from self.graph. Also remove all the reaction nodes with that species.
         Used for e.g. removing Li0.
