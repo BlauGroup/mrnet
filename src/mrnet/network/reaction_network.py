@@ -1666,7 +1666,7 @@ class ReactionNetwork(MSONable):
     @staticmethod
     def identify_concerted_rxns_for_specific_intermediate(entry: MoleculeEntry, RN, mols_to_keep=None,
                                                           single_elem_interm_ignore=["C1", "H1", "O1",
-                                                                                     "Li1", "P1","F1"]):
+                                                                                     "Li1", "P1", "F1"]):
 
         """
             A method to identify concerted reactions via specific high enery intermediate molecule
