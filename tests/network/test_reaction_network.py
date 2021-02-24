@@ -13,8 +13,7 @@ from networkx.readwrite import json_graph
 from pymatgen.util.testing import PymatgenTest
 from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
-from pymatgen.analysis.local_env import OpenBabelNN
-from pymatgen.analysis.fragmenter import metal_edge_extender
+from pymatgen.analysis.local_env import OpenBabelNN, metal_edge_extender
 
 from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.core.reactions import RedoxReaction
