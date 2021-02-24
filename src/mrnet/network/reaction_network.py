@@ -226,9 +226,9 @@ class ReactionPath(MSONable):
                                                 ]
                                             new_path_piece3 = path[ii + 1::]
                                             new_path = (
-                                                    new_path_piece1
-                                                    + new_path_piece2
-                                                    + new_path_piece3
+                                                new_path_piece1
+                                                + new_path_piece2
+                                                + new_path_piece3
                                             )
                                             # print(path, new_path_piece1, new_path_piece2,new_path_piece3 )
                                             assert (
@@ -1614,20 +1614,20 @@ class ReactionNetwork(MSONable):
         if len(combined_reactants) <= 2 and len(combined_products) <= 2:
             if len(combined_reactants) == 2 and len(combined_products) == 2:
                 node_str = str(combined_reactants[0]) + "+" + \
-                           "PR_" + str(combined_reactants[1]) + \
-                           "," + str(combined_products[0]) + "+" + \
-                           str(combined_products[1])
+                    "PR_" + str(combined_reactants[1]) + \
+                    "," + str(combined_products[0]) + "+" + \
+                    str(combined_products[1])
             elif len(combined_reactants) == 2 and len(combined_products) == 1:
                 node_str = str(combined_reactants[0]) + "+" + \
-                           "PR_" + str(combined_reactants[1]) + \
-                           "," + str(combined_products[0])
+                    "PR_" + str(combined_reactants[1]) + \
+                    "," + str(combined_products[0])
             elif len(combined_reactants) == 1 and len(combined_products) == 2:
                 node_str = str(combined_reactants[0]) + "," + \
-                           str(combined_products[0]) + "+" + \
-                           str(combined_products[1])
+                    str(combined_products[0]) + "+" + \
+                    str(combined_products[1])
             elif len(combined_reactants) == 1 and len(combined_products) == 1:
                 node_str = str(combined_reactants[0]) + "," + \
-                           str(combined_products[0])
+                    str(combined_products[0])
         return node_str
 
     @staticmethod
