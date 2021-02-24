@@ -8,9 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import networkx as nx
 import numpy as np
 from monty.json import MSONable
-from pymatgen.analysis.fragmenter import metal_edge_extender
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
-from pymatgen.analysis.local_env import OpenBabelNN
+from pymatgen.analysis.local_env import OpenBabelNN, metal_edge_extender
 from pymatgen.core.structure import Molecule
 
 __author__ = "Sam Blau, Mingjian Wen"
