@@ -183,7 +183,7 @@ class ReactionPath(MSONable):
                                 if PR_b in pool_modified:
                                     if PR_b in list(min_cost.keys()):
                                         class_instance.cost = (
-                                                class_instance.cost - min_cost[PR_b]
+                                            class_instance.cost - min_cost[PR_b]
                                         )
                                     else:
                                         pass
@@ -232,7 +232,7 @@ class ReactionPath(MSONable):
                                             )
                                             # print(path, new_path_piece1, new_path_piece2,new_path_piece3 )
                                             assert (
-                                                    c == path[ii + 1] or d == path[ii + 1]
+                                                c == path[ii + 1] or d == path[ii + 1]
                                             )
                                             if new_path_piece2[0] not in graph.nodes:
                                                 pool.remove(a)
@@ -267,10 +267,10 @@ class ReactionPath(MSONable):
                                 if PR_b in pool_modified and PR_b2 in pool_modified:
                                     # print("!!")
                                     class_instance.cost = (
-                                            class_instance.cost - min_cost[PR_b]
+                                        class_instance.cost - min_cost[PR_b]
                                     )
                                     class_instance.cost = (
-                                            class_instance.cost - min_cost[PR_b2]
+                                        class_instance.cost - min_cost[PR_b2]
                                     )
                                     pool.remove(a)
                                     pool.remove(PR_b)
@@ -339,7 +339,7 @@ class ReactionPath(MSONable):
                                         PR_not_in_pool = PR_b
                                     if PR_not_in_pool in old_solved_PRs:
                                         class_instance.cost = (
-                                                class_instance.cost - min_cost[PR_in_pool]
+                                            class_instance.cost - min_cost[PR_in_pool]
                                         )
                                         pool.remove(PR_in_pool)
 
@@ -479,9 +479,8 @@ class ReactionPath(MSONable):
                     if class_instance.description == "":
                         class_instance.description += graph.nodes[step]["rxn_type"]
                     else:
-                        class_instance.description += (
-                                ", " + graph.nodes[step]["rxn_type"]
-                        )
+                        class_instance.description += ", " + \
+                            graph.nodes[step]["rxn_type"]
 
                     if class_instance.hardest_step is None:
                         class_instance.hardest_step = step
@@ -1614,21 +1613,21 @@ class ReactionNetwork(MSONable):
         node_str = None
         if len(combined_reactants) <= 2 and len(combined_products) <= 2:
             if len(combined_reactants) == 2 and len(combined_products) == 2:
-                node_str = str(combined_reactants[0]) + "+" + "PR_" + str(combined_reactants[
-                                                                              1]) + "," + str(
-                    combined_products[0]) + "+" + str(
-                    combined_products[1])
+                node_str = str(combined_reactants[0]) + "+" + \
+                           "PR_" + str(combined_reactants[1]) + \
+                           "," + str(combined_products[0]) + "+" + \
+                           str(combined_products[1])
             elif len(combined_reactants) == 2 and len(combined_products) == 1:
-                node_str = str(combined_reactants[0]) + "+" + "PR_" + str(combined_reactants[
-                                                                              1]) + "," + str(
-                    combined_products[0])
+                node_str = str(combined_reactants[0]) + "+" + \
+                           "PR_" + str(combined_reactants[1]) + \
+                           "," + str(combined_products[0])
             elif len(combined_reactants) == 1 and len(combined_products) == 2:
-                node_str = str(combined_reactants[0]) + "," + str(
-                    combined_products[0]) + "+" + str(
-                    combined_products[1])
+                node_str = str(combined_reactants[0]) + "," + \
+                           str(combined_products[0]) + "+" + \
+                           str(combined_products[1])
             elif len(combined_reactants) == 1 and len(combined_products) == 1:
-                node_str = str(combined_reactants[0]) + "," + str(
-                    combined_products[0])
+                node_str = str(combined_reactants[0]) + "," + \
+                           str(combined_products[0])
         return node_str
 
     @staticmethod
@@ -1679,7 +1678,6 @@ class ReactionNetwork(MSONable):
         :return: list of reactions
         """
 
-        flag = True
         if mols_to_keep is None:
             mols_to_keep = list(range(0, len(RN.entries_list)))
         not_wanted_formula = single_elem_interm_ignore
@@ -1707,7 +1705,6 @@ class ReactionNetwork(MSONable):
                         rxn1_dG = RN.graph.nodes[in_node]["free_energy"]
                         total_dG = rxn1_dG + RN.graph.nodes[out_node]["free_energy"]
                         if rxn1_dG > 0 and total_dG < 0:
-                            # if flag:
                             in_reactants, in_products = ReactionNetwork.parse_reaction_node(in_node)
                             out_reactants, out_products = ReactionNetwork.parse_reaction_node(out_node)
                             combined_reactants = in_reactants + out_reactants
