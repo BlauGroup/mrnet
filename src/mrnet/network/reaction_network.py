@@ -481,7 +481,7 @@ class ReactionPath(MSONable):
                         class_instance.description += graph.nodes[step]["rxn_type"]
                     else:
                         class_instance.description += (
-                                ", " + graph.nodes[step]["rxn_type"]
+                            ", " + graph.nodes[step]["rxn_type"]
                         )
 
                     if class_instance.hardest_step is None:
@@ -617,6 +617,8 @@ class ReactionNetwork(MSONable):
             and rate constants (in K)
         :param solvent_dielectric: Dielectric constant of the solvent medium
         :param solvent_refractive_index: Refractive index of the solvent medium
+        :param replace_ind: True if reindex the entries if it there is already
+            indices in the input_entries
         :return:
         """
 
