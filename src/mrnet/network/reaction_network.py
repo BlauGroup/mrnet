@@ -129,14 +129,14 @@ class ReactionPath(MSONable):
 
     @classmethod
     def characterize_path(
-            cls,
-            path: List[Union[str, int]],
-            weight: str,
-            min_cost: Dict[int, float],
-            graph: nx.DiGraph,
-            old_solved_PRs=[],
-            PR_byproduct_dict={},
-            actualPRs={},
+        cls,
+        path: List[Union[str, int]],
+        weight: str,
+        min_cost: Dict[int, float],
+        graph: nx.DiGraph,
+        old_solved_PRs=[],
+        PR_byproduct_dict={},
+        actualPRs={},
     ):  # -> ReactionPath
         """
             A method to define ReactionPath attributes based on the inputs
@@ -225,7 +225,7 @@ class ReactionPath(MSONable):
                                                     + "+"
                                                     + str(d)
                                                 ]
-                                            new_path_piece3 = path[ii + 1::]
+                                            new_path_piece3 = path[ii + 1 : :]
                                             new_path = (
                                                 new_path_piece1
                                                 + new_path_piece2
@@ -280,8 +280,8 @@ class ReactionPath(MSONable):
                                     pool.append(d)
 
                                 elif (
-                                        PR_b not in old_solved_PRs
-                                        and PR_b2 not in old_solved_PRs
+                                    PR_b not in old_solved_PRs
+                                    and PR_b2 not in old_solved_PRs
                                 ):
                                     class_instance.unsolved_prereqs.append(PR_b)
                                     class_instance.unsolved_prereqs.append(PR_b2)
@@ -292,12 +292,12 @@ class ReactionPath(MSONable):
                                     pool.append(d)
 
                                 elif (
-                                        PR_b not in pool_modified
-                                        and PR_b2 not in pool_modified
+                                    PR_b not in pool_modified
+                                    and PR_b2 not in pool_modified
                                 ):
                                     if (
-                                            PR_b in old_solved_PRs
-                                            and PR_b2 in old_solved_PRs
+                                        PR_b in old_solved_PRs
+                                        and PR_b2 in old_solved_PRs
                                     ):
                                         pool.remove(a)
                                         pool.append(c)
@@ -315,8 +315,8 @@ class ReactionPath(MSONable):
                                         pool = pool + PR_b_byproducts + PR_b2_byproducts
 
                                     elif (
-                                            PR_b not in old_solved_PRs
-                                            or PR_b2 not in old_solved_PRs
+                                        PR_b not in old_solved_PRs
+                                        or PR_b2 not in old_solved_PRs
                                     ):
                                         if PR_b not in old_solved_PRs:
                                             class_instance.unsolved_prereqs.append(PR_b)
@@ -391,14 +391,14 @@ class ReactionPath(MSONable):
 
     @classmethod
     def characterize_path_final(
-            cls,
-            path: List[Union[str, int]],
-            weight: str,
-            min_cost: Dict[int, float],
-            graph: nx.DiGraph,
-            old_solved_PRs=[],
-            PR_byproduct_dict={},
-            PR_paths={},
+        cls,
+        path: List[Union[str, int]],
+        weight: str,
+        min_cost: Dict[int, float],
+        graph: nx.DiGraph,
+        old_solved_PRs=[],
+        PR_byproduct_dict={},
+        PR_paths={},
     ):
         """
             A method to define all the attributes of a given path once all the
@@ -480,14 +480,15 @@ class ReactionPath(MSONable):
                     if class_instance.description == "":
                         class_instance.description += graph.nodes[step]["rxn_type"]
                     else:
-                        class_instance.description += ", " + \
-                            graph.nodes[step]["rxn_type"]
+                        class_instance.description += (
+                                ", " + graph.nodes[step]["rxn_type"]
+                        )
 
                     if class_instance.hardest_step is None:
                         class_instance.hardest_step = step
                     elif (
-                            graph.nodes[step]["free_energy"]
-                            > graph.nodes[class_instance.hardest_step]["free_energy"]
+                        graph.nodes[step]["free_energy"]
+                        > graph.nodes[class_instance.hardest_step]["free_energy"]
                     ):
                         class_instance.hardest_step = step
 
