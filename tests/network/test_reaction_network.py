@@ -285,7 +285,9 @@ class TestReactionNetwork(PymatgenTest):
 
         # assert
         self.assertEqual(len(reactant_record[0]), 43)
-        self.assertCountEqual(reactant_record[44], ["44+PR_165,434", "44,43", "44,40+556"])
+        self.assertCountEqual(
+            reactant_record[44], [(44, "44+165,434"), (44, "44,43"), (44, "44,40+556")]
+        )
         self.assertEqual(len(reactant_record[529]), 0)
         self.assertEqual(len(reactant_record[556]), 104)
         self.assertEqual(len(reactant_record[564]), 167)

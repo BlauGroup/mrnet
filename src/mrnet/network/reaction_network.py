@@ -810,16 +810,23 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         non PR reactant of node1, ex "node1+PR_2, 3"]}
         """
-        Reactant_record = {}  # type: Mapping_Record_Dict
+        Reactant_record = {
+            int(specie): [] for specie in self.graph.nodes if isinstance(specie, int)
+        }  # type: Mapping_Record_Dict
 
         def add_to_dict(edge):
+            print(type(edge[0]))
+            reac = edge[0]
             if reac in Reactant_record.keys():
                 Reactant_record[reac].append(edge)
             else:
-                Reactant_record[pr] = [edge]
+                Reactant_record[reac] = [edge]
 
         # filter to just get weighted edges, then add u of (u,v) to reactant record
-        map(add_to_dict, filter(lambda e: not isinstance(e[1], int), self.graph.edges()))
+        print("hi")
+        for edge in filter(lambda e: not isinstance(e[1], int), self.graph.edges()):
+            # for edge (u,v), PR is all species in reaction v other than u
+            Reactant_record[edge[0]].append(edge)
         self.Reactant_record = Reactant_record
         return Reactant_record
 
