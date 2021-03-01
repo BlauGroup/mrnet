@@ -798,6 +798,7 @@ class ReactionNetwork(MSONable):
                     PR_record[pr].append(edge)
                 else:
                     PR_record[pr] = [edge]
+        PR_record = {key: list(set(PR_record[key])) for key in PR_record}
         self.PR_record = PR_record
         return PR_record
 

@@ -271,8 +271,6 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(PR_record[44], [(165, "44+165,434")])
         self.assertTrue(529 not in PR_record.keys())
         self.assertEqual(len(PR_record[556]), 104)
-        print(old_PR_record[564])
-        print(PR_record[564])
         self.assertEqual(len([edge[1] for edge in PR_record[564]]), len(old_PR_record[564]))
         # self.assertEqual(len(PR_record[564]), 165)
 
