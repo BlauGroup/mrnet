@@ -858,9 +858,11 @@ class TestReactionNetwork(PymatgenTest):
 
     def test_identify_concerted_rxns_via_intermediates(self):
 
+        # load reactions from v1 of concerted reactions
         v1 = loadfn(
             os.path.join(test_dir, "identify_concerted_intermediate_list_v1.json")
         )
+        # load RN
         with open(
             os.path.join(
                 test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"
@@ -869,6 +871,8 @@ class TestReactionNetwork(PymatgenTest):
         ) as input:
             RN_loaded = pickle.load(input)
 
+        # process reaction list from v1 of concerted reaction such that Nones are removed,
+        # A+B>B+A and repeated reactions are removed
         v1_processed = []
         for r_old in v1:
             a = r_old[0]
@@ -886,6 +890,7 @@ class TestReactionNetwork(PymatgenTest):
             c = [a, b]
             v1_processed.append(c)
 
+        # identify reactions via v2
         v2_unique, v2_all = RN_loaded.identify_concerted_rxns_via_intermediates(
             RN_loaded, single_elem_interm_ignore=[]
         )
@@ -895,20 +900,22 @@ class TestReactionNetwork(PymatgenTest):
         inter = list(v1_set.intersection(v2_set))
         v1_v2 = list(map(lambda y: literal_eval(y), v1_set - v2_set))
         v2_v1 = list(map(lambda y: literal_eval(y), v2_set - v1_set))
-        dumpfn(v2_unique, "add_concerted_unittest_rxn_list.json")
 
+        # check if v2 missed any reactions found by v1
         missed_by_v2 = []
         for r in v1_v2:
             node_str = ReactionNetwork.generate_node_string(r[0], r[1])
             if node_str not in RN_loaded.graph.nodes:
                 missed_by_v2.append(r)
-
+        # checks number of same reactions in v1 and v2, number of reactions missed by v2,
+        # and number of new reactions found by v2
         self.assertEqual(len(missed_by_v2), 0)
         self.assertEqual(len(v1_v2), 11)
         self.assertEqual(len(v2_v1), 0)
         self.assertEqual(len(inter), 29214)
         self.assertEqual(len(v2_unique), 29214)
 
+        # second iteration of v2, this round will identify new reactions v1 would never have
         (
             v2_unique_iter2,
             v2_all_iter2,

@@ -1579,6 +1579,12 @@ class ReactionNetwork(MSONable):
 
     @staticmethod
     def parse_reaction_node(node: str):
+        """
+        A method to identify reactants, PR, and prodcuts from a given reaction node string.
+        :param node: string, ex. "1+PR_2,3+4"
+        :return: react_list: reactant list, ex [1,2]
+        :return: prod_list: product list, ex [3,4]
+        """
         react_list = []
         prod_list = []
         if "PR" in node and "+" in node.split(",")[1]:
@@ -1614,6 +1620,12 @@ class ReactionNetwork(MSONable):
 
     @staticmethod
     def generate_node_string(combined_reactants, combined_products):
+        """
+        A method to genrate a reaction node string from given reactants and products.
+        :param combined_reactants: list of reactant node indices, ex [1,2]
+        :param combined_products: list of product node indices, ex [3,4]
+        :return: node_str: string of reaction as it would be for a reaction node, ex  "1+PR_2,3+4"
+        """
         node_str = None
         if len(combined_reactants) <= 2 and len(combined_products) <= 2:
             if len(combined_reactants) == 2 and len(combined_products) == 2:
@@ -1658,7 +1670,7 @@ class ReactionNetwork(MSONable):
             A method to identify concerted reactions via high enery intermediate molecules
         :param RN: Reaction network built
         :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes in the
-        RN_pr_solved
+        RN
         :param single_elem_interm_ignore: single_elem_interm_ignore: List of formula of high energy
         intermediates to ignore
         :return: list of unique reactions, list of reactions and its incoming and outgoing reaction nodes
@@ -1798,7 +1810,7 @@ class ReactionNetwork(MSONable):
         return unique_reactions, reactions_with_in_out_nodes
 
     @staticmethod
-    def add_concerted_rxns(RN, reactions, temp=-2.15):
+    def add_concerted_rxns(RN, reactions):
         """
             A method to add concerted reactions (obtained from identify_concerted_rxns_via_intermediates() method)to
             the ReactonNetwork
@@ -1815,7 +1827,6 @@ class ReactionNetwork(MSONable):
         mol_id_to_mol_entry_dict = {}
         for i in RN.entries_list:
             mol_id_to_mol_entry_dict[int(i.parameters["ind"])] = i
-
         for reaction in reactions:
             if len(reaction[0]) == 1 and len(reaction[1]) == 1:
                 assert int(reaction[0][0]) in RN.graph.nodes
@@ -1823,7 +1834,7 @@ class ReactionNetwork(MSONable):
                 reactants = mol_id_to_mol_entry_dict[int(reaction[0][0])]
                 products = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 cr = ConcertedReaction([reactants], [products])
-                cr.electron_free_energy = temp
+                cr.electron_free_energy = RN.temperature
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
@@ -1838,7 +1849,7 @@ class ReactionNetwork(MSONable):
                 product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
                 cr = ConcertedReaction([reactant_0], [product_0, product_1])
-                cr.electron_free_energy = temp
+                cr.electron_free_energy = RN.temperature
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
@@ -1853,7 +1864,7 @@ class ReactionNetwork(MSONable):
                 PR = mol_id_to_mol_entry_dict[int(reaction[0][1])]
                 product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 cr = ConcertedReaction([reactant_0, PR], [product_0])
-                cr.electron_free_energy = temp
+                cr.electron_free_energy = RN.temperature
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
@@ -1870,7 +1881,7 @@ class ReactionNetwork(MSONable):
                 product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
                 cr = ConcertedReaction([reactant_0, PR], [product_0, product_1])
-                cr.electron_free_energy = temp
+                cr.electron_free_energy = RN.temperature
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
