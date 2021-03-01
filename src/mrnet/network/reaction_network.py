@@ -789,7 +789,9 @@ class ReactionNetwork(MSONable):
         :return: a dict of the form {int(node1): [all the reaction nodes with
         PR of node1, ex "2+PR_node1, 3"]}
         """
-        PR_record = {}  # type: Mapping_Record_Dict
+        PR_record = {
+            int(specie): [] for specie in self.graph.nodes if isinstance(specie, int)
+        }  # type: Mapping_Record_Dict
         for edge in filter(lambda e: not isinstance(e[1], int), self.graph.edges()):
             # for edge (u,v), PR is all species in reaction v other than u
             edge_prs = self.graph[edge[0]][edge[1]]["PRs"]
