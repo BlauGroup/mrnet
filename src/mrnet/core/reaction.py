@@ -21,7 +21,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
 
     @abstractproperty
     def energy(self) -> float:
-        " Energy of this reaction in eV"
+        " Energy of this reaction in eV. Doesn't contain entropic effects"
 
     @abstractmethod
     def forward_rate(
@@ -71,14 +71,14 @@ class ReactionFactory(Protocol):
         """
 
 
-class DependentReactionFactor(Protocol):
+class DependentReactionFactory(Protocol):
     " Reaction factory that builds reactions from already constructed reactions "
 
     @classmethod
-    def from_reactions(cls, reactios: List[Reaction]) -> List[Reaction]:
+    def from_reactions(cls, reactions: List[Reaction]) -> List[Reaction]:
         """
         Generate reactions from Reactions
 
         Args:
-            entries: list of entries to use
+            reactions: list of reactions to use
         """
