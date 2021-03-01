@@ -698,6 +698,8 @@ class RedoxRateCalculator(ReactionRateCalculator):
         electron_free_energy,
         radius,
         electrode_distance,
+        adiabatic=False,
+        decay_constant=1.2,
     ):
 
         self.lambda_inner = lambda_inner
@@ -706,6 +708,8 @@ class RedoxRateCalculator(ReactionRateCalculator):
         self.electron_free_energy = electron_free_energy
         self.radius = radius
         self.electrode_distance = electrode_distance
+        self.adiabatic = adiabatic
+        self.decay_constant = decay_constant
 
         super().__init__(reactants, products, None)
 
@@ -714,8 +718,8 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
     def update_calc(self, reference):
         """Update the rate calculator with a baseline reference values."""
-        for key in reference.keys():
-            setattr(self, k, reference.get(k))
+        for kk in reference.keys():
+            setattr(self, kk, reference.get(kk))
 
     def calculate_act_energy(self, reverse=False):
         raise NotImplementedError(
@@ -801,7 +805,8 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
         gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
 
-        kappa = np.exp(-1.2 * self.electrode_distance)
+        if not self.adiabatic:
+            kappa = np.exp(-1 * self.decay_constant * self.electrode_distance)
 
         k_rate = (
             kappa

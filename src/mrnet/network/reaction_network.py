@@ -22,6 +22,7 @@ from mrnet.core.reactions import (
     general_graph_rep,
     rexp,
     softplus,
+    MetalHopReaction,
 )
 from mrnet.utils.classes import load_class
 
@@ -825,7 +826,6 @@ class ReactionNetwork(MSONable):
                 Reactant_record[reac] = [edge]
 
         # filter to just get weighted edges, then add u of (u,v) to reactant record
-        print("hi")
         for edge in filter(lambda e: not isinstance(e[1], int), self.graph.edges()):
             # for edge (u,v), PR is all species in reaction v other than u
             Reactant_record[edge[0]].append(edge)
