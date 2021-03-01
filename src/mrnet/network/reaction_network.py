@@ -1,8 +1,11 @@
 import copy
 import heapq
 import itertools
+import operator
 import time as time
+from functools import reduce
 from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set
+from ast import literal_eval
 
 import networkx as nx
 from monty.json import MSONable
@@ -28,7 +31,6 @@ __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith"
 __version__ = "0.1"
 __maintainer__ = "Sam Blau"
 __status__ = "Alpha"
-
 
 Mapping_Record_Dict = Dict[int, List[str]]
 
@@ -434,7 +436,7 @@ class ReactionPath(MSONable):
             assert len(class_instance.unsolved_prereqs) == 0
 
             PRs_to_join = copy.deepcopy(class_instance.all_prereqs)
-            full_path = copy.deepcopy(path)
+            full_path = copy.deepcopy(class_instance.path)
             while len(PRs_to_join) > 0:
                 new_PRs = []
                 for PR in PRs_to_join:
@@ -602,6 +604,7 @@ class ReactionNetwork(MSONable):
         temperature=298.15,
         solvent_dielectric=18.5,
         solvent_refractive_index=1.415,
+        replace_ind=True,
     ):
         """
         Generate a ReactionNetwork from a set of MoleculeEntries.
@@ -614,6 +617,8 @@ class ReactionNetwork(MSONable):
             and rate constants (in K)
         :param solvent_dielectric: Dielectric constant of the solvent medium
         :param solvent_refractive_index: Refractive index of the solvent medium
+        :param replace_ind: True if reindex the entries if it there is already
+            indices in the input_entries
         :return:
         """
 
@@ -688,12 +693,12 @@ class ReactionNetwork(MSONable):
                         entries_list.append(entry)
 
         print(len(entries_list), "unique entries")
-
         # Add entry indices
-        for ii, entry in enumerate(entries_list):
-            if "ind" in entry.parameters.keys():
-                pass
-            else:
+        if replace_ind:
+            for ii, entry in enumerate(entries_list):
+                # if "ind" in entry.parameters.keys():
+                #     pass
+                # else:
                 entry.parameters["ind"] = ii
 
         entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
@@ -1345,7 +1350,7 @@ class ReactionNetwork(MSONable):
         self.PRs = PRs
         return PRs
 
-    def remove_node(self, node_ind):
+    def remove_node(self, node_ind: List[int]):
         """
         Remove a species from self.graph. Also remove all the reaction nodes with that species.
         Used for e.g. removing Li0.
@@ -1573,293 +1578,322 @@ class ReactionNetwork(MSONable):
             return mols_to_keep, pruned_entries_list
 
     @staticmethod
+    def parse_reaction_node(node: str):
+        """
+        A method to identify reactants, PR, and prodcuts from a given reaction node string.
+        :param node: string, ex. "1+PR_2,3+4"
+        :return: react_list: reactant list, ex [1,2]
+        :return: prod_list: product list, ex [3,4]
+        """
+        react_list = []
+        prod_list = []
+        if "PR" in node and "+" in node.split(",")[1]:
+            reactant = int(node.split("+PR_")[0])
+            pr = int(node.split("+PR_")[1].split(",")[0])
+            product1 = int(node.split("+PR_")[1].split(",")[1].split("+")[0])
+            product2 = int(node.split("+PR_")[1].split(",")[1].split("+")[1])
+            react_list = [reactant, pr]
+            prod_list = [product1, product2]
+            prod_list.sort()
+        elif "PR" in node and "+" not in node.split(",")[1]:
+            reactant = int(node.split("+PR_")[0])
+            pr = int(node.split("+PR_")[1].split(",")[0])
+            product = int(node.split("+PR_")[1].split(",")[1])
+            react_list = [reactant, pr]
+            prod_list = [product]
+        elif "PR" not in node and "+" in node:
+            reactant = int(node.split(",")[0])
+            product1 = int(node.split(",")[1].split("+")[0])
+            product2 = int(node.split(",")[1].split("+")[1])
+            prod_list = [product1, product2]
+            prod_list.sort()
+            react_list = [reactant]
+            prod_list = [product1, product2]
+            prod_list.sort()
+        elif "PR" not in node and "+" not in node:
+            reactant = int(node.split(",")[0])
+            product = int(node.split(",")[1])
+            react_list = [reactant]
+            prod_list = [product]
+
+        return react_list, prod_list
+
+    @staticmethod
+    def generate_node_string(combined_reactants, combined_products):
+        """
+        A method to genrate a reaction node string from given reactants and products.
+        :param combined_reactants: list of reactant node indices, ex [1,2]
+        :param combined_products: list of product node indices, ex [3,4]
+        :return: node_str: string of reaction as it would be for a reaction node, ex  "1+PR_2,3+4"
+        """
+        node_str = None
+        if len(combined_reactants) <= 2 and len(combined_products) <= 2:
+            if len(combined_reactants) == 2 and len(combined_products) == 2:
+                node_str = (
+                    str(combined_reactants[0])
+                    + "+"
+                    + "PR_"
+                    + str(combined_reactants[1])
+                    + ","
+                    + str(combined_products[0])
+                    + "+"
+                    + str(combined_products[1])
+                )
+            elif len(combined_reactants) == 2 and len(combined_products) == 1:
+                node_str = (
+                    str(combined_reactants[0])
+                    + "+"
+                    + "PR_"
+                    + str(combined_reactants[1])
+                    + ","
+                    + str(combined_products[0])
+                )
+            elif len(combined_reactants) == 1 and len(combined_products) == 2:
+                node_str = (
+                    str(combined_reactants[0])
+                    + ","
+                    + str(combined_products[0])
+                    + "+"
+                    + str(combined_products[1])
+                )
+            elif len(combined_reactants) == 1 and len(combined_products) == 1:
+                node_str = str(combined_reactants[0]) + "," + str(combined_products[0])
+        return node_str
+
+    @staticmethod
     def identify_concerted_rxns_via_intermediates(
-        RN_pr_solved, mols_to_keep, single_elem_interm_ignore=["C1", "H1", "O1", "Li1"]
+        RN,
+        mols_to_keep=None,
+        single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
     ):
         """
-            A method to identify concerted reactions by looping through high enery intermediates
-        :param RN_pr_solved: ReactionNetwork that is PR solved
+            A method to identify concerted reactions via high enery intermediate molecules
+        :param RN: Reaction network built
         :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes in the
-        RN_pr_solved
-        :param single_elem_interm_ignore: List of formula of high energy intermediates to ignore
-        :return: list of reactions
+        RN
+        :param single_elem_interm_ignore: single_elem_interm_ignore: List of formula of high energy
+        intermediates to ignore
+        :return: list of unique reactions, list of reactions and its incoming and outgoing reaction nodes
         """
 
         print("identify_concerted_rxns_via_intermediates start", time.time())
-        mols_to_keep.append(None)
-        count_total = 0
+        if mols_to_keep is None:
+            mols_to_keep = list(range(0, len(RN.entries_list)))
         reactions = []
-        not_wanted_formula = single_elem_interm_ignore
-        for entry in RN_pr_solved.entries_list:
-            node = entry.parameters["ind"]
-            if (
-                RN_pr_solved.entries_list[node].formula not in not_wanted_formula
-                and RN_pr_solved.graph.nodes[node]["bipartite"] == 0
-                and node not in RN_pr_solved.not_reachable_nodes
-                and node not in RN_pr_solved.unsolvable_PRs
-            ):
-                out_nodes = []
-                for rxn in list(RN_pr_solved.graph.neighbors(node)):
-                    if "electron" not in RN_pr_solved.graph.nodes[rxn]["rxn_type"]:
-                        out_nodes.append(rxn)
-                in_nodes = []
-                for in_edge in list(RN_pr_solved.graph.in_edges(node)):
-                    in_rxn = in_edge[0]
-                    if "electron" not in RN_pr_solved.graph.nodes[in_rxn]["rxn_type"]:
-                        in_nodes.append(in_rxn)
-                count = 0
-                for out_node in out_nodes:
-                    for in_node in in_nodes:
-                        rxn1_dG = RN_pr_solved.graph.nodes[in_node]["free_energy"]
-                        total_dG = (
-                            rxn1_dG + RN_pr_solved.graph.nodes[out_node]["free_energy"]
-                        )
-                        if rxn1_dG > 0 and total_dG < 0:
-                            if "PR" in out_node and "PR" in in_node:
-                                pass
-                            elif "PR" not in out_node and "PR" not in in_node:
-                                if "+" in out_node and "+" in in_node:
-                                    pass
-                                elif "+" not in out_node and "+" not in in_node:
-                                    if in_node.split(",")[0] == out_node.split(",")[1]:
-                                        pass
-                                    else:
-                                        in_mol = in_node.split(",")[0]
-                                        out_mol = out_node.split(",")[1]
-                                        glist = [int(in_mol), int(out_mol)]
-                                        reactant = int(in_mol)
-                                        product = int(out_mol)
-                                        glist = [reactant, product]
-                                        if set(glist).issubset(set(mols_to_keep)):
-                                            count = count + 1
-                                            reactions.append(
-                                                (
-                                                    [reactant],
-                                                    [product],
-                                                    [in_node, out_node],
-                                                )
-                                            )
-                                            # print(([reactant], [product]), in_node, out_node)
-                                elif "+" in in_node and "+" not in out_node:
-                                    reactant = int(in_node.split(",")[0])
-                                    product1 = in_node.split(",")[1].split("+")
-                                    product1.remove(str(node))
-                                    product1 = int(product1[0])
-                                    product2 = int(out_node.split(",")[1])
-                                    glist = [
-                                        int(reactant),
-                                        int(product1),
-                                        int(product2),
-                                    ]
-                                    if set(glist).issubset(set(mols_to_keep)):
-                                        count = count + 1
-                                        reactions.append(
-                                            (
-                                                [reactant],
-                                                [product1, product2],
-                                                [in_node, out_node],
-                                            )
-                                        )
-                                elif "+" not in in_node and "+" in out_node:
-                                    reactant = int(in_node.split(",")[0])
-                                    product1 = int(out_node.split(",")[1].split("+")[0])
-                                    product2 = int(out_node.split(",")[1].split("+")[1])
-                                    glist = [
-                                        int(reactant),
-                                        int(product1),
-                                        int(product2),
-                                    ]
-                                    if set(glist).issubset(set(mols_to_keep)):
-                                        count = count + 1
-                                        reactions.append(
-                                            (
-                                                [reactant],
-                                                [product1, product2],
-                                                [in_node, out_node],
-                                            )
-                                        )
-                            elif "PR" in in_node and "PR" not in out_node:
-                                if "+" in out_node:
-                                    p1 = list(
-                                        map(int, out_node.split(",")[1].split("+"))
-                                    )[0]
-                                    p2 = list(
-                                        map(int, out_node.split(",")[1].split("+"))
-                                    )[1]
-                                else:
-                                    p2 = out_node.split(",")[1]
-                                    p1 = None
-                                PR = in_node.split(",")[0].split("+PR_")[1]
-                                start = in_node.split("+")[0]
-                                if p1 is None:
-                                    reactant1 = int(start)
-                                    reactant2 = int(PR)
-                                    product1 = int(p2)
-                                    product2 = None
-                                    glist = [reactant1, reactant2, product1]
-                                else:
-                                    reactant1 = int(start)
-                                    reactant2 = int(PR)
-                                    product1 = int(p2)
-                                    product2 = int(p1)
-                                    glist = [reactant1, reactant2, product1, product2]
-                                if set(glist).issubset(set(mols_to_keep)) and (
-                                    {reactant1, reactant2} != {product1, product2}
-                                ):
-                                    count = count + 1
-                                    # print(glist, set(glist).issubset(set(mols_to_keep)))
-                                    reactions.append(
-                                        (
-                                            [reactant1, reactant2],
-                                            [product1, product2],
-                                            [in_node, out_node],
-                                        )
-                                    )
-                            elif "PR" not in in_node and "PR" in out_node:
-                                if (
-                                    "+" in in_node
-                                ):  # want this: 2441,2426''2426+PR_148,3669'
-                                    start = in_node.split(",")[0]
-                                    p1 = list(
-                                        map(int, in_node.split(",")[1].split("+"))
-                                    )
-                                    p1.remove(node)
-                                    p1 = p1[0]
-                                else:
-                                    start = in_node.split(",")[0]
-                                    p1 = None
-                                PR = out_node.split(",")[0].split("+PR_")[1]
-                                p2 = out_node.split(",")[1]
-                                if p1 is None:
-                                    reactant1 = int(start)
-                                    reactant2 = int(PR)
-                                    product1 = int(p2)
-                                    product2 = None
-                                    glist = [reactant1, reactant2, product1, product2]
+        unique_reactions = []
+        for entry in RN.entries_list:
+            (
+                unique_rxns,
+                rxns_with_nodes,
+            ) = RN.identify_concerted_rxns_for_specific_intermediate(
+                entry, RN, mols_to_keep, single_elem_interm_ignore
+            )
+            unique_reactions.append(unique_rxns)
+            reactions.append(rxns_with_nodes)
 
-                                else:
-                                    reactant1 = int(start)
-                                    reactant2 = int(PR)
-                                    product1 = int(p1)
-                                    product2 = int(p2)
-                                    glist = [reactant1, reactant2, product1, product2]
+        all_unique_reactions = reduce(operator.concat, unique_reactions)
+        all_unique_reactions = list(
+            map(
+                lambda y: literal_eval(y),
+                set(map(lambda x: repr(x), all_unique_reactions)),
+            )
+        )
 
-                                if set(glist).issubset(set(mols_to_keep)) and (
-                                    {reactant1, reactant2} != {product1, product2}
-                                ):
-                                    count = count + 1
-                                    # print(glist, set(glist).issubset(set(mols_to_keep)))
-                                    reactions.append(
-                                        (
-                                            [reactant1, reactant2],
-                                            [product1, product2],
-                                            [in_node, out_node],
-                                        )
-                                    )
-                count_total = count_total + count
-                # print(node, entry.formula, count)
+        print("total number of unqiue concerted reactions:", len(all_unique_reactions))
         print("identify_concerted_rxns_via_intermediates end", time.time())
-        print("total number of unique concerted reactions:", count_total)
-
-        return reactions
+        return all_unique_reactions, reactions
 
     @staticmethod
-    def add_concerted_rxns(full_network_pr_solved, pruned_network_build, reactions):
+    def identify_concerted_rxns_for_specific_intermediate(
+        entry: MoleculeEntry,
+        RN,
+        mols_to_keep=None,
+        single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
+    ):
+
+        """
+            A method to identify concerted reactions via specific high enery intermediate molecule
+        :param entry: MoleculeEntry to act as high energy intermediate
+        :param RN: Reaction network built
+        :param mols_to_keep: List of pruned molecules, if not running then a list of all molecule nodes
+        in the RN_pr_solved
+        :param single_elem_interm_ignore: single_elem_interm_ignore: List of formula of high energy
+        intermediates to ignore
+        :return: list of reactions
+        """
+
+        if mols_to_keep is None:
+            mols_to_keep = list(range(0, len(RN.entries_list)))
+        not_wanted_formula = single_elem_interm_ignore
+        reactions_with_in_out_nodes = []
+        unique_reactions = []
+        node = entry.parameters["ind"]
+        if (
+            RN.entries_list[node].formula not in not_wanted_formula
+            and RN.graph.nodes[node]["bipartite"] == 0
+            and node not in RN.not_reachable_nodes
+            and node not in RN.unsolvable_PRs
+        ):
+            out_nodes = []
+            for rxn in list(RN.graph.neighbors(node)):
+                if "electron" not in RN.graph.nodes[rxn]["rxn_type"]:
+                    out_nodes.append(rxn)
+            in_nodes = []
+            for in_edge in list(RN.graph.in_edges(node)):
+                in_rxn = in_edge[0]
+                if "electron" not in RN.graph.nodes[in_rxn]["rxn_type"]:
+                    in_nodes.append(in_rxn)
+            for out_node in out_nodes:
+                for in_node in in_nodes:
+                    if (
+                        "Concerted" in RN.graph.nodes[in_node]["rxn_type"]
+                        and "Concerted" in RN.graph.nodes[out_node]["rxn_type"]
+                    ):
+                        pass
+                    else:
+                        rxn1_dG = RN.graph.nodes[in_node]["free_energy"]
+                        total_dG = rxn1_dG + RN.graph.nodes[out_node]["free_energy"]
+                        if rxn1_dG > 0 and total_dG < 0:
+                            (
+                                in_reactants,
+                                in_products,
+                            ) = ReactionNetwork.parse_reaction_node(in_node)
+                            (
+                                out_reactants,
+                                out_products,
+                            ) = ReactionNetwork.parse_reaction_node(out_node)
+                            combined_reactants = in_reactants + out_reactants
+                            combined_products = in_products + out_products
+                            combined_reactants.sort()
+                            combined_products.sort()
+                            inter = set(combined_reactants).intersection(
+                                set(combined_products)
+                            )
+                            for i in inter:
+                                combined_reactants.remove(i)
+                                combined_products.remove(i)
+                            inter = set(combined_reactants).intersection(
+                                set(combined_products)
+                            )
+                            for i in inter:
+                                combined_reactants.remove(i)
+                                combined_products.remove(i)
+                            if (
+                                len(combined_reactants) > 0
+                                and len(combined_reactants) <= 2
+                                and len(combined_products) > 0
+                                and len(combined_products) <= 2
+                            ):
+                                node_str = ReactionNetwork.generate_node_string(
+                                    combined_reactants, combined_products
+                                )
+                                glist = combined_reactants + combined_products
+
+                                if (
+                                    node_str not in RN.graph.nodes
+                                    and set(glist).issubset(set(mols_to_keep))
+                                    and set(combined_reactants)
+                                    != set(combined_products)
+                                ):
+                                    unique_reactions.append(
+                                        [combined_reactants, combined_products]
+                                    )
+                                    reactions_with_in_out_nodes.append(
+                                        [
+                                            combined_reactants,
+                                            combined_products,
+                                            [in_node, out_node],
+                                        ]
+                                    )
+
+        # print(node, "unique reactions", len(unique_reactions))
+        return unique_reactions, reactions_with_in_out_nodes
+
+    @staticmethod
+    def add_concerted_rxns(RN, reactions):
         """
             A method to add concerted reactions (obtained from identify_concerted_rxns_via_intermediates() method)to
             the ReactonNetwork
-        :param full_network_pr_solved: full network that is not pruned
-        :param pruned_network_build: network that is pruned, if not pruning, use the same network
+        :param RN: build Reaction Networl
         :param reactions: list of reactions obtained from identify_concerted_rxns_via_intermediates() method
-        :return: pruned network with concerted reactions added
+        :return: reaction network with concerted reactions added
         """
 
         print("add_concerted_rxns start", time.time())
         c1 = 0
         c2 = 0
         c3 = 0
+        c4 = 0
+        mol_id_to_mol_entry_dict = {}
+        for i in RN.entries_list:
+            mol_id_to_mol_entry_dict[int(i.parameters["ind"])] = i
         for reaction in reactions:
             if len(reaction[0]) == 1 and len(reaction[1]) == 1:
-                # print(reaction)
-                assert int(reaction[0][0]) in pruned_network_build.graph.nodes
-                assert int(reaction[1][0]) in pruned_network_build.graph.nodes
-                reactants = full_network_pr_solved.entries_list[int(reaction[0][0])]
-                products = full_network_pr_solved.entries_list[int(reaction[1][0])]
+                assert int(reaction[0][0]) in RN.graph.nodes
+                assert int(reaction[1][0]) in RN.graph.nodes
+                reactants = mol_id_to_mol_entry_dict[int(reaction[0][0])]
+                products = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 cr = ConcertedReaction([reactants], [products])
-                cr.electron_free_energy = -2.15
+                cr.electron_free_energy = RN.temperature
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
                         g.remove_node(node)
-                pruned_network_build.add_reaction(g)
+                RN.add_reaction(g)
                 c1 = c1 + 1
             elif len(reaction[0]) == 1 and len(reaction[1]) == 2:
-                # print(reaction)
-                assert int(reaction[0][0]) in pruned_network_build.graph.nodes
-                assert int(reaction[1][0]) in pruned_network_build.graph.nodes
-                assert int(reaction[1][1]) in pruned_network_build.graph.nodes
-                reactant_0 = full_network_pr_solved.entries_list[int(reaction[0][0])]
-                product_0 = full_network_pr_solved.entries_list[int(reaction[1][0])]
-                product_1 = full_network_pr_solved.entries_list[int(reaction[1][1])]
+                assert int(reaction[0][0]) in RN.graph.nodes
+                assert int(reaction[1][0]) in RN.graph.nodes
+                assert int(reaction[1][1]) in RN.graph.nodes
+                reactant_0 = mol_id_to_mol_entry_dict[int(reaction[0][0])]
+                product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
+                product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
                 cr = ConcertedReaction([reactant_0], [product_0, product_1])
-                cr.electron_free_energy = -2.15
+                cr.electron_free_energy = RN.temperature
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
                         g.remove_node(node)
-                pruned_network_build.add_reaction(g)
+                RN.add_reaction(g)
                 c2 = c2 + 1
+            elif len(reaction[0]) == 2 and len(reaction[1]) == 1:
+                assert int(reaction[0][0]) in RN.graph.nodes
+                assert int(reaction[0][1]) in RN.graph.nodes
+                assert int(reaction[1][0]) in RN.graph.nodes
+                reactant_0 = mol_id_to_mol_entry_dict[int(reaction[0][0])]
+                PR = mol_id_to_mol_entry_dict[int(reaction[0][1])]
+                product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
+                cr = ConcertedReaction([reactant_0, PR], [product_0])
+                cr.electron_free_energy = RN.temperature
+                g = cr.graph_representation()
+                for node in list(g.nodes):
+                    if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
+                        g.remove_node(node)
+                RN.add_reaction(g)
+                c3 = c3 + 1
             elif len(reaction[0]) == 2 and len(reaction[1]) == 2:
-                assert int(reaction[0][0]) in pruned_network_build.graph.nodes
-                assert int(reaction[0][1]) in pruned_network_build.graph.nodes
-                assert int(reaction[1][0]) in pruned_network_build.graph.nodes
-                new_node = False
-                if reaction[1][1] is None:
-                    new_node = True
-                else:
-                    assert int(reaction[1][1]) in pruned_network_build.graph.nodes
-                if not new_node:
-                    reactant_0 = full_network_pr_solved.entries_list[
-                        int(reaction[0][0])
-                    ]
-                    PR = full_network_pr_solved.entries_list[int(reaction[0][1])]
-                    product_0 = full_network_pr_solved.entries_list[int(reaction[1][0])]
-                    product_1 = full_network_pr_solved.entries_list[int(reaction[1][1])]
-                    cr = ConcertedReaction([reactant_0, PR], [product_0, product_1])
-                    cr.electron_free_energy = -2.15
-                    g = cr.graph_representation()
-                    for node in list(g.nodes):
-                        if (
-                            not isinstance(node, int)
-                            and g.nodes[node]["free_energy"] > 0
-                        ):
-                            g.remove_node(node)
-                    pruned_network_build.add_reaction(g)
-                    c3 = c3 + 1
-                elif new_node:
-                    reactant_0 = full_network_pr_solved.entries_list[
-                        int(reaction[0][0])
-                    ]
-                    PR = full_network_pr_solved.entries_list[int(reaction[0][1])]
-                    product_0 = full_network_pr_solved.entries_list[int(reaction[1][0])]
-                    cr = ConcertedReaction([reactant_0, PR], [product_0])
-                    cr.electron_free_energy = -2.15
-                    g = cr.graph_representation()
-                    for node in list(g.nodes):
-                        if (
-                            not isinstance(node, int)
-                            and g.nodes[node]["free_energy"] > 0
-                        ):
-                            g.remove_node(node)
-                    pruned_network_build.add_reaction(g)
-                    c3 = c3 + 1
-
-        pruned_network_build.PR_record = pruned_network_build.build_PR_record()
-        pruned_network_build.Reactant_record = (
-            pruned_network_build.build_reactant_record()
-        )
+                assert int(reaction[0][0]) in RN.graph.nodes
+                assert int(reaction[0][1]) in RN.graph.nodes
+                assert int(reaction[1][0]) in RN.graph.nodes
+                assert int(reaction[1][1]) in RN.graph.nodes
+                reactant_0 = mol_id_to_mol_entry_dict[int(reaction[0][0])]
+                PR = mol_id_to_mol_entry_dict[int(reaction[0][1])]
+                product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
+                product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
+                cr = ConcertedReaction([reactant_0, PR], [product_0, product_1])
+                cr.electron_free_energy = RN.temperature
+                g = cr.graph_representation()
+                for node in list(g.nodes):
+                    if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
+                        g.remove_node(node)
+                RN.add_reaction(g)
+                c4 = c4 + 1
+        total_num_concerted = c1 + c2 + c3 + c4
+        RN.PR_record = RN.build_PR_record()
+        RN.Reactant_record = RN.build_reactant_record()
+        print("number of concerted reactions added", total_num_concerted)
         print("add_concerted_rxns end", time.time())
-        return pruned_network_build
+        return RN
 
     def as_dict(self) -> dict:
         entries = dict()  # type: Dict[str, Dict[int, Dict[int, List[Dict[str, Any]]]]]
