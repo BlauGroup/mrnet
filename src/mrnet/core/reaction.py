@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractproperty, abstractmethod, abstractclassmethod
 from typing import List, TypeVar, Protocol
 from monty.json import MSONable
 from mrnet.core.entry import Entry
+from mrnet.core import ROOM_TEMPERATURE
 
 T = TypeVar("T", bound="Reaction")
 
@@ -26,7 +27,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
     @abstractmethod
     def forward_rate(
         self,
-        temperature: float = 298.0,
+        temperature: float = ROOM_TEMPERATURE,
         electron_potential: float = 0.0,
         kappa: float = 1.0,
     ):
@@ -43,7 +44,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
     @abstractmethod
     def reverse_rate(
         self,
-        temperature: float = 298.0,
+        temperature: float = ROOM_TEMPERATURE,
         electron_potential: float = 0.0,
         kappa: float = 1.0,
     ):
