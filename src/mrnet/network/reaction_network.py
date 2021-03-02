@@ -1556,7 +1556,7 @@ class ReactionNetwork(MSONable):
 
                                 if (
                                     node_str not in RN.graph.nodes
-                                    and set().issubset(set(mols_to_keep))
+                                    and set(glist).issubset(set(mols_to_keep))
                                     and set(combined_reactants)
                                     != set(combined_products)
                                 ):
