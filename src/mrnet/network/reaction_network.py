@@ -217,13 +217,15 @@ class ReactionPath(MSONable):
     ):
         """
             A method to define all the attributes of a given path once all the PRs are solved
-        :param path: a list of nodes that defines a path from node A to B within a graph built using ReactionNetwork.build()
+        :param path: a list of nodes that defines a path from node A to B within a graph built using
+        ReactionNetwork.build()
         :param weight: string (either "softplus" or "exponent")
         :param min_cost: dict with minimum cost from path start to a node, of from {node: float},
         if no path exist, value is "no_path", if path is unsolved yet, value is "unsolved_path"
         :param graph: nx.Digraph
         :param PR_paths: dict that defines a path from each node to a start,
-               of the form {int(node1): {int(start1}: {ReactionPath object}, int(start2): {ReactionPath object}}, int(node2):...}
+               of the form {int(node1): {int(start1}: {ReactionPath object}, int(start2): {ReactionPath object}},
+               int(node2):...}
         :return: ReactionPath object
         """
 
@@ -242,7 +244,7 @@ class ReactionPath(MSONable):
                     PR_path = None
                     PR_min_cost = float("inf")  # 1000000000000000.0
                     for start in PR_paths[PR]:
-                        if PR_paths[PR][start].path != None:
+                        if PR_paths[PR][start].path is not None:
                             if PR_paths[PR][start].cost < PR_min_cost:
                                 PR_min_cost = PR_paths[PR][start].cost
                                 PR_path = PR_paths[PR][start]
