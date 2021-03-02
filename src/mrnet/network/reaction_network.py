@@ -1834,7 +1834,7 @@ class ReactionNetwork(MSONable):
                 reactants = mol_id_to_mol_entry_dict[int(reaction[0][0])]
                 products = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 cr = ConcertedReaction([reactants], [products])
-                cr.electron_free_energy = RN.temperature
+                cr.electron_free_energy = RN.electron_free_energy
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
@@ -1849,7 +1849,7 @@ class ReactionNetwork(MSONable):
                 product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
                 cr = ConcertedReaction([reactant_0], [product_0, product_1])
-                cr.electron_free_energy = RN.temperature
+                cr.electron_free_energy = RN.electron_free_energy
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
@@ -1864,7 +1864,7 @@ class ReactionNetwork(MSONable):
                 PR = mol_id_to_mol_entry_dict[int(reaction[0][1])]
                 product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 cr = ConcertedReaction([reactant_0, PR], [product_0])
-                cr.electron_free_energy = RN.temperature
+                cr.electron_free_energy = RN.electron_free_energy
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
@@ -1881,7 +1881,7 @@ class ReactionNetwork(MSONable):
                 product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
                 product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
                 cr = ConcertedReaction([reactant_0, PR], [product_0, product_1])
-                cr.electron_free_energy = RN.temperature
+                cr.electron_free_energy = RN.electron_free_energy
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
