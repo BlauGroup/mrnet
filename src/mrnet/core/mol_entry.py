@@ -97,7 +97,7 @@ class MoleculeEntry(MSONable):
             if isinstance(mol_doc["molecule"], Molecule):
                 molecule = mol_doc["molecule"]
             else:
-                molecule = Molecule.from_dict(mol_doc["molecule"]) # type: ignore
+                molecule = Molecule.from_dict(mol_doc["molecule"])  # type: ignore
             energy = mol_doc["energy_Ha"]
             enthalpy = mol_doc["enthalpy_kcal/mol"]
             entropy = mol_doc["entropy_cal/molK"]
