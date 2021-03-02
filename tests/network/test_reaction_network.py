@@ -55,17 +55,11 @@ class TestReactionPath(PymatgenTest):
 
         # run calc
         path_instance = ReactionPath.characterize_path(
-            path,
-            "softplus",
-            RN.min_cost,
-            RN.graph,
-            solved_PRs,
-            RN.PR_byproducts,
-            PR_paths,
+            path, "softplus", RN.graph, solved_PRs
         )
 
         # assert
-        self.assertEqual(path_instance.byproducts, [356, 182, 548])
+        self.assertEqual(path_instance.byproducts, [356, 548])
         self.assertEqual(path_instance.unsolved_prereqs, [])
         self.assertEqual(path_instance.solved_prereqs, [556, 46])
         self.assertEqual(path_instance.cost, 12.592087913497771)
@@ -105,15 +99,13 @@ class TestReactionPath(PymatgenTest):
         path_class = ReactionPath.characterize_path_final(
             RN_pr_solved.PRs[2][456].path,
             RN_pr_solved.weight,
-            RN_pr_solved.min_cost,
             RN_pr_solved.graph,
             RN_pr_solved.solved_PRs,
-            RN_pr_solved.PR_byproducts,
             RN_pr_solved.PRs,
         )
 
         # assert
-        self.assertEqual(path_class.byproducts, [356, 182, 548])
+        self.assertEqual(path_class.byproducts, [356, 548])
         self.assertEqual(path_class.solved_prereqs, [556, 46])
         self.assertEqual(path_class.all_prereqs, [556, 46])
         self.assertEqual(path_class.cost, 12.592087913497771)
@@ -312,7 +304,7 @@ class TestReactionNetwork(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_solve_prerequisites(self):
         with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
-            RN_pr_solved = pickle.load(input)
+            RN_loaded_pr_solved = pickle.load(input)
 
         # set up RN
         RN = copy.deepcopy(self.RN_build)
@@ -337,7 +329,7 @@ class TestReactionNetwork(PymatgenTest):
         )
 
         # assert
-        PR_paths = RN_pr_solved.PRs
+        PR_paths = copy.deepcopy(RN_loaded_pr_solved.PRs)
 
         for node in PRs_calc:
             for start in PRs_calc[node]:
@@ -561,7 +553,7 @@ class TestReactionNetwork(PymatgenTest):
         # assert
         self.assertTrue(output.__contains__("No path found from any start to PR 30"))
         self.assertTrue(
-            output.__contains__("WARNING: Matching prereq and byproduct found! 46")
+            output.__contains__("WARNING: Matching prereq and byproduct found! 542")
         )
         self.assertTrue(output.__contains__("No path found from any start to PR 513"))
         self.assertTrue(output.__contains__("No path found from any start to PR 539"))
@@ -822,7 +814,7 @@ class TestReactionNetwork(PymatgenTest):
             RN_loaded, 0, build_pruned_network=False
         )
 
-        self.assertEqual(len(mols_to_keep), 196)
+        self.assertEqual(len(mols_to_keep), 236)
 
     def test_parse_reaction_node(self):
 

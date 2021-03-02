@@ -129,28 +129,17 @@ class ReactionPath(MSONable):
 
     @classmethod
     def characterize_path(
-        cls,
-        path: List[Union[str, int]],
-        weight: str,
-        min_cost: Dict[int, float],
-        graph: nx.DiGraph,
-        old_solved_PRs=[],
-        PR_byproduct_dict={},
-        actualPRs={},
+        cls, path: List[str], weight: str, graph: nx.DiGraph, old_solved_PRs=[]
     ):  # -> ReactionPath
         """
-            A method to define ReactionPath attributes based on the inputs
+         A method to define ReactionPath attributes based on the inputs
 
         :param path: a list of nodes that defines a path from node A to B
             within a graph built using ReactionNetwork.build()
         :param weight: string (either "softplus" or "exponent")
-        :param min_cost: dict with minimum cost from path start to a node, of
-            from {node: float}
         :param graph: nx.Digraph
         :param old_solved_PRs: previously solved PRs from the iterations before
             the current iteration
-        :param PR_byproduct_dict: dict of solved PR and its list of byproducts
-        :param actualPRs: PR dictionary
         :return: ReactionPath object
         """
 
@@ -158,235 +147,63 @@ class ReactionPath(MSONable):
             class_instance = cls(None)
         else:
             class_instance = cls(path)
-            pool = list()  # type: List[int]
-            pool.append(int(path[0]))
+            pool = []
+            pool.append(path[0])
             for ii, step in enumerate(path):
+                # print(step,pool, path)
+
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
-                    if isinstance(step, str):
-                        rxn = step.split(",")
-                        if "+PR_" in rxn[0]:
-                            a = int(rxn[0].split("+PR_")[0])
-                            PR_b = int(rxn[0].split("+PR_")[1])
-                            concerted = False
-                            PR_b2 = None
-                            if rxn[0].count("PR_") == 2:
-                                PR_b2 = int(rxn[0].split("+PR_")[2])
-                            if "+" in rxn[1]:
-                                concerted = True
-                                c = int(rxn[1].split("+")[0])
-                                d = int(rxn[1].split("+")[1])
+                    if ii % 2 == 1:
+                        if "PR" in step:
+                            prod = []
+                            a = int(step.split(",")[0].split("+PR_")[0])
+                            pr = int(step.split(",")[0].split("+PR_")[1])
+                            if "+" in step.split(",")[1]:
+                                c = int(step.split(",")[1].split("+")[0])
+                                d = int(step.split(",")[1].split("+")[1])
+                                prod = [c, d]
                             else:
-                                c = int(rxn[1])
-                            pool_modified = copy.deepcopy(pool)
-                            pool_modified.remove(a)
-                            if PR_b2 is None:
-                                if PR_b in pool_modified:
-                                    if PR_b in list(min_cost.keys()):
-                                        class_instance.cost = (
-                                            class_instance.cost - min_cost[PR_b]
-                                        )
-                                    else:
-                                        pass
-                                    pool.remove(a)
-                                    pool.remove(PR_b)
-                                    pool.append(c)
-                                    if concerted:
-                                        pool.append(d)
-                                elif PR_b not in pool_modified:
-                                    if PR_b in old_solved_PRs:
-                                        class_instance.solved_prereqs.append(PR_b)
-                                        class_instance.all_prereqs.append(PR_b)
-                                        PR_b_byproducts = PR_byproduct_dict[PR_b][
-                                            "byproducts"
-                                        ]
-                                        start = int(PR_byproduct_dict[PR_b]["start"])
-                                        if a in PR_b_byproducts:
-                                            # print("path replacement happenning")
-                                            new_path_piece1 = actualPRs[PR_b][
-                                                start
-                                            ].path
-                                            new_path_piece2 = [
-                                                str(PR_b)
-                                                + "+"
-                                                + "PR_"
-                                                + str(a)
-                                                + ","
-                                                + str(c)
-                                            ]
-                                            if concerted:
-                                                new_path_piece2 = [
-                                                    str(PR_b)
-                                                    + "+"
-                                                    + "PR_"
-                                                    + str(a)
-                                                    + ","
-                                                    + str(c)
-                                                    + "+"
-                                                    + str(d)
-                                                ]
-                                            new_path_piece3 = path[ii + 1 : :]
-                                            new_path = (
-                                                new_path_piece1
-                                                + new_path_piece2
-                                                + new_path_piece3
-                                            )
-                                            # print(path, new_path_piece1, new_path_piece2,new_path_piece3 )
-                                            assert (
-                                                c == path[ii + 1] or d == path[ii + 1]
-                                            )
-                                            if new_path_piece2[0] not in graph.nodes:
-                                                pool.remove(a)
-                                                pool = pool + PR_b_byproducts
-                                                pool.append(c)
-                                                if concerted:
-                                                    pool.append(d)
-                                            else:
-                                                return ReactionPath.characterize_path(
-                                                    new_path,
-                                                    weight,
-                                                    min_cost,
-                                                    graph,
-                                                    old_solved_PRs,
-                                                    PR_byproduct_dict,
-                                                    actualPRs,
-                                                )
-                                        elif a not in PR_b_byproducts:
-                                            pool.remove(a)
-                                            pool = pool + PR_b_byproducts
-                                            pool.append(c)
-                                            if concerted:
-                                                pool.append(d)
-                                    elif PR_b not in old_solved_PRs:
-                                        class_instance.unsolved_prereqs.append(PR_b)
-                                        class_instance.all_prereqs.append(PR_b)
-                                        pool.remove(a)
-                                        pool.append(c)
-                                        if concerted:
-                                            pool.append(d)
-                            else:  # nodes with 2 PRs
-                                if PR_b in pool_modified and PR_b2 in pool_modified:
-                                    # print("!!")
-                                    class_instance.cost = (
-                                        class_instance.cost - min_cost[PR_b]
-                                    )
-                                    class_instance.cost = (
-                                        class_instance.cost - min_cost[PR_b2]
-                                    )
-                                    pool.remove(a)
-                                    pool.remove(PR_b)
-                                    pool.remove(PR_b2)
-                                    pool.append(c)
-                                    pool.append(d)
-
-                                elif (
-                                    PR_b not in old_solved_PRs
-                                    and PR_b2 not in old_solved_PRs
-                                ):
-                                    class_instance.unsolved_prereqs.append(PR_b)
-                                    class_instance.unsolved_prereqs.append(PR_b2)
-                                    class_instance.all_prereqs.append(PR_b)
-                                    class_instance.all_prereqs.append(PR_b2)
-                                    pool.remove(a)
-                                    pool.append(c)
-                                    pool.append(d)
-
-                                elif (
-                                    PR_b not in pool_modified
-                                    and PR_b2 not in pool_modified
-                                ):
-                                    if (
-                                        PR_b in old_solved_PRs
-                                        and PR_b2 in old_solved_PRs
-                                    ):
-                                        pool.remove(a)
-                                        pool.append(c)
-                                        pool.append(d)
-                                        class_instance.solved_prereqs.append(PR_b)
-                                        class_instance.solved_prereqs.append(PR_b2)
-                                        class_instance.all_prereqs.append(PR_b)
-                                        class_instance.all_prereqs.append(PR_b2)
-                                        PR_b_byproducts = PR_byproduct_dict[PR_b][
-                                            "byproducts"
-                                        ]
-                                        PR_b2_byproducts = PR_byproduct_dict[PR_b2][
-                                            "byproducts"
-                                        ]
-                                        pool = pool + PR_b_byproducts + PR_b2_byproducts
-
-                                    elif (
-                                        PR_b not in old_solved_PRs
-                                        or PR_b2 not in old_solved_PRs
-                                    ):
-                                        if PR_b not in old_solved_PRs:
-                                            class_instance.unsolved_prereqs.append(PR_b)
-                                            class_instance.all_prereqs.append(PR_b)
-                                        elif PR_b2 not in old_solved_PRs:
-                                            class_instance.unsolved_prereqs.append(
-                                                PR_b2
-                                            )
-                                            class_instance.all_prereqs.append(PR_b2)
-                                        pool.remove(a)
-                                        pool.append(c)
-                                        pool.append(d)
-
-                                elif PR_b in pool_modified or PR_b2 in pool_modified:
-                                    # print("$$")
-                                    if PR_b in pool_modified:
-                                        PR_in_pool = PR_b
-                                        PR_not_in_pool = PR_b2
-                                    elif PR_b2 in pool_modified:
-                                        PR_in_pool = PR_b2
-                                        PR_not_in_pool = PR_b
-                                    if PR_not_in_pool in old_solved_PRs:
-                                        class_instance.cost = (
-                                            class_instance.cost - min_cost[PR_in_pool]
-                                        )
-                                        pool.remove(PR_in_pool)
-
-                                    elif PR_not_in_pool in old_solved_PRs:
-                                        class_instance.unsolved_prereqs.append(
-                                            PR_not_in_pool
-                                        )
-                                        class_instance.all_prereqs.append(
-                                            PR_not_in_pool
-                                        )
-                                    pool.remove(a)
-                                    pool.append(c)
-                                    pool.append(d)
-
-                        elif "+" in rxn[1]:
+                                c = int(step.split(",")[1])
+                                prod = [c]
+                            if pr in old_solved_PRs:
+                                class_instance.solved_prereqs.append(pr)
+                            else:
+                                class_instance.unsolved_prereqs.append(pr)
+                            class_instance.all_prereqs.append(pr)
+                            pool.remove(a)
+                            pool = pool + prod
+                        elif "+" in step.split(",")[1]:
                             # node = A,B+C
-                            a = int(rxn[0])
-                            b = int(rxn[1].split("+")[0])
-                            c = int(rxn[1].split("+")[1])
+                            a = int(step.split(",")[0])
+                            b = int(step.split(",")[1].split("+")[0])
+                            c = int(step.split(",")[1].split("+")[1])
                             pool.remove(a)
                             pool.append(b)
                             pool.append(c)
                         else:
                             # node = A,B
-                            a = int(rxn[0])
-                            b = int(rxn[1])
+                            a = int(step.split(",")[0])
+                            b = int(step.split(",")[1])
                             pool.remove(a)
                             pool.append(b)
-            pool.remove(int(path[-1]))
-            class_instance.byproducts = pool
 
-            class_instance.path_dict = {
-                "byproducts": class_instance.byproducts,
-                "unsolved_prereqs": class_instance.unsolved_prereqs,
-                "solved_prereqs": class_instance.solved_prereqs,
-                "all_prereqs": class_instance.all_prereqs,
-                "cost": class_instance.cost,
-                "path": class_instance.path,
-                "overall_free_energy_change": class_instance.overall_free_energy_change,
-                "hardest_step": class_instance.hardest_step,
-                "description": class_instance.description,
-                "pure_cost": class_instance.pure_cost,
-                "hardest_step_deltaG": class_instance.hardest_step_deltaG,
-                "full_path": class_instance.full_path,
-            }
-
+        pool.remove(class_instance.path[-1])
+        class_instance.byproducts = pool
+        class_instance.path_dict = {
+            "byproducts": class_instance.byproducts,
+            "unsolved_prereqs": class_instance.unsolved_prereqs,
+            "solved_prereqs": class_instance.solved_prereqs,
+            "all_prereqs": class_instance.all_prereqs,
+            "cost": class_instance.cost,
+            "path": class_instance.path,
+            "overall_free_energy_change": class_instance.overall_free_energy_change,
+            "hardest_step": class_instance.hardest_step,
+            "description": class_instance.description,
+            "pure_cost": class_instance.pure_cost,
+            "hardest_step_deltaG": class_instance.hardest_step_deltaG,
+            "full_path": class_instance.full_path,
+        }
         return class_instance
 
     @classmethod
@@ -394,44 +211,26 @@ class ReactionPath(MSONable):
         cls,
         path: List[Union[str, int]],
         weight: str,
-        min_cost: Dict[int, float],
         graph: nx.DiGraph,
         old_solved_PRs=[],
-        PR_byproduct_dict={},
         PR_paths={},
     ):
         """
-            A method to define all the attributes of a given path once all the
-            PRs are solved
-
-        :param path: a list of nodes that defines a path from node A to B
-            within a graph built using ReactionNetwork.build()
+            A method to define all the attributes of a given path once all the PRs are solved
+        :param path: a list of nodes that defines a path from node A to B within a graph built using ReactionNetwork.build()
         :param weight: string (either "softplus" or "exponent")
-        :param min_cost: dict with minimum cost from path start to a node, of
-            from {node: float}, if no path exist, value is "no_path", if path is
-            unsolved yet, value is "unsolved_path"
+        :param min_cost: dict with minimum cost from path start to a node, of from {node: float},
+        if no path exist, value is "no_path", if path is unsolved yet, value is "unsolved_path"
         :param graph: nx.Digraph
-        :param old_solved_PRs: previously solved PRs from the iterations before
-            the current iteration
-        :param PR_byproduct_dict: dict of solved PR and its list of byproducts
         :param PR_paths: dict that defines a path from each node to a start,
-               of the form {int(node1): {int(start1}: {ReactionPath object},
-               int(start2): {ReactionPath object}}, int(node2):...}
+               of the form {int(node1): {int(start1}: {ReactionPath object}, int(start2): {ReactionPath object}}, int(node2):...}
         :return: ReactionPath object
         """
 
         if path is None:
             class_instance = cls(None)
         else:
-            class_instance = cls.characterize_path(
-                path,
-                weight,
-                min_cost,
-                graph,
-                old_solved_PRs,
-                PR_byproduct_dict,
-                PR_paths,
-            )
+            class_instance = cls.characterize_path(path, weight, graph, old_solved_PRs)
             assert len(class_instance.solved_prereqs) == len(class_instance.all_prereqs)
             assert len(class_instance.unsolved_prereqs) == 0
 
@@ -441,17 +240,19 @@ class ReactionPath(MSONable):
                 new_PRs = []
                 for PR in PRs_to_join:
                     PR_path = None
-                    PR_min_cost = float("inf")
+                    PR_min_cost = float("inf")  # 1000000000000000.0
                     for start in PR_paths[PR]:
-                        if PR_paths[PR][start].path is not None:
+                        if PR_paths[PR][start].path != None:
                             if PR_paths[PR][start].cost < PR_min_cost:
                                 PR_min_cost = PR_paths[PR][start].cost
                                 PR_path = PR_paths[PR][start]
-                    if PR_path:
-                        assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
-                        for new_PR in PR_path.all_prereqs:
-                            new_PRs.append(new_PR)
-                        full_path = PR_path.path + full_path
+                    assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
+                    for new_PR in PR_path.all_prereqs:
+                        new_PRs.append(new_PR)
+                        # class_instance.all_prereqs.append(new_PR)
+                    # for new_BP in PR_path.byproducts:
+                    # class_instance.byproducts.append(new_BP)
+                    full_path = PR_path.path + full_path
                 PRs_to_join = copy.deepcopy(new_PRs)
 
             for PR in class_instance.all_prereqs:
@@ -501,22 +302,8 @@ class ReactionPath(MSONable):
                     class_instance.hardest_step
                 ]["free_energy"]
 
-        class_instance.just_path_bp = []
-        for ii, step in enumerate(class_instance.path):
-            if isinstance(step, int):
-                pass
-            elif (
-                graph.nodes[step]["rxn_type"]
-                == "Molecular decomposition breaking one bond A -> B+C"
-            ):
-                prods = step.split(",")[1].split("+")
-                for p in prods:
-                    if int(class_instance.path[ii + 1]) != int(p):
-                        class_instance.just_path_bp.append(int(p))
-
         class_instance.path_dict = {
             "byproducts": class_instance.byproducts,
-            "just_path_bp": class_instance.just_path_bp,
             "unsolved_prereqs": class_instance.unsolved_prereqs,
             "solved_prereqs": class_instance.solved_prereqs,
             "all_prereqs": class_instance.all_prereqs,
@@ -917,7 +704,7 @@ class ReactionNetwork(MSONable):
             for start in starts:
                 if start == PR:
                     PRs[PR][start] = ReactionPath.characterize_path(
-                        [start], weight, self.min_cost, self.graph
+                        [start], weight, self.graph
                     )
                 else:
                     PRs[PR][start] = ReactionPath(None)
@@ -1202,11 +989,8 @@ class ReactionNetwork(MSONable):
                         path_class = ReactionPath.characterize_path(
                             dist_and_path[start][node]["path"],
                             weight,
-                            self.min_cost,
                             self.graph,
                             old_solved_PRs,
-                            PR_byproduct_dict=self.PR_byproducts,
-                            actualPRs=PRs,
                         )
                         cost_from_start[node][start] = path_class.cost
                         if len(path_class.unsolved_prereqs) == 0:
@@ -1322,11 +1106,9 @@ class ReactionNetwork(MSONable):
                         path_dict_class = ReactionPath.characterize_path_final(
                             PRs[PR][start].path,
                             self.weight,
-                            self.min_cost,
                             self.graph,
                             self.solved_PRs,
-                            PR_byproduct_dict=self.PR_byproducts,
-                            PR_paths=PRs,
+                            PRs,
                         )
                         PRs[PR][start] = path_dict_class
                         if (
@@ -1490,19 +1272,13 @@ class ReactionNetwork(MSONable):
                     else:
                         ind += 1
                         path_dict_class2 = ReactionPath.characterize_path_final(
-                            path,
-                            self.weight,
-                            self.min_cost,
-                            self.graph,
-                            self.solved_PRs,
-                            PR_byproduct_dict=self.PR_byproducts,
-                            PR_paths=self.PRs,
+                            path, self.weight, self.graph, self.solved_PRs, self.PRs
                         )
                         heapq.heappush(
                             my_heapq, (path_dict_class2.cost, next(c), path_dict_class2)
                         )
         except Exception:
-            print("ind", ind)
+            print("no path from this start to the target", start)
         top_path_list = []
         while len(paths) < num_paths and my_heapq:
             (cost_HP, _x, path_dict_HP_class) = heapq.heappop(my_heapq)
