@@ -129,7 +129,11 @@ class ReactionPath(MSONable):
 
     @classmethod
     def characterize_path(
-        cls, path: List[str], weight: str, graph: nx.DiGraph, old_solved_PRs=[]
+        cls,
+        path: List[Union[str, int]],
+        weight: str,
+        graph: nx.DiGraph,
+        old_solved_PRs=[],
     ):  # -> ReactionPath
         """
          A method to define ReactionPath attributes based on the inputs
@@ -150,13 +154,11 @@ class ReactionPath(MSONable):
             pool = []
             pool.append(path[0])
             for ii, step in enumerate(path):
-                # print(step,pool, path)
-
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
-                    if ii % 2 == 1:
+                    if isinstance(step, str):
                         if "PR" in step:
-                            prod = []
+                            prod = []  # type: List[Union[str, int]]
                             a = int(step.split(",")[0].split("+PR_")[0])
                             pr = int(step.split(",")[0].split("+PR_")[1])
                             if "+" in step.split(",")[1]:
@@ -248,9 +250,10 @@ class ReactionPath(MSONable):
                             if PR_paths[PR][start].cost < PR_min_cost:
                                 PR_min_cost = PR_paths[PR][start].cost
                                 PR_path = PR_paths[PR][start]
-                    assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
-                    for new_PR in PR_path.all_prereqs:
-                        new_PRs.append(new_PR)
+                    if PR_path is not None:
+                        assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
+                        for new_PR in PR_path.all_prereqs:
+                            new_PRs.append(new_PR)
                         # class_instance.all_prereqs.append(new_PR)
                     # for new_BP in PR_path.byproducts:
                     # class_instance.byproducts.append(new_BP)
@@ -1225,21 +1228,6 @@ class ReactionNetwork(MSONable):
         :param weight: "softplus" or "exponent", type of cost function to use
             when calculating edge weights
         :param num_paths: Number (of type int) of paths to find. Defaults to 10.
-        :param solved_PRs_path: dict that defines a path from each node to a start,
-                of the form {int(node1): {int(start1}: {ReactionPath object},
-                                          int(start2): {ReactionPath object}},
-                                          int(node2):...}
-                if None, method will solve PRs
-        :param solved_min_cost: dict with minimum cost from path start to a
-                node, of from {node: float}, if no path exist, value is
-                "no_path", if path is unsolved yet, value is "unsolved_path",
-                of None, method will solve for min_cost
-        :param updated_graph: nx.DiGraph with udpated edge weights based on
-            the solved PRs, if none, method will solve for PRs and update graph
-            accordingly
-        :param save: if True method will save PRs paths, min cost and updated
-                    graph after all the PRs are solved,
-                    if False, method will not save anything (default)
         :return: PR_paths: solved dict of PRs
         :return: paths: list of paths (number of paths based on the value of
             num_paths)
@@ -1309,6 +1297,7 @@ class ReactionNetwork(MSONable):
 
         :param RN_pr_solved: instance of reaction network
         :param: cutoff: dG value
+        :param: build_pruned_network: if true a network with pruned entries will be build
         :return: mols_to_keep: list of molecule nodes that can be reached by dG <= cutoff
         :return: pruned_entries_list: list of MoleculeEntry of molecules that can be reached by dG <= cutoff
         """
@@ -1557,10 +1546,8 @@ class ReactionNetwork(MSONable):
                                 combined_reactants.remove(i)
                                 combined_products.remove(i)
                             if (
-                                len(combined_reactants) > 0
-                                and len(combined_reactants) <= 2
-                                and len(combined_products) > 0
-                                and len(combined_products) <= 2
+                                0 < len(combined_reactants) <= 2
+                                and 0 < len(combined_products) <= 2
                             ):
                                 node_str = ReactionNetwork.generate_node_string(
                                     combined_reactants, combined_products
@@ -1569,7 +1556,7 @@ class ReactionNetwork(MSONable):
 
                                 if (
                                     node_str not in RN.graph.nodes
-                                    and set(glist).issubset(set(mols_to_keep))
+                                    and set().issubset(set(mols_to_keep))
                                     and set(combined_reactants)
                                     != set(combined_products)
                                 ):
