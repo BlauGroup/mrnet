@@ -69,6 +69,8 @@ class MoleculeEntry(MSONable):
         else:
             self.mol_graph = mol_graph
 
+        self.removed_coordination_bonds = []
+
     @classmethod
     def from_molecule_document(
         cls,
@@ -299,6 +301,23 @@ class MoleculeEntry(MSONable):
         else:
             return None
 
+    def remove_coordination_bonds(self):
+        """
+        Remove all metal coordination bonds in order to simplify reaction identification
+        and allow the network to focus on covalent bond formation/breakage
+        """
+        metals = ["Li1", "Mg1", "Ca1", "Zn1"]
+        M_bonds = []
+        for bond in self.bonds:
+            if (
+                str(self.molecule.sites[bond[0]].species) in metals
+                or str(self.molecule.sites[bond[1]].species) in metals
+            ):
+                M_bonds.append((bond[0], bond[1]))
+        self.removed_coordination_bonds = M_bonds
+        for M_bond in M_bonds:
+            self.graph.remove_edge(M_bond[0], M_bond[1])
+
     def get_isomorphic_bonds(
         self, fragments: Optional[Dict[Tuple[int, int], List[MoleculeGraph]]] = None
     ) -> Optional[List[List[Tuple[int, int]]]]:
@@ -333,6 +352,10 @@ class MoleculeEntry(MSONable):
             For example, for the above shown molecule, this function returns:
             [[(0,1), (0,2)], [(0,3), (0,4)], [(3,4)]]
         """
+        if self.removed_coordination_bonds != []:
+            raise RuntimeError(
+                "Bad idea to get isomorphic bonds after removing coordination bonds!"
+                )
 
         fragments = self.get_fragments() if fragments is None else fragments
 

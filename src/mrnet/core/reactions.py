@@ -1621,6 +1621,352 @@ class CoordinationBondChangeReaction(Reaction):
         reaction.rate_calculator = rate_calculator
         return reaction
 
+class SimpleCoordinationReaction(Reaction):
+    """
+    A class to define coordination bond change assuming simple coordination, where
+    actual coordination bonds in the molecule graph have been removed. 
+
+    Simultaneous formation / breakage of any number of coordination bonds
+    A + M <-> AM aka AM <-> A + M
+    Three entries with:
+        M = Li, Mg, Ca, or Zn
+        comp(AM) = comp(A) + comp(M)
+        charge(AM) = charge(A) + charge(M)
+        where AM is already a disconnected graph, but if you remove the metal node
+        entirely then the resulting graph is isomorphic to A
+
+    Args:
+        reactant: molecular entry
+        product: list of two molecular entries
+        transition_state: a MoleculeEntry representing a transition state
+        parameters: any additional data about this reaction
+        reactant_atom_mapping: atom mapping number dict for reactant
+        products_atom_mapping: list of atom mapping number dict for products
+    """
+
+    def __init__(
+        self,
+        reactant: MoleculeEntry,
+        product: List[MoleculeEntry],
+        transition_state: Optional[MoleculeEntry] = None,
+        parameters: Optional[Dict] = None,
+        reactant_atom_mapping: Optional[Atom_Mapping_Dict] = None,
+        products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
+    ):
+        self.reactant = reactant
+        self.product_0 = product[0]
+        self.product_1 = product[1]
+
+        rcts_mp = [reactant_atom_mapping] if reactant_atom_mapping is not None else None
+        prdts_mp = products_atom_mapping if products_atom_mapping is not None else None
+
+        super().__init__(
+            [self.reactant],
+            [self.product_0, self.product_1],
+            transition_state=transition_state,
+            parameters=parameters,
+            reactants_atom_mapping=rcts_mp,
+            products_atom_mapping=prdts_mp,
+        )
+
+        # Store necessary mol_entry attributes
+        self.reactant_energy = reactant.energy
+        self.pro0_energy = product[0].energy
+        self.pro1_energy = product[1].energy
+
+        self.reactant_enthalpy = reactant.enthalpy
+        self.pro0_enthalpy = product[0].enthalpy
+        self.pro1_enthalpy = product[1].enthalpy
+
+        self.reactant_entropy = reactant.entropy
+        self.pro0_entropy = product[0].entropy
+        self.pro1_entropy = product[1].entropy
+
+        self.rxn_type_A = "Coordination bond breaking AM -> A+M"
+        self.rxn_type_B = "Coordination bond forming A+M -> AM"
+
+        if (
+            self.pro1_energy is not None
+            and self.pro0_energy is not None
+            and self.reactant_energy is not None
+        ):
+            self.energy_A = self.pro0_energy + self.pro1_energy - self.reactant_energy
+            self.energy_B = self.reactant_energy - self.pro0_energy - self.pro1_energy
+
+        else:
+            self.energy_A = None
+            self.energy_B = None
+
+        # These store the free energy at 298.15 K.
+        # Initialized to none, generally overwritten by self.set_free_energy()
+        self.base_free_energy_A = None
+        self.base_free_energy_B = None
+        self.set_free_energy()
+        self.set_rate_constant()
+
+    def graph_representation(self) -> nx.DiGraph:
+        """
+        A method to convert a CoordinationBondChangeReaction class object into graph
+        representation (nx.Digraph object).
+
+        CoordinationBondChangeReaction must be of type 1 reactant -> 2 products
+
+        Returns:
+             nx.Digraph object of a single CoordinationBondChangeReaction object
+        """
+        assert len(self.reactant_ids) == 1
+        assert len(self.product_ids) == 2
+        return general_graph_rep(self)
+
+    @classmethod
+    def generate(
+        cls,
+        entries: MappingDict,
+        determine_atom_mappings: bool = True,
+    ) -> List[Reaction]:
+
+        # find metal entries
+        M_entries = dict()  # type: MappingDict
+        for formula in entries:
+            if formula in ["Li1", "Mg1", "Ca1", "Zn1"]:
+                if formula not in M_entries:
+                    M_entries[formula] = dict()
+                for charge in entries[formula][0]:
+                    assert len(entries[formula][0][charge]) == 1
+                    M_entries[formula][charge] = entries[formula][0][charge][0]
+
+        reactions = list()  # type: List[Reaction]
+
+        if not M_entries:
+            return reactions
+
+        for formula in entries:
+            if "Li" in formula or "Mg" in formula or "Ca" in formula or "Zn" in formula:
+                if formula not in ["Li1", "Mg1", "Ca1", "Zn1"]:
+                    for Nbonds in entries[formula]:
+                        for charge in entries[formula][Nbonds]:
+                            for entry in entries[formula][Nbonds][charge]:
+                                rxns = cls._generate_one(
+                                    entry, entries, M_entries, determine_atom_mappings, cls
+                                )
+                                reactions.extend(rxns)
+
+        return reactions
+
+    @staticmethod
+    def _generate_one(
+        entry, entries, M_entries, determine_atom_mappings, cls
+    ) -> List[Reaction]:
+        """
+        Helper function to generate reactions for one molecule entry.
+        """
+        reactions = []
+
+        for bond in entry.bonds:
+            if (
+                str(entry.molecule.sites[bond[0]].species) in M_entries
+                or str(entry.molecule.sites[bond[1]].species) in M_entries
+            ):
+                raise RuntimeError("ERROR: No metal bonds should be found!")
+
+        M_sites = []
+
+        for site in entry.molecule.sites:
+            if entry.molecule.sites[site].species in M_entries:
+                M_sites.append(site)
+
+        for M_site in M_sites:
+            M_removed = copy.deepcopy(entry)
+            M_formula = copy.deepcopy(M_removed.molecule.sites[M_site].species)
+            M_removed.remove_nodes(M_site)
+            M_removed_formula = M_removed.molecule.composition.alphabetical_formula
+            M_removed_Nbonds = M_removed.num_bonds()
+            if (
+                M_removed_formula not in entries
+                or M_removed_Nbonds not in entries[M_removed_formula]
+            ):
+                continue
+
+            for M_removed_charge in entries[M_removed_formula][M_removed_Nbonds]:
+                M_charge = entry.charge - M_removed_charge
+                if M_charge not in M_entries[M_formula]:
+                    continue
+
+                for M_removed_entry in entries[M_removed_formula][M_removed_Nbonds][
+                    M_removed_charge
+                ]:
+                    isomorphic, _ = is_isomorphic(M_removed.graph, M_removed_entry.graph)
+                    if isomorphic:
+                        this_m = M_entries[M_formula][M_charge]
+
+                        if determine_atom_mappings:
+                            rct_mp, prdts_mp = generate_atom_mapping_1_2(
+                                entry, [M_removed_entry, this_m], []
+                            )
+
+                            r = cls(
+                                entry,
+                                [M_removed_entry, this_m],
+                                reactant_atom_mapping=rct_mp,
+                                products_atom_mapping=prdts_mp,
+                            )
+                        else:
+                            r = cls(
+                                entry,
+                                [M_removed_entry, this_m],
+                            )
+                        reactions.append(r)
+
+                        break
+
+        return reactions
+
+    def set_free_energy(self, temperature=298.15):
+        """
+        A method to determine the free energy of the coordination bond change reaction
+        Sets free_energy_A and free_energy_B
+        where free_energy_A is the primary type of the reaction based
+        on the reactant and product of the CoordinationBondChangeReaction
+        object, and the backwards of this reaction would be free_energy_B.
+
+        Args:
+            temperature:
+        """
+
+        set_base = False
+        if temperature is None or temperature == 298.15:
+            if (
+                self.base_free_energy_A is not None
+                and self.base_free_energy_B is not None
+            ):
+                self.free_energy_A = self.base_free_energy_A
+                self.free_energy_B = self.base_free_energy_B
+                return
+            else:
+                set_base = True
+
+        rct_free_energy = mol_free_energy(
+            self.reactant_energy,
+            self.reactant_enthalpy,
+            self.reactant_entropy,
+            temp=temperature,
+        )
+        pro0_free_energy = mol_free_energy(
+            self.pro0_energy, self.pro0_enthalpy, self.pro0_entropy, temp=temperature
+        )
+        pro1_free_energy = mol_free_energy(
+            self.pro1_energy, self.pro1_enthalpy, self.pro1_entropy, temp=temperature
+        )
+
+        if (
+            rct_free_energy is not None
+            and pro0_free_energy is not None
+            and pro1_free_energy is not None
+        ):
+            self.free_energy_A = pro0_free_energy + pro1_free_energy - rct_free_energy
+            self.free_energy_B = rct_free_energy - pro0_free_energy - pro1_free_energy
+        else:
+            self.free_energy_A = None
+            self.free_energy_B = None
+
+        if set_base:
+            self.base_free_energy_A = self.free_energy_A
+            self.base_free_energy_B = self.free_energy_B
+        return
+
+    def set_rate_constant(self, temperature=298.15):
+        if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
+            self.rate_calculator, ExpandedBEPRateCalculator
+        ):
+            self.k_A: self.rate_calculator.calculate_rate_constant(
+                temperature=temperature
+            )
+            self.k_B: self.rate_calculator.calculate_rate_constant(
+                temperature=temperature, reverse=True
+            )
+        else:
+            self.set_free_energy(temperature=temperature)
+
+            ga = self.free_energy_A
+            gb = self.free_energy_B
+
+            if ga < 0:
+                self.k_A = k * temperature / h
+            else:
+                self.k_A = (
+                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                )
+
+            if gb < 0:
+                self.k_B = k * temperature / h
+            else:
+                self.k_B = (
+                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                )
+
+    def as_dict(self) -> dict:
+        if self.transition_state is None:
+            ts = None
+        else:
+            ts = self.transition_state.as_dict()
+
+        if self.rate_calculator is None:
+            rc = None
+        else:
+            rc = self.rate_calculator.as_dict()
+
+        d = {
+            "@module": self.__class__.__module__,
+            "@class": self.__class__.__name__,
+            "reactants": [r.as_dict() for r in self.reactants],
+            "products": [p.as_dict() for p in self.products],
+            "reactant": self.reactant.as_dict(),
+            "product_0": self.product_0.as_dict(),
+            "product_1": self.product_1.as_dict(),
+            "transition_state": ts,
+            "rate_calculator": rc,
+            "parameters": self.parameters,
+            "reactants_atom_mapping": self.reactant_atom_mapping,
+            "products_atom_mapping": self.product_atom_mapping,
+        }
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        reactant = MoleculeEntry.from_dict(d["reactant"])
+        product_0 = MoleculeEntry.from_dict(d["product_0"])
+        product_1 = MoleculeEntry.from_dict(d["product_1"])
+        if d["transition_state"] is None:
+            ts = None
+            if d["rate_calculator"] is None:
+                rate_calculator = None
+            else:
+                rate_calculator = ExpandedBEPRateCalculator.from_dict(
+                    d["rate_calculator"]
+                )
+        else:
+            ts = MoleculeEntry.from_dict(d["transition_state"])
+            rate_calculator = ReactionRateCalculator.from_dict(d["rate_calculator"])
+
+        reactants_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["reactants_atom_mapping"]
+        ]
+        products_atom_mapping = [
+            {int(k): v for k, v in mp.items()} for mp in d["products_atom_mapping"]
+        ]
+
+        reaction = cls(
+            reactant,
+            [product_0, product_1],
+            transition_state=ts,
+            parameters=d["parameters"],
+            reactant_atom_mapping=reactants_atom_mapping[0],
+            products_atom_mapping=products_atom_mapping,
+        )
+        reaction.rate_calculator = rate_calculator
+        return reaction
+
 
 class ConcertedReaction(Reaction):
     """

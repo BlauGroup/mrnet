@@ -555,6 +555,7 @@ class ReactionNetwork(MSONable):
         PR_record,
         min_cost,
         num_starts,
+        simplify_coordination,
     ):
         """
         :param electron_free_energy: Electron free energy (in eV)
@@ -570,6 +571,7 @@ class ReactionNetwork(MSONable):
         :param PR_record: dict containing reaction prerequisites
         :param min_cost: dict containing costs of entries in the network
         :param num_starts: Number of starting molecules
+        :param simplify_coordination: Whether or not to remove metal bonds
         """
 
         self.electron_free_energy = electron_free_energy
@@ -586,6 +588,7 @@ class ReactionNetwork(MSONable):
 
         self.min_cost = min_cost
         self.num_starts = num_starts
+        self.simplify_coordination = simplify_coordination
 
         self.PRs = PRs
         self.reachable_nodes = []
@@ -605,6 +608,7 @@ class ReactionNetwork(MSONable):
         solvent_dielectric=18.5,
         solvent_refractive_index=1.415,
         replace_ind=True,
+        simplify_coordination=False,
     ):
         """
         Generate a ReactionNetwork from a set of MoleculeEntries.
@@ -619,6 +623,8 @@ class ReactionNetwork(MSONable):
         :param solvent_refractive_index: Refractive index of the solvent medium
         :param replace_ind: True if reindex the entries if it there is already
             indices in the input_entries
+        :param simplify_coordination: Defaults to False, in which case
+            bonding is unchanged. If True, removes all metal bonds
         :return:
         """
 
@@ -650,8 +656,17 @@ class ReactionNetwork(MSONable):
         def get_free_energy(x):
             return x.get_free_energy(temperature=temperature)
 
+        if simplify_coordination:
+            simplified_entries = []
+            for entry in connected_entries:
+                entry.remove_coordination_bonds()
+                simplified_entries.append(entry)
+            entries_for_processing = simplified_entries
+        else:
+            entries_for_processing = connected_entries
+
         # Sort by formula
-        sorted_entries_0 = sorted(connected_entries, key=get_formula)
+        sorted_entries_0 = sorted(entries_for_processing, key=get_formula)
         for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
             sorted_entries_1 = sorted(list(g1), key=get_num_bonds)
             entries[k1] = dict()
@@ -718,6 +733,7 @@ class ReactionNetwork(MSONable):
             dict(),
             dict(),
             0,
+            simplify_coordination,
         )
 
         return network
@@ -747,12 +763,12 @@ class ReactionNetwork(MSONable):
 
     def build(
         self,
-        reaction_types: Union[Set, FrozenSet] = frozenset(
+        reaction_types: Union[Set, FrozenSet] = set(
             {
                 "RedoxReaction",
                 "IntramolSingleBondChangeReaction",
                 "IntermolecularReaction",
-                "CoordinationBondChangeReaction",
+                "CoordinationReactionName",
             }
         ),
         determine_atom_mappings: bool = True,
@@ -768,6 +784,15 @@ class ReactionNetwork(MSONable):
         """
 
         print("build() start", time.time())
+
+        if self.simplify_coordination:
+            if "CoordinationReactionName" in reaction_types:
+                reaction_types.remove("CoordinationReactionName")
+                reaction_types.add("SimpleCoordinationReaction")
+        else:
+            if "CoordinationReactionName" in reaction_types:
+                reaction_types.remove("CoordinationReactionName")
+                reaction_types.add("CoordinationBondChangeReaction")     
 
         # Add molecule nodes
         for entry in self.entries_list:
@@ -791,6 +816,7 @@ class ReactionNetwork(MSONable):
         inter_c = 0
         intra_c = 0
         coord_c = 0
+        simp_coord_c = 0
 
         for ii, r in enumerate(self.reactions):
             r.parameters["ind"] = ii
@@ -803,6 +829,8 @@ class ReactionNetwork(MSONable):
                 inter_c += 1
             elif r.__class__.__name__ == "CoordinationBondChangeReaction":
                 coord_c += 1
+            elif r.__class__.__name__ == "SimpleCoordinationReaction":
+                simp_coord_c += 1
             self.add_reaction(r.graph_representation())
 
         print(
@@ -814,6 +842,8 @@ class ReactionNetwork(MSONable):
             intra_c,
             "coord: ",
             coord_c,
+            "simp_coord: ",
+            simp_coord_c,
         )
         self.PR_record = self.build_PR_record()
         self.Reactant_record = self.build_reactant_record()
