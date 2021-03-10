@@ -2,7 +2,7 @@ import os
 import pytest
 import numpy as np
 from monty.serialization import loadfn
-from pymatgen import Molecule
+from pymatgen.core.structure import Molecule
 from mrnet.core.mol_entry import MoleculeEntry
 
 try:
