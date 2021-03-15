@@ -102,10 +102,11 @@ class TestReactionPath(PymatgenTest):
             RN_pr_solved.graph,
             RN_pr_solved.solved_PRs,
             RN_pr_solved.PRs,
+            RN_pr_solved.PR_byproducts,
         )
 
         # assert
-        self.assertEqual(path_class.byproducts, [356, 548])
+        self.assertEqual(path_class.byproducts, [356, 548, 182])
         self.assertEqual(path_class.solved_prereqs, [556, 46])
         self.assertEqual(path_class.all_prereqs, [556, 46])
         self.assertEqual(path_class.cost, 12.592087913497771)
@@ -316,10 +317,6 @@ class TestReactionNetwork(PymatgenTest):
         for entry in RN.entries["C3 H4 O3"][10][0]:
             if self.EC_mg.isomorphic_to(entry.mol_graph):
                 EC_ind = entry.parameters["ind"]
-                break
-        for entry in RN.entries["C4 H4 Li2 O6"][17][0]:
-            if self.LEDC_mg.isomorphic_to(entry.mol_graph):
-                LEDC_ind = entry.parameters["ind"]
                 break
         Li1_ind = RN.entries["Li1"][0][1][0].parameters["ind"]
 
@@ -553,7 +550,7 @@ class TestReactionNetwork(PymatgenTest):
         # assert
         self.assertTrue(output.__contains__("No path found from any start to PR 30"))
         self.assertTrue(
-            output.__contains__("WARNING: Matching prereq and byproduct found! 542")
+            output.__contains__("NOTE: Matching prereq and byproduct found! 542")
         )
         self.assertTrue(output.__contains__("No path found from any start to PR 513"))
         self.assertTrue(output.__contains__("No path found from any start to PR 539"))

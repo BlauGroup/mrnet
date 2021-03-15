@@ -134,6 +134,7 @@ class ReactionPath(MSONable):
         weight: str,
         graph: nx.DiGraph,
         old_solved_PRs=[],
+        PR_byproduct_dict={},
     ):  # -> ReactionPath
         """
          A method to define ReactionPath attributes based on the inputs
@@ -216,6 +217,7 @@ class ReactionPath(MSONable):
         graph: nx.DiGraph,
         old_solved_PRs=[],
         PR_paths={},
+        PR_byproduct_dict={},
     ):
         """
             A method to define all the attributes of a given path once all the PRs are solved
@@ -244,7 +246,7 @@ class ReactionPath(MSONable):
                 new_PRs = []
                 for PR in PRs_to_join:
                     PR_path = None
-                    PR_min_cost = float("inf")  # 1000000000000000.0
+                    PR_min_cost = float("inf")
                     for start in PR_paths[PR]:
                         if PR_paths[PR][start].path is not None:
                             if PR_paths[PR][start].cost < PR_min_cost:
@@ -254,15 +256,13 @@ class ReactionPath(MSONable):
                         assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
                         for new_PR in PR_path.all_prereqs:
                             new_PRs.append(new_PR)
-                        # class_instance.all_prereqs.append(new_PR)
-                    # for new_BP in PR_path.byproducts:
-                    # class_instance.byproducts.append(new_BP)
-                    full_path = PR_path.path + full_path
+                        full_path = PR_path.path + full_path
                 PRs_to_join = copy.deepcopy(new_PRs)
-
             for PR in class_instance.all_prereqs:
                 if PR in class_instance.byproducts:
-                    print("WARNING: Matching prereq and byproduct found!", PR)
+                    print("NOTE: Matching prereq and byproduct found!", PR)
+                BPs = PR_byproduct_dict[PR]["byproducts"]
+                class_instance.byproducts = class_instance.byproducts + BPs
 
             for ii, step in enumerate(full_path):
                 if graph.nodes[step]["bipartite"] == 1:
@@ -1114,6 +1114,7 @@ class ReactionNetwork(MSONable):
                             self.graph,
                             self.solved_PRs,
                             PRs,
+                            self.PR_byproducts,
                         )
                         PRs[PR][start] = path_dict_class
                         if (
@@ -1262,7 +1263,12 @@ class ReactionNetwork(MSONable):
                     else:
                         ind += 1
                         path_dict_class2 = ReactionPath.characterize_path_final(
-                            path, self.weight, self.graph, self.solved_PRs, self.PRs
+                            path,
+                            self.weight,
+                            self.graph,
+                            self.solved_PRs,
+                            self.PRs,
+                            self.PR_byproducts,
                         )
                         heapq.heappush(
                             my_heapq, (path_dict_class2.cost, next(c), path_dict_class2)
