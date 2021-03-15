@@ -134,7 +134,6 @@ class ReactionPath(MSONable):
         weight: str,
         graph: nx.DiGraph,
         old_solved_PRs=[],
-        PR_byproduct_dict={},
     ):  # -> ReactionPath
         """
          A method to define ReactionPath attributes based on the inputs
