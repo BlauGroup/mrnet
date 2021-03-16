@@ -67,6 +67,14 @@ jobs:
       shell: bash -l {0}
       run: conda install -c conda-forge openbabel
 
+    - name: Install pygraphviz
+      shell: bash -l {0}
+      run: conda install -c conda-forge pygraphviz
+
+    - name: Install rnmc-native
+      shell: bash -l {0}
+      run: conda install -c conda-forge rnmc-native
+
     - name: Install Python dependencies
       shell: bash -l {0}
       run: |

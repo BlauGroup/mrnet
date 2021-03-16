@@ -23,6 +23,14 @@ __maintainer__ = "Daniel Barter"
 
 
 class ReactionGenerator:
+    """
+    takes a list of molecule entries and produces the concerted
+    reactions in batches grouped by intermediate by calling
+    ReactionNetwork.identify_concerted_rxns_for_specific_intermediate.
+    This allows looping over concerteds without needing to have them
+    all reside in memory simultaneously
+    """
+
     def generate_concerted_reactions(
         self,
         entry: MoleculeEntry,
