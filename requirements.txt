@@ -1,5 +1,5 @@
 pymatgen==2022.0.4
 numpy==1.20.1
 networkx==2.5
-numba==0.51.2
+numba==0.53.0
 pathos==0.2.7
