@@ -895,12 +895,19 @@ class TestReactionNetwork(PymatgenTest):
         ) as input:
             RN_loaded = pickle.load(input)
 
-        with open(os.path.join(test_dir, "RN_unittest_matrix.pkl"), "rb") as handle:
+        with open(os.path.join(test_dir, "RN_matrix_build.pkl"), "rb") as handle:
             loaded_matrix = pickle.load(handle)
+
+        with open(
+            os.path.join(test_dir, "RN_matrix_inverse_build.pkl"), "rb"
+        ) as handle:
+            loaded_inverse_matrix = pickle.load(handle)
 
         RN_loaded.build_matrix()
 
         self.assertEqual(RN_loaded.matrix, loaded_matrix)
+
+        self.assertEqual(RN_loaded.matrix_inverse, loaded_inverse_matrix)
 
     def test_concerted_reaction_filter(self):
         r, r_node = ReactionNetwork.concerted_reaction_filter("1+PR_2,3", "6,2+7")

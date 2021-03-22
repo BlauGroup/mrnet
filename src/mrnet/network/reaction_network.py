@@ -4,7 +4,7 @@ import itertools
 import operator
 import time as time
 from functools import reduce
-from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set
+from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set, TypeVar
 from ast import literal_eval
 
 import networkx as nx
@@ -33,6 +33,7 @@ __maintainer__ = "Sam Blau"
 __status__ = "Alpha"
 
 Mapping_Record_Dict = Dict[int, List[str]]
+RN_type = TypeVar("RN_type", bound="ReactionNetwork")
 
 
 class ReactionPath(MSONable):
@@ -387,6 +388,7 @@ class ReactionNetwork(MSONable):
         self.min_cost = {}
         self.not_reachable_nodes = []
         self.matrix = None
+        self.matrix_inverse = None
 
     @classmethod
     def from_input_entries(
@@ -1480,7 +1482,7 @@ class ReactionNetwork(MSONable):
             reactions_with_in_out_nodes.append(r_node)
         return r, r_node
 
-    def build_matrix(self):
+    def build_matrix(self) -> Dict[int, Dict[int, List[Tuple]]]:
         """
         A method to build a spare adjacency matrix using dictionaries.
         :return: nested dictionary {r1:{c1:[],c2:[]}, r2:{c1:[],c2:[]}}
@@ -1504,12 +1506,20 @@ class ReactionNetwork(MSONable):
                     for e in edges:
                         if e[1] not in self.matrix[e[0]].keys():
                             self.matrix[e[0]][e[1]] = [
-                                (node, self.graph.nodes[node]["free_energy"], "ele")
+                                (node, self.graph.nodes[node]["free_energy"], "e")
                             ]
                         else:
                             self.matrix[e[0]][e[1]].append(
-                                (node, self.graph.nodes[node]["free_energy"], "ele")
+                                (node, self.graph.nodes[node]["free_energy"], "e")
                             )
+
+        self.matrix_inverse = {}
+        for i in range(len(self.matrix)):
+            self.matrix_inverse[i] = {}
+            for k, v in self.matrix.items():
+                if i in v.keys():
+                    self.matrix_inverse[i][k] = v[i]
+
         return self.matrix
 
     @staticmethod
@@ -1606,7 +1616,7 @@ class ReactionNetwork(MSONable):
     @staticmethod
     def identify_concerted_rxns_for_specific_intermediate(
         entry: MoleculeEntry,
-        RN,
+        RN: RN_type,
         mols_to_keep=None,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
         update_matrix=False,
@@ -1623,6 +1633,10 @@ class ReactionNetwork(MSONable):
         :return: list of reactions
         """
 
+        rxn_from_filer_iter1 = []
+        rxn_from_filer_iter1_nodes = []
+        entry_ind = entry.parameters["ind"]  # type: int
+
         if mols_to_keep is None:
             mols_to_keep = list(range(0, len(RN.entries_list)))
         not_wanted_formula = single_elem_interm_ignore
@@ -1637,18 +1651,8 @@ class ReactionNetwork(MSONable):
             if update_matrix:
                 RN.matrix2 = copy.deepcopy(RN.matrix)
 
-            adjcol = {}
-            for i in range(len(RN.matrix)):
-                adjcol[i] = {}
-                for k, v in RN.matrix.items():
-                    if i in v.keys():
-                        adjcol[i][k] = v[i]
-
-            rxn_from_filer_iter1 = []
-            rxn_from_filer_iter1_nodes = []
-
-            row = RN.matrix[entry.parameters["ind"]]
-            col = adjcol[entry.parameters["ind"]]
+            row = RN.matrix[entry_ind]  # type: ignore
+            col = RN.matrix_inverse[entry_ind]
 
             for kr, vr in row.items():
                 for kc, vc in col.items():
