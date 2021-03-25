@@ -910,10 +910,10 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(RN_loaded.matrix_inverse, loaded_inverse_matrix)
 
     def test_concerted_reaction_filter(self):
-        r, r_node = ReactionNetwork.concerted_reaction_filter("1+PR_2,3", "6,2+7")
+        r, r_node = ReactionNetwork.concerted_reaction_filter("6,2+7", "2+PR_1,3")
         self.assertEqual([[1, 6], [3, 7]], r)
-        self.assertEqual([[1, 6], [3, 7], ["1+PR_2,3", "6,2+7"]], r_node)
-        r, r_node = ReactionNetwork.concerted_reaction_filter("1+PR_2,3+10", "6,2+7")
+        self.assertEqual([[1, 6], [3, 7], ["6,2+7", "2+PR_1,3"]], r_node)
+        r, r_node = ReactionNetwork.concerted_reaction_filter("2+PR_1,3+10", "6,2+7")
         self.assertEqual(r, None)
         self.assertEqual(r_node, None)
 

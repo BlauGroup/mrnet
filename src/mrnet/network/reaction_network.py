@@ -1443,20 +1443,19 @@ class ReactionNetwork(MSONable):
     def concerted_reaction_filter(in_reaction_node, out_reaction_node):
         """
         A method to identify a valid concerted reaction based on stiochomtery of maximum of 2 reactants and products
-        :param in_reaction_node: incoming reaction node "1+PR_2,3"
-        :param out_reaction_node: outgoing reaction node "6,2+7"
+        :param in_reaction_node: incoming reaction node "6,2+7"
+        :param out_reaction_node: outgoing reaction node "2+PR_1,3"
         :return: r: combined reaction's reactant and product [[1,6],[3,7]], r_node: combined reaction's reactant and
-        product as well as the two reaction nodes - ex [[1,6],[3,7], "1+PR_2,3", "2+PR_6,7"]
+        product as well as the two reaction nodes - ex [[1,6],[3,7], "6,2+7","2+PR_1,3"]
         """
         r = None
         r_node = None
         unique_reactions = []
-        reactions_with_in_out_nodes = []
         (
             in_reactants,
             in_products,
         ) = ReactionNetwork.parse_reaction_node(in_reaction_node)
-        out_reactants, out_products = ReactionNetwork.parse_reaction_node(
+        (out_reactants, out_products) = ReactionNetwork.parse_reaction_node(
             out_reaction_node
         )
         combined_reactants = in_reactants + out_reactants
@@ -1479,7 +1478,6 @@ class ReactionNetwork(MSONable):
                 combined_products,
                 [in_reaction_node, out_reaction_node],
             ]
-            reactions_with_in_out_nodes.append(r_node)
         return r, r_node
 
     def build_matrix(self) -> Dict[int, Dict[int, List[Tuple]]]:
@@ -1591,7 +1589,7 @@ class ReactionNetwork(MSONable):
         elif len(reaction[0]) == 1 and len(reaction[1]) == 2:
             nstr1 = ReactionNetwork.generate_node_string(reaction[0], reaction[1])
             r1 = (reaction[0][0], reaction[1][0], nstr1, reaction[2], "c")
-            r2 = (reaction[0][0], reaction[1][1], nstr1, reaction[2], "con")
+            r2 = (reaction[0][0], reaction[1][1], nstr1, reaction[2], "c")
             temp = [r1, r2]
         elif len(reaction[0]) == 2 and len(reaction[1]) == 1:
             nstr1 = ReactionNetwork.generate_node_string(reaction[0], reaction[1])
@@ -1656,7 +1654,7 @@ class ReactionNetwork(MSONable):
 
             for kr, vr in row.items():
                 for kc, vc in col.items():
-                    if kr != kc:  # and vr != 0 and end != 0:
+                    if kr != kc:
                         for s2 in vr:
                             for e2 in vc:
                                 incoming_reaction_dG = e2[1]
@@ -1708,7 +1706,6 @@ class ReactionNetwork(MSONable):
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-                        # print(reaction, node, g.nodes[node]["free_energy"])
                         g.remove_node(node)
                 RN.add_reaction(g)
                 c1 = c1 + 1
@@ -1725,8 +1722,6 @@ class ReactionNetwork(MSONable):
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-
-                        # print(reaction, node, g.nodes[node]["free_energy"])
                         g.remove_node(node)
 
                 RN.add_reaction(g)
@@ -1743,8 +1738,6 @@ class ReactionNetwork(MSONable):
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-
-                        # print(reaction, node, g.nodes[node]["free_energy"])
                         g.remove_node(node)
 
                 RN.add_reaction(g)
@@ -1763,8 +1756,6 @@ class ReactionNetwork(MSONable):
                 g = cr.graph_representation()
                 for node in list(g.nodes):
                     if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-
-                        # print(reaction, node, g.nodes[node]["free_energy"])
                         g.remove_node(node)
 
                 RN.add_reaction(g)
