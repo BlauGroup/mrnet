@@ -23,7 +23,7 @@ from pymatgen.analysis.fragmenter import metal_edge_extender
 
 def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
     """
-    given a file 'molecule.xyz', find the index corresponding to the
+    given a file 'molecule.xyz', find the mol_entry corresponding to the
     molecule graph with given charge
     """
     target_mol_graph = MoleculeGraph.with_local_env_strategy(
@@ -189,6 +189,9 @@ class SerializedReactionNetwork:
         self.index_to_reaction = index_to_reaction
 
     def __extract_species_data(self, entries_list):
+        """
+        store MoleculeEntry data so it can be recalled later
+        """
         species_data = {}
         for entry in entries_list:
             entry_id = entry.entry_id
@@ -198,6 +201,12 @@ class SerializedReactionNetwork:
         self.species_data = species_data
 
     def serialize(self):
+        """
+        write the reaction networks to files for ingestion by RNMC
+        """
+
+        # these variables are used like folder + number_of_species_postfix
+        # postfix is to remind us that they are not total paths
         number_of_species_postfix = "/number_of_species"
         number_of_reactions_postfix = "/number_of_reactions"
         number_of_reactants_postfix = "/number_of_reactants"
@@ -272,6 +281,7 @@ def serialize_simulation_parameters(
     number_of_simulations: Optional[int] = 100,
 ):
     """
+    write simulation paramaters to a file so that they can be ingested by RNMC
 
     Args:
         folder (Path): Folder in which to store simulation parameters
@@ -679,7 +689,12 @@ def run(
     number_of_steps: int = 200,
     number_of_simulations: int = 1000,
     all_rate_coefficients_are_one: bool = False,
-):
+) -> SimulationAnalyser:
+    """
+    procedure which takes a list of molecule entries + initial state and runs
+    RNMC. It returns a simulation analyser which bundles together all the analysis
+    procedures.
+    """
 
     reaction_generator = ReactionGenerator(molecule_entries)
     rnsd = SerializedReactionNetwork(
@@ -709,6 +724,11 @@ def run(
 
 
 def resume_analysis(network_folder: str):
+    """
+    as part of serialization, the SerializedReactionNetwork is stored as a
+    pickle in the network folder. This allows for analysis to be picked up in a
+    new python session.
+    """
     with open(network_folder + "/rnsd.pickle", "rb") as f:
         rnsd = pickle.load(f)
 
