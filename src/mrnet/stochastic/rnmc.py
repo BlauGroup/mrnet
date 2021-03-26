@@ -49,6 +49,12 @@ def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
         return None
 
 
+# TODO: once there is a central place for these, import from there
+boltzman_constant = 8.617e-5  # eV/K
+planck_constant = 6.582e-16  # eV s
+room_temp = 298.15  # K
+
+
 class SerializedReactionNetwork:
     """
     An object designed to store data from a ReactionNetwork suitable for use with
@@ -62,8 +68,8 @@ class SerializedReactionNetwork:
         network_folder: str,
         param_folder: str,
         logging: bool = False,
-        positive_weight_coef: float = 38.61,
-        all_rate_coefficients_are_one=False,
+        temperature=room_temp,
+        constant_barrier=None,
     ):
 
         if isinstance(reaction_network, ReactionGenerator):
@@ -77,8 +83,8 @@ class SerializedReactionNetwork:
         self.network_folder = network_folder
         self.param_folder = param_folder
         self.logging = logging
-        self.positive_weight_coef = positive_weight_coef
-        self.all_rate_coefficients_are_one = all_rate_coefficients_are_one
+        self.temperature = temperature
+        self.constant_barrier = constant_barrier
 
         self.__extract_index_mappings(reactions)
         if logging:
@@ -171,15 +177,27 @@ class SerializedReactionNetwork:
             )
 
         for reaction in index_to_reaction:
-            if self.all_rate_coefficients_are_one:
-                reaction["rate_constant"] = 1.0
-            else:
-                dG = reaction["free_energy"]
-                if dG > 0:
-                    rate = math.exp(-self.positive_weight_coef * dG)
+
+            dG = reaction["free_energy"]
+            kT = boltzman_constant * self.temperature
+            max_rate = kT / planck_constant
+
+            if self.constant_barrier is None:
+                if dG < 0:
+                    rate = max_rate
                 else:
-                    rate = math.exp(-dG)
-                reaction["rate_constant"] = rate
+                    rate = max_rate * math.exp(-dG / kT)
+
+            # if all rates are being set using a constant_barrier as in this formula,
+            # then the constant barrier will not actually affect the simulation. It
+            # becomes important when rates are being manually set.
+            else:
+                if dG < 0:
+                    rate = max_rate * math.exp(-self.constant_barrier / kT)
+                else:
+                    rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
+
+            reaction["rate_constant"] = rate
 
         rev = {i: species for species, i in species_to_index.items()}
         self.number_of_reactions = 2 * reaction_count
@@ -690,7 +708,7 @@ def run(
     number_of_threads: int = 4,
     number_of_steps: int = 200,
     number_of_simulations: int = 1000,
-    all_rate_coefficients_are_one: bool = False,
+    constant_barrier=None,
 ) -> SimulationAnalyser:
     """
     procedure which takes a list of molecule entries + initial state and runs
@@ -705,7 +723,7 @@ def run(
         network_folder,
         param_folder,
         logging=False,
-        all_rate_coefficients_are_one=all_rate_coefficients_are_one,
+        constant_barrier=constant_barrier,
     )
 
     rnsd.serialize()

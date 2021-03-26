@@ -79,15 +79,7 @@ class RNMC(PymatgenTest):
 
         initial_state_data = [(li_plus_mol_entry, 30), (ec_mol_entry, 30)]
 
-        run(
-            molecule_entries,
-            initial_state_data,
-            network_folder,
-            param_folder,
-            4,
-            200,
-            1000,
-        )
+        run(molecule_entries, initial_state_data, network_folder, param_folder)
 
         os.system("rm -r " + network_folder)
         os.system("rm -r " + param_folder)
