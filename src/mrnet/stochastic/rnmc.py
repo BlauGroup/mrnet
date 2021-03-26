@@ -62,8 +62,10 @@ class SerializedReactionNetwork:
         network_folder: str,
         param_folder: str,
         logging: bool = False,
-        positive_weight_coef: float = 38.61,
-        all_rate_coefficients_are_one=False,
+        boltzman_constant = 8.617e-5, # eV/K
+        planck_constant = 6.582e-16, # eV s
+        temperature = 298.15, # K
+        constant_barrier=None,
     ):
 
         if isinstance(reaction_network, ReactionGenerator):
@@ -77,8 +79,10 @@ class SerializedReactionNetwork:
         self.network_folder = network_folder
         self.param_folder = param_folder
         self.logging = logging
-        self.positive_weight_coef = positive_weight_coef
-        self.all_rate_coefficients_are_one = all_rate_coefficients_are_one
+        self.boltzman_constant = boltzman_constant
+        self.planck_constant = planck_constant
+        self.temperature = temperature
+        self.constant_barrier = constant_barrier
 
         self.__extract_index_mappings(reactions)
         if logging:
@@ -171,15 +175,24 @@ class SerializedReactionNetwork:
             )
 
         for reaction in index_to_reaction:
-            if self.all_rate_coefficients_are_one:
-                reaction["rate_constant"] = 1.0
-            else:
-                dG = reaction["free_energy"]
-                if dG > 0:
-                    rate = math.exp(-self.positive_weight_coef * dG)
+
+            dG = reaction["free_energy"]
+            kT = self.boltzman_constant * self.temperature
+            max_rate = kT / self.planck_constant
+
+            if self.constant_barrier is None:
+                if dG < 0:
+                    rate = max_rate
                 else:
-                    rate = math.exp(-dG)
-                reaction["rate_constant"] = rate
+                    rate = max_rate * math.exp(- dG / kT)
+
+            else:
+                if dG < 0:
+                    rate = math.exp(-self.constant_barrier / kT)
+                else:
+                    rate = math.exp(-(self.constant_barrier + dG)/ kT)
+
+            reaction["rate_constant"] = rate
 
         rev = {i: species for species, i in species_to_index.items()}
         self.number_of_reactions = 2 * reaction_count
@@ -690,7 +703,7 @@ def run(
     number_of_threads: int = 4,
     number_of_steps: int = 200,
     number_of_simulations: int = 1000,
-    all_rate_coefficients_are_one: bool = False,
+    constant_barrier=None
 ) -> SimulationAnalyser:
     """
     procedure which takes a list of molecule entries + initial state and runs
@@ -705,7 +718,7 @@ def run(
         network_folder,
         param_folder,
         logging=False,
-        all_rate_coefficients_are_one=all_rate_coefficients_are_one,
+        constant_barrier=constant_barrier
     )
 
     rnsd.serialize()
