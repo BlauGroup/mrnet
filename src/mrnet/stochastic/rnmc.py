@@ -69,7 +69,7 @@ class SerializedReactionNetwork:
         param_folder: str,
         logging: bool = False,
         temperature=room_temp,
-        constant_barrier=None
+        constant_barrier=None,
     ):
 
         if isinstance(reaction_network, ReactionGenerator):
