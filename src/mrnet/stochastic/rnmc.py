@@ -192,9 +192,9 @@ class SerializedReactionNetwork:
 
             else:
                 if dG < 0:
-                    rate = math.exp(-self.constant_barrier / kT)
+                    rate = max_rate * math.exp(-self.constant_barrier / kT)
                 else:
-                    rate = math.exp(-(self.constant_barrier + dG) / kT)
+                    rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
 
             reaction["rate_constant"] = rate
 
