@@ -83,10 +83,7 @@ class RNMC(PymatgenTest):
             molecule_entries,
             initial_state_data,
             network_folder,
-            param_folder,
-            4,
-            200,
-            1000,
+            param_folder
         )
 
         os.system("rm -r " + network_folder)
