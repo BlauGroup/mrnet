@@ -184,7 +184,7 @@ class SerializedReactionNetwork:
                 if dG < 0:
                     rate = max_rate
                 else:
-                    rate = max_rate * math.exp(- dG / kT)
+                    rate = max_rate * math.exp(-dG / kT)
 
             else:
                 if dG < 0:
@@ -703,7 +703,7 @@ def run(
     number_of_threads: int = 4,
     number_of_steps: int = 200,
     number_of_simulations: int = 1000,
-    constant_barrier=None
+    constant_barrier=None,
 ) -> SimulationAnalyser:
     """
     procedure which takes a list of molecule entries + initial state and runs
@@ -718,7 +718,7 @@ def run(
         network_folder,
         param_folder,
         logging=False,
-        constant_barrier=constant_barrier
+        constant_barrier=constant_barrier,
     )
 
     rnsd.serialize()
