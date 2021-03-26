@@ -48,6 +48,11 @@ def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
     else:
         return None
 
+# TODO: once there is a central place for these, import from there
+boltzman_constant = 8.617e-5  # eV/K
+planck_constant = 6.582e-16  # eV s
+room_temp = 298.15  # K
+
 
 class SerializedReactionNetwork:
     """
@@ -62,10 +67,8 @@ class SerializedReactionNetwork:
         network_folder: str,
         param_folder: str,
         logging: bool = False,
-        boltzman_constant=8.617e-5,  # eV/K
-        planck_constant=6.582e-16,  # eV s
-        temperature=298.15,  # K
-        constant_barrier=None,
+        temperature=room_temp,
+        constant_barrier=None
     ):
 
         if isinstance(reaction_network, ReactionGenerator):
@@ -177,8 +180,8 @@ class SerializedReactionNetwork:
         for reaction in index_to_reaction:
 
             dG = reaction["free_energy"]
-            kT = self.boltzman_constant * self.temperature
-            max_rate = kT / self.planck_constant
+            kT = boltzman_constant * self.temperature
+            max_rate = kT / planck_constant
 
             if self.constant_barrier is None:
                 if dG < 0:
