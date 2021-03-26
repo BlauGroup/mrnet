@@ -409,7 +409,9 @@ class SimulationAnalyser:
         self.number_simulations = len(self.reaction_histories)
         self.rnsd.visualize_molecules()
 
-    def extract_species_consumption_info(self, target_species_index: int):
+    def extract_species_consumption_info(
+            self,
+            target_species_index: int) -> Tuple[Dict[int, int], Dict[int, int], List[int]]:
         """
         given a target molecule, return all the ways the molecule was
         created, all the ways the molecule was consumed and the ending
@@ -723,7 +725,7 @@ def run(
     return simulation_analyzer
 
 
-def resume_analysis(network_folder: str):
+def resume_analysis(network_folder: str) -> SimulationAnalyser:
     """
     as part of serialization, the SerializedReactionNetwork is stored as a
     pickle in the network folder. This allows for analysis to be picked up in a
