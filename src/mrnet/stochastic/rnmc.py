@@ -62,9 +62,9 @@ class SerializedReactionNetwork:
         network_folder: str,
         param_folder: str,
         logging: bool = False,
-        boltzman_constant = 8.617e-5, # eV/K
-        planck_constant = 6.582e-16, # eV s
-        temperature = 298.15, # K
+        boltzman_constant=8.617e-5,  # eV/K
+        planck_constant=6.582e-16,  # eV s
+        temperature=298.15,  # K
         constant_barrier=None,
     ):
 
@@ -190,7 +190,7 @@ class SerializedReactionNetwork:
                 if dG < 0:
                     rate = math.exp(-self.constant_barrier / kT)
                 else:
-                    rate = math.exp(-(self.constant_barrier + dG)/ kT)
+                    rate = math.exp(-(self.constant_barrier + dG) / kT)
 
             reaction["rate_constant"] = rate
 
