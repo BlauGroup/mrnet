@@ -83,8 +83,6 @@ class SerializedReactionNetwork:
         self.network_folder = network_folder
         self.param_folder = param_folder
         self.logging = logging
-        self.boltzman_constant = boltzman_constant
-        self.planck_constant = planck_constant
         self.temperature = temperature
         self.constant_barrier = constant_barrier
 
@@ -190,6 +188,9 @@ class SerializedReactionNetwork:
                 else:
                     rate = max_rate * math.exp(-dG / kT)
 
+            # if all rates are being set using a constant_barrier as in this formula,
+            # then the constant barrier will not actually affect the simulation. It
+            # becomes important when rates are being manually set.
             else:
                 if dG < 0:
                     rate = max_rate * math.exp(-self.constant_barrier / kT)
