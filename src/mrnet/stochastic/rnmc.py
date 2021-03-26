@@ -410,8 +410,8 @@ class SimulationAnalyser:
         self.rnsd.visualize_molecules()
 
     def extract_species_consumption_info(
-            self,
-            target_species_index: int) -> Tuple[Dict[int, int], Dict[int, int], List[int]]:
+        self, target_species_index: int
+    ) -> Tuple[Dict[int, int], Dict[int, int], List[int]]:
         """
         given a target molecule, return all the ways the molecule was
         created, all the ways the molecule was consumed and the ending
