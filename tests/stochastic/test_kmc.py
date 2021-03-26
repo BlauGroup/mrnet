@@ -6,7 +6,7 @@ import math
 
 import numpy as np
 from scipy.constants import N_A
-
+from monty.serialization import loadfn
 from pymatgen.util.testing import PymatgenTest
 
 from mrnet.stochastic.kmc import (
@@ -16,6 +16,7 @@ from mrnet.stochastic.kmc import (
     get_coordination,
     KmcDataAnalyzer,
 )
+
 
 try:
     from openbabel import openbabel as ob
