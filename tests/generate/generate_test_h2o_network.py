@@ -19,7 +19,7 @@ test_dir = os.path.join(
     "reaction_network_files",
 )
 
-""" 
+"""
 Create a reaction network for testing, based on H2O molecule.
 Species include H2, H2O, H, O, O2, OH, H3O, each at the -1, 0, and +1 charge states.
 
