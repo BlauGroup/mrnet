@@ -638,6 +638,8 @@ class ReactionNetwork(MSONable):
                 else:
                     PR_record[pr] = [edge]
         PR_record = {key: list(set(PR_record[key])) for key in PR_record}
+        list_cp = list(PR_record.keys())
+        [PR_record.pop(k) for k in list_cp if PR_record[k] == []]
         self.PR_record = PR_record
         return PR_record
 
