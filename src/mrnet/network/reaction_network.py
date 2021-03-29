@@ -1211,9 +1211,9 @@ class ReactionNetwork(MSONable):
         bad_nodes = []
         for node in nodes:
             for bad_node in self.PR_record[node]:
-                bad_nodes.append(bad_node)
+                bad_nodes.append(bad_node[1])
             for bad_nodes2 in self.Reactant_record[node]:
-                bad_nodes.append(bad_nodes2)
+                bad_nodes.append(bad_nodes2[1])
         if remove_nodes:
             pruned_graph = copy.deepcopy(self.graph)
             pruned_graph.remove_nodes_from(bad_nodes)
