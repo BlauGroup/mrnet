@@ -11,6 +11,7 @@ from ast import literal_eval
 
 import networkx as nx
 from monty.json import MSONable
+from monty.serialization import dumpfn, loadfn
 from networkx.readwrite import json_graph
 
 from mrnet.core.mol_entry import MoleculeEntry
@@ -680,7 +681,7 @@ class ReactionNetwork(MSONable):
         return Reactant_record
 
     def solve_prerequisites(
-        self, starts: List[int], weight: str, max_iter=25
+        self, starts: List[int], weight: str, max_iter=25, generate_test_files=False,
     ):  # -> Tuple[Union[Dict[Union[int, Any], dict], Any], Any]:
         """
             A method to solve all of the prerequisites found in
@@ -771,8 +772,7 @@ class ReactionNetwork(MSONable):
             )
 
             # print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
-            """
-            if ii == 4:
+            if ii == 4 and generate_test_files:
                 pickle_in = open(
                     os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
                     "wb",
@@ -783,7 +783,10 @@ class ReactionNetwork(MSONable):
                     "wb",
                 )
                 pickle.dump(self.graph, pickle_in)
-            """
+                dumpfn(
+                    min_cost,
+                    os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN_ak.json"),
+                )
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
             self.min_cost = copy.deepcopy(min_cost)
@@ -800,16 +803,16 @@ class ReactionNetwork(MSONable):
         PRs = self.final_PR_check(PRs)
         self.PRs = PRs
 
-        print(
-            "total input molecules:",
-            len(self.entries_list),
-            "solvable PRs:",
-            len(old_solved_PRs),
-            "unsolvable PRs:",
-            len(self.unsolvable_PRs),
-            "not reachable mols:",
-            len(self.not_reachable_nodes),
-        )
+        # print(
+        #    "total input molecules:",
+        #    len(self.entries_list),
+        #    "solvable PRs:",
+        #    len(old_solved_PRs),
+        #    "unsolvable PRs:",
+        #    len(self.unsolvable_PRs),
+        #    "not reachable mols:",
+        #    len(self.not_reachable_nodes),
+        # )
         print("end solve_prerequisities", time.time())
         return PRs, old_solved_PRs
 

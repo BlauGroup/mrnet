@@ -506,7 +506,7 @@ class TestReactionNetwork(PymatgenTest):
 
         # set up input variables
         min_cost_str = loadfn(
-            os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN.json")
+            os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN_ak.json")
         )
         with open(
             os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN_ak.pkl"), "rb",
@@ -522,7 +522,6 @@ class TestReactionNetwork(PymatgenTest):
         attrs_cal = RN_pr_ii_4.update_edge_weights(min_cost, orig_graph)
 
         # assert
-        # print(attrs_cal.keys())
         self.assertEqual(len(attrs_cal), 6143)
         self.assertEqual(attrs_cal[(556, "456+556,421")]["softplus"], 0.24363920804933614)
         self.assertEqual(attrs_cal[(41, "41+556,42")]["softplus"], 0.26065563056500646)
