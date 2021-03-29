@@ -26,6 +26,7 @@ from mrnet.core.reactions import (
     MetalHopReaction,
 )
 from mrnet.utils.classes import load_class
+from mrnet.utils.constants import ROOM_TEMP
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith"
 __version__ = "0.1"
@@ -347,6 +348,7 @@ class ReactionNetwork(MSONable):
         PR_record,
         min_cost,
         num_starts,
+        weight,
     ):
         """
         :param electron_free_energy: Electron free energy (in eV)
@@ -362,6 +364,8 @@ class ReactionNetwork(MSONable):
         :param PR_record: dict containing reaction prerequisites
         :param min_cost: dict containing costs of entries in the network
         :param num_starts: Number of starting molecules
+        :param weight: Cost function to be used. Options include:
+            "softplus", "exponent", "boltz_const", "tst_const"
         """
 
         self.electron_free_energy = electron_free_energy
@@ -394,10 +398,10 @@ class ReactionNetwork(MSONable):
     def from_input_entries(
         cls,
         input_entries,
-        electron_free_energy=-2.15,
-        temperature=298.15,
-        solvent_dielectric=18.5,
-        solvent_refractive_index=1.415,
+        electron_free_energy,
+        solvent_dielectric,
+        solvent_refractive_index,
+        temperature=ROOM_TEMP,
         replace_ind=True,
     ):
         """
