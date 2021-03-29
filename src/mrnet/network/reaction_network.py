@@ -162,18 +162,16 @@ class ReactionPath(MSONable):
                     class_instance.cost += graph[step][path[ii + 1]][weight]
                     # print(step)
                     if isinstance(step, str):  # REACTION NODE
-                        a = path[ii - 1]  # source reactant (non-pr)
                         reactants = step.split(",")[0]
                         products = step.split(",")[1]
                         if "+" in reactants:  # prs for this reaction
                             prod = []  # type: List[Union[str, int]]
                             # a = int(step.split(",")[0].split("+PR_")[0])
-                            rct_indices = list(set(reactants.split("+")))
-                            if len(rct_indices) == 1:
-                                pr = int(rct_indices[0])
-                            else:
-                                other_el = [el for el in rct_indices if int(el) != a]
-                                pr = other_el[0]
+                            a = path[ii - 1]  # source reactant (non-pr)
+                            rct_indices = list(reactants.split("+"))
+                            rct_indices.remove(str(a))
+                            a = int(a)
+                            pr = int(rct_indices[0])
                             # pr = int(step.split(",")[0].split("+PR_")[1])
                             if "+" in step.split(",")[1]:
                                 c = int(step.split(",")[1].split("+")[0])
@@ -709,7 +707,6 @@ class ReactionNetwork(MSONable):
         new_solved_PRs = ["placeholder"]
         old_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
         new_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
-        print("STARTS:", starts)
         self.weight = weight
         self.num_starts = len(starts)
         self.PR_byproducts = {}  # type: Dict[int, Dict[str, int]]
@@ -891,7 +888,7 @@ class ReactionNetwork(MSONable):
                 if node not in paths.keys():
                     not_reachable_nodes_for_start[start].append(int(node))
             for node in paths:
-                if self.graph.nodes[node]["bipartite"] == 0:
+                if self.graph.nodes[node]["bipartite"] == 0:  # molecule node
                     if node not in self.reachable_nodes:
                         self.reachable_nodes.append(int(node))
 
@@ -901,21 +898,33 @@ class ReactionNetwork(MSONable):
                     nodes = []
                     PR = []
                     Reactants = []
-                    for step in paths[node]:
+                    # print(paths[node])
+                    for ii, step in enumerate(paths[node]):
+                        # print(step)
                         if isinstance(step, int):
                             nodes.append(step)
-                        elif "PR_" in step:  # flag
+                        elif "+" in step.split(",")[0]:  # Has PRs
                             if step.count("+") == 1:
                                 nodes = nodes + [step.split("+")[0]]
-                                Reactants.append(int(step.split("+")[0]))
-                                PR.append(int(step.split("+")[1].split("PR_")[1].split(",")[0]))
+                                # Reactants.append(int(step.split("+")[0]))
+                                # PR.append(int(step.split("+")[1].split("PR_")[1].split(",")[0]))
+                                Reactants.append(int(paths[node][ii - 1]))  # source reactant
+                                # "pr" reactant identification
+                                source = str(paths[node][ii - 1])
+                                rct_indices = list(step.split(",")[0].split("+"))
+                                # print(source, rct_indices)
+                                rct_indices.remove(source)
+                                PR.append(int(rct_indices[0]))
                                 if node in PR:
                                     if node not in wrong_paths[start]:
                                         wrong_paths[start].append(int(node))
-                                nodes = nodes + step.split("+")[1].split("PR_")[1].split(",")
-                            elif step.count("+") == 2:
-                                nodes = nodes + [step.split(",")[0].split("+PR_")[0]]
-                                Reactants.append(step.split(",")[0].split("+PR_")[0])
+                                nodes = nodes + step.split("+")[1].split(",")
+                            elif step.split(",")[0].count("+") == 2:
+                                nodes = nodes + [step.split(",")[0].split("+")[0]]
+                                # Reactants.append(step.split(",")[0].split("+PR_")[0])
+                                rcts = step.split(",")[0].split("+")
+                                Reactants.append(int(paths[node][ii - 1]))  # source reactant
+
                                 PR.append(step.split(",")[0].split("+PR_")[1])
                                 if node in PR:
                                     if node not in wrong_paths[start]:
