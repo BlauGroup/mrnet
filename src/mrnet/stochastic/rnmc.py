@@ -710,7 +710,7 @@ def run(
     number_of_simulations: int = 1000,
     constant_barrier=None,
     single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
-    alt_binary_location=None
+    alt_binary_location=None,
 ) -> SimulationAnalyser:
     """
     procedure which takes a list of molecule entries + initial state and runs
@@ -719,8 +719,7 @@ def run(
     """
 
     reaction_generator = ReactionGenerator(
-        molecule_entries,
-        single_elem_interm_ignore=single_elem_interm_ignore
+        molecule_entries, single_elem_interm_ignore=single_elem_interm_ignore
     )
 
     rnsd = SerializedReactionNetwork(
