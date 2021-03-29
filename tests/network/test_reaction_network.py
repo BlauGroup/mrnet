@@ -371,9 +371,39 @@ class TestReactionNetwork(PymatgenTest):
                         PRs_calc[node][start].unsolved_prereqs,
                         PR_paths[node][start].unsolved_prereqs,
                     )
-                    self.assertEqual(
-                        PRs_calc[node][start].full_path, PR_paths[node][start].full_path
-                    )
+                    for i in range(
+                        len(PR_paths[node][start].full_path)
+                        if PR_paths[node][start].full_path != None
+                        else 0
+                    ):
+                        path = PR_paths[node][start].full_path[i]
+                        if isinstance(path, str):
+                            trimmed_pr = path.replace("PR_", "")
+                        else:
+                            trimmed_pr = path
+                        try:
+                            self.assertEqual(trimmed_pr, PRs_calc[node][start].full_path[i])
+                        except AssertionError:
+                            rct_path = trimmed_pr.split(",")[0].split("+")
+                            rct_calc = PRs_calc[node][start].full_path[i].split(",")[0].split("+")
+                            self.assertCountEqual(rct_path, rct_calc)
+                    for i in range(
+                        len(PR_paths[node][start].path) if PR_paths[node][start].path != None else 0
+                    ):
+                        path = PR_paths[node][start].path[i]
+                        if isinstance(path, str):
+                            trimmed_pr = path.replace("PR_", "")
+                        else:
+                            trimmed_pr = path
+                        try:
+                            self.assertEqual(trimmed_pr, PRs_calc[node][start].path[i])
+                        except AssertionError:
+                            rct_path = trimmed_pr.split(",")[0].split("+")
+                            rct_calc = PRs_calc[node][start].path[i].split(",")[0].split("+")
+                            self.assertCountEqual(rct_path, rct_calc)
+                    # self.assertEqual(
+                    #    PRs_calc[node][start].full_path, PR_paths[node][start].full_path
+                    # )
                     # self.assertEqual(PRs_calc[node][start].path, PR_paths[node][start].path)
 
                     if PRs_calc[node][start].cost != PR_paths[node][start].cost:
