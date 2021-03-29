@@ -124,11 +124,13 @@ class TestReactionPath(PymatgenTest):
     def test_characterize_path_final(self):
 
         # set up input variables
-        with open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb") as input:
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_pr_solved = pickle.load(input)
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb") as input:
+            RN_pr_solved_ak = pickle.load(input)
 
         # perform calc
-        print(RN_pr_solved.PRs[2])
+        print(RN_pr_solved.PRs[2], RN_pr_solved_ak.PRs[2])
         path_class = ReactionPath.characterize_path_final(
             RN_pr_solved.PRs[2][456].path,
             RN_pr_solved.weight,

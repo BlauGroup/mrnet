@@ -709,6 +709,7 @@ class ReactionNetwork(MSONable):
         new_solved_PRs = ["placeholder"]
         old_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
         new_attrs = {}  # type: Dict[Tuple[int, str], Dict[str, float]]
+        print("STARTS:", starts)
         self.weight = weight
         self.num_starts = len(starts)
         self.PR_byproducts = {}  # type: Dict[int, Dict[str, int]]
@@ -1086,7 +1087,6 @@ class ReactionNetwork(MSONable):
             self.graph = self.build()
         if self.PR_record is None:
             self.PR_record = self.build_PR_record()
-        print(self.PR_record.keys())
         attrs = {}
         for PR_ind in min_cost:  # all PRs in path
             for weighted_edge in self.PR_record[PR_ind]:  # all edges with this PR
