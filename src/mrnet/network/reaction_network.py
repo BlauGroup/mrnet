@@ -919,20 +919,25 @@ class ReactionNetwork(MSONable):
                                     if node not in wrong_paths[start]:
                                         wrong_paths[start].append(int(node))
                                 nodes = nodes + step.split("+")[1].split(",")
-                            elif step.split(",")[0].count("+") == 2:
+                            elif step.count("+") == 2:  # A + PR_B -> C + D
                                 nodes = nodes + [step.split(",")[0].split("+")[0]]
                                 # Reactants.append(step.split(",")[0].split("+PR_")[0])
                                 rcts = step.split(",")[0].split("+")
                                 Reactants.append(int(paths[node][ii - 1]))  # source reactant
-
-                                PR.append(step.split(",")[0].split("+PR_")[1])
+                                rcts.remove(paths[node][ii - 1])  # remove "reactant" reactant
+                                assert len(rcts) == 1
+                                PR.append(int(rcts[0]))
                                 if node in PR:
                                     if node not in wrong_paths[start]:
                                         wrong_paths[start].append(int(node))
-                                nodes = nodes + step.split(",")[1].split("+")
+                                nodes = nodes + step.split(",")[1].split("+")  # C, D
                             elif step.count("+") == 3:
-                                PR.append(step.split(",")[0].split("+PR_")[1])
-                                PR.append(step.split(",")[0].split("+PR_")[2])
+                                rcts = step.split(",")[0].split("+")
+                                rcts.remove(paths[node][ii - 1])  # remove "reactant" reactant
+                                assert len(rcts) == 2
+                                PR.extend(list(map(int, rcts)))
+                                # PR.append(step.split(",")[0].split("+PR_")[1])
+                                # PR.append(step.split(",")[0].split("+PR_")[2])
                                 if node in PR:
                                     if node not in wrong_paths[start]:
                                         wrong_paths[start].append(int(node))
