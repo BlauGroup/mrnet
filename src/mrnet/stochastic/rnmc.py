@@ -742,7 +742,6 @@ def run(
         number_of_simulations=number_of_simulations,
     )
 
-
     # in the version of RNMC distrubuted with conda-forge (the default meson build) all
     # debugging symbols are stripped, so if it segfaults, you need wade through assembly
     # to figure out what happened. alt_binary_location lets you run with an alternative
