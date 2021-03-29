@@ -825,7 +825,7 @@ def test_atom_mapping():
     """
     This is a test for the corner case where atom mapping for `LiF2 -> Li+ + F2` was
     incorrect due to reordering of reactant subgraphs. It is fixed and the test should
-    past now.
+    pass now.
     """
 
     test_file = os.path.join(
