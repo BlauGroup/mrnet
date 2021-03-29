@@ -821,5 +821,32 @@ def test_unbucket_mol_entries():
     assert out == list(range(10))
 
 
+def test_atom_mapping():
+    """
+    This is a test for the corner case where atom mapping for `LiF2 -> Li+ + F2` was
+    incorrect due to reordering of reactant subgraphs. It is fixed and the test should
+    past now.
+    """
+
+    test_file = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "test_files",
+        "reaction_files",
+        "LiF2_to_Li_F2.json",
+    )
+
+    entries = loadfn(test_file)
+    bucketed_entries = bucket_mol_entries(entries)
+
+    reactions = CoordinationBondChangeReaction.generate(bucketed_entries)
+    assert len(reactions) == 1
+
+    rxn = reactions[0]
+    assert rxn.reactant_atom_mapping == [{0: 0, 1: 1, 2: 2}]
+    assert rxn.product_atom_mapping == [{0: 1, 1: 2}, {0: 0}]
+
+
 if __name__ == "__main__":
     unittest.main()

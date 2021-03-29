@@ -2641,7 +2641,6 @@ def generate_atom_mapping_1_2(
             f"Cannot obtain node mapping. Reactant: {reactant}; "
             f"Products: {'; '.join([str(m) for m in products])}"
         )
-
         products_atom_mapping.append(node_mapping)
 
     # 0~1 and 1~0
@@ -2656,6 +2655,7 @@ def generate_atom_mapping_1_2(
                 f"Cannot obtain node mapping. Reactant: {reactant}; "
                 f"Products: {'; '.join([str(m) for m in products])}"
             )
+            products_atom_mapping.append(node_mapping)
 
     return reactant_atom_mapping, products_atom_mapping
 
