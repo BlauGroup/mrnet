@@ -42,7 +42,9 @@ class ReactionGenerator:
             reactions,
             _,
         ) = ReactionNetwork.identify_concerted_rxns_for_specific_intermediate(
-            entry, self.rn, [e.parameters["ind"] for e in self.rn.entries_list]
+            entry, self.rn,
+            mols_to_keep=[e.parameters["ind"] for e in self.rn.entries_list],
+            single_elem_interm_ignore=self.single_elem_interm_ignore
         )
 
         return_list = []
@@ -111,10 +113,14 @@ class ReactionGenerator:
     def __next__(self):
         return self.next_reaction()
 
-    def __init__(self, input_entries):
+    def __init__(self,
+                 input_entries,
+                 single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
+                 ):
 
         self.rn = ReactionNetwork.from_input_entries(input_entries)
         self.rn.build()
+        self.single_elem_interm_ignore = single_elem_interm_ignore
 
         # generator state
 

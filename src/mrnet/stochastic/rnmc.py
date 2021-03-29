@@ -709,6 +709,8 @@ def run(
     number_of_steps: int = 200,
     number_of_simulations: int = 1000,
     constant_barrier=None,
+    single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
+    alt_binary_location=None
 ) -> SimulationAnalyser:
     """
     procedure which takes a list of molecule entries + initial state and runs
@@ -716,7 +718,11 @@ def run(
     procedures.
     """
 
-    reaction_generator = ReactionGenerator(molecule_entries)
+    reaction_generator = ReactionGenerator(
+        molecule_entries,
+        single_elem_interm_ignore=single_elem_interm_ignore
+    )
+
     rnsd = SerializedReactionNetwork(
         reaction_generator,
         initial_state,
@@ -736,7 +742,16 @@ def run(
         number_of_simulations=number_of_simulations,
     )
 
-    os.system("RNMC " + network_folder + " " + param_folder)
+
+    # in the version of RNMC distrubuted with conda-forge (the default meson build) all
+    # debugging symbols are stripped, so if it segfaults, you need wade through assembly
+    # to figure out what happened. alt_binary_location lets you run with an alternative
+    # version of RNMC. Useful if you want to see explicit backtraces
+
+    if alt_binary_location is None:
+        os.system("RNMC" + " " + network_folder + " " + param_folder)
+    else:
+        os.system(alt_binary_location + " " + network_folder + " " + param_folder)
 
     simulation_analyzer = SimulationAnalyser(rnsd, network_folder)
 
