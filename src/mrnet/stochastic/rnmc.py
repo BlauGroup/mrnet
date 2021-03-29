@@ -779,8 +779,8 @@ def resume_analysis(network_folder: str) -> SimulationAnalyser:
     with open(network_folder + "/rnsd.pickle", "rb") as f:
         rnsd = pickle.load(f)
 
-    with open(network_folder + "/initial_state", "r") as f:
-        rnsd.initial_state = np.array([int(x) for x in f.readlines()], dtype=int)
+    with open(network_folder + "/initial_state", "r") as s:
+        rnsd.initial_state = np.array([int(x) for x in s.readlines()], dtype=int)
 
     sa = SimulationAnalyser(rnsd, network_folder)
     return sa
