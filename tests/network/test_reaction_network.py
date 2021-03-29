@@ -330,7 +330,7 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_solve_prerequisites(self):  # FLAG
-        with open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb") as input:
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_loaded_pr_solved = pickle.load(input)
         # set up RN
         RN = copy.deepcopy(self.RN_build)
