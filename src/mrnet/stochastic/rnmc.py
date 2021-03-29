@@ -293,9 +293,15 @@ class SerializedReactionNetwork:
             # in the network folder directly and run RNMC outside of the pipeline. For this to work
             # we need to make sure that the initial state is not stored in the rnsd pickle.
             initial_state = self.initial_state
+            network_folder = self.network_folder
+            param_folder = self.param_folder
             self.initial_state = None
+            self.network_folder = None
+            self.param_folder = None
             pickle.dump(self, f)
             self.initial_state = initial_state
+            self.network_folder = network_folder
+            self.param_folder = param_folder
 
         print("finished serializing")
 
@@ -781,6 +787,8 @@ def resume_analysis(network_folder: str) -> SimulationAnalyser:
 
     with open(network_folder + "/initial_state", "r") as s:
         rnsd.initial_state = np.array([int(x) for x in s.readlines()], dtype=int)
+
+    rnsd.network_folder = network_folder
 
     sa = SimulationAnalyser(rnsd, network_folder)
     return sa
