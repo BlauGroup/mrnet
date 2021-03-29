@@ -285,7 +285,17 @@ class SerializedReactionNetwork:
                 f.write(str(int(self.initial_state[i])) + "\n")
 
         with open(folder + "/rnsd.pickle", "wb") as f:
+            # the full RNMC pipeline (encapsulated in the run function) is nice, but it
+            # is somewhat inflexible, for example, what if you want to do multiple MC runs
+            # with different initial states.
+
+            # for now, the best way to do this is to serialize and then modify the files
+            # in the network folder directly and run RNMC outside of the pipeline. For this to work
+            # we need to make sure that the initial state is not stored in the rnsd pickle.
+            initial_state = self.initial_state
+            self.initial_state = None
             pickle.dump(self, f)
+            self.initial_state = initial_state
 
         print("finished serializing")
 
@@ -756,6 +766,10 @@ def run(
     return simulation_analyzer
 
 
+# long term, here is what should be done:
+# rnsd.pickle should be reduced to the minimum amount of information required to reconstruct rnsd
+# resume analysis loads the pickle and reconstructs rnsd from parameters in the network folder
+# this allows us to run simulations on the same network with different parameters
 def resume_analysis(network_folder: str) -> SimulationAnalyser:
     """
     as part of serialization, the SerializedReactionNetwork is stored as a
@@ -764,6 +778,9 @@ def resume_analysis(network_folder: str) -> SimulationAnalyser:
     """
     with open(network_folder + "/rnsd.pickle", "rb") as f:
         rnsd = pickle.load(f)
+
+    with open(network_folder + "/initial_state", "r") as f:
+        rnsd.initial_state = np.array([int(x) for x in f.readlines()], dtype=int)
 
     sa = SimulationAnalyser(rnsd, network_folder)
     return sa
