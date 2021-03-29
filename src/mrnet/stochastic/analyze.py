@@ -41,15 +41,14 @@ def update_state(state, reaction):
         state[species_index] += 1
 
 
-class SimulationAnalyser:
+class SimulationAnalyzer:
     """
     A class to analyze the resutls of a set of MC runs
     """
 
-    def __init__(self,
-                 rnsd: SerializedReactionNetwork,
-                 initial_state,
-                 network_folder: str):
+    def __init__(
+        self, rnsd: SerializedReactionNetwork, initial_state, network_folder: str
+    ):
         """
         Params:
             rnsd (SerializedReactionNetwork):
@@ -106,7 +105,6 @@ class SimulationAnalyser:
         for index in range(self.rnsd.number_of_species):
             molecule_entry = self.rnsd.species_data[index]
             visualize_molecule_entry(molecule_entry, folder + "/" + str(index) + ".pdf")
-
 
     def extract_species_consumption_info(
         self, target_species_index: int
@@ -199,9 +197,7 @@ class SimulationAnalyser:
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
         target_species_index = self.rnsd.mol_entry_to_internal_index(mol_entry)
         folder = (
-            self.network_folder
-            + "/consumption_report_"
-            + str(target_species_index)
+            self.network_folder + "/consumption_report_" + str(target_species_index)
         )
         os.mkdir(folder)
 
@@ -262,9 +258,7 @@ class SimulationAnalyser:
 
     def generate_pathway_report(self, mol_entry: MoleculeEntry, min_frequency: int):
         target_species_index = self.rnsd.mol_entry_to_internal_index(mol_entry)
-        folder = (
-            self.network_folder + "/pathway_report_" + str(target_species_index)
-        )
+        folder = self.network_folder + "/pathway_report_" + str(target_species_index)
         os.mkdir(folder)
 
         with open(folder + "/pathway_report.tex", "w") as f:
@@ -320,7 +314,6 @@ class SimulationAnalyser:
                     + str(species_index)
                     + ".pdf}}\n\n\n"
                 )
-
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
         f.write("$$\n")
@@ -397,7 +390,7 @@ class SimulationAnalyser:
             f.write("\\end{document}")
 
 
-def load_analysis(network_folder: str) -> SimulationAnalyser:
+def load_analysis(network_folder: str) -> SimulationAnalyzer:
     """
     as part of serialization, the SerializedReactionNetwork is stored as a
     pickle in the network folder. This allows for analysis to be picked up in a
@@ -409,7 +402,6 @@ def load_analysis(network_folder: str) -> SimulationAnalyser:
     with open(network_folder + "/initial_state", "r") as s:
         initial_state = np.array([int(x) for x in s.readlines()], dtype=int)
 
-
-    sa = SimulationAnalyser(rnsd, initial_state, network_folder)
+    sa = SimulationAnalyzer(rnsd, initial_state, network_folder)
 
     return sa

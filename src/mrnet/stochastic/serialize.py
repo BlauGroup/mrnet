@@ -199,12 +199,12 @@ class SerializedReactionNetwork:
         self.species_data = species_data
 
     def serialize(
-            self,
-            folder: str,
-            initial_state_data: List[Tuple[MoleculeEntry, int]],
-            factor_zero: float = 1.0,
-            factor_two: float = 1.0,
-            factor_duplicate: float = 1.0
+        self,
+        folder: str,
+        initial_state_data: List[Tuple[MoleculeEntry, int]],
+        factor_zero: float = 1.0,
+        factor_two: float = 1.0,
+        factor_duplicate: float = 1.0,
     ):
 
         """
@@ -224,7 +224,6 @@ class SerializedReactionNetwork:
         factor_duplicate_postfix = "/factor_duplicate"
         rates_postfix = "/rates"
         initial_state_postfix = "/initial_state"
-
 
         os.mkdir(folder)
 
@@ -272,7 +271,6 @@ class SerializedReactionNetwork:
             index = self.mol_entry_to_internal_index(mol_entry)
             initial_state[index] = count
 
-
         with open(folder + initial_state_postfix, "w") as f:
             for i in range(self.number_of_species):
                 f.write(str(int(initial_state[i])) + "\n")
@@ -289,7 +287,7 @@ def serialize_simulation_parameters(
     step_cutoff: Optional[int] = 200,
     time_cutoff: Optional[float] = None,
     number_of_simulations: Optional[int] = 1000,
-    base_seed: int = 1000
+    base_seed: int = 1000,
 ):
     """
     write simulation paramaters to a file so that they can be ingested by RNMC
@@ -320,14 +318,11 @@ def serialize_simulation_parameters(
         f.write(str(number_of_threads) + "\n")
 
     with open(folder + seeds_postfix, "w") as f:
-        for seed in range(1000,1000 + number_of_simulations * 2):
+        for seed in range(1000, 1000 + number_of_simulations * 2):
             f.write(str(seed) + "\n")
 
 
-def run_simulator(
-        network_folder,
-        param_folder,
-        path=None):
+def run_simulator(network_folder, param_folder, path=None):
     if path is not None:
         os.system(path + " " + network_folder + " " + param_folder)
     else:
