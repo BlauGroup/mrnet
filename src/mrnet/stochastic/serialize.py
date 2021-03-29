@@ -275,8 +275,8 @@ class SerializedReactionNetwork:
             for i in range(self.number_of_species):
                 f.write(str(int(initial_state[i])) + "\n")
 
-        with open(folder + "/rnsd.pickle", "wb") as f:
-            pickle.dump(self, f)
+        with open(folder + "/rnsd.pickle", "wb") as p:
+            pickle.dump(self, p)
 
         print("finished serializing")
 
@@ -286,7 +286,7 @@ def serialize_simulation_parameters(
     number_of_threads: int = 4,
     step_cutoff: Optional[int] = 200,
     time_cutoff: Optional[float] = None,
-    number_of_simulations: Optional[int] = 1000,
+    number_of_simulations: int = 1000,
     base_seed: int = 1000,
 ):
     """
