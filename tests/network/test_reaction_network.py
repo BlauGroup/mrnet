@@ -128,6 +128,7 @@ class TestReactionPath(PymatgenTest):
             RN_pr_solved = pickle.load(input)
 
         # perform calc
+        print(RN_pr_solved.PRs[2])
         path_class = ReactionPath.characterize_path_final(
             RN_pr_solved.PRs[2][456].path,
             RN_pr_solved.weight,
@@ -330,7 +331,7 @@ class TestReactionNetwork(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_solve_prerequisites(self):  # FLAG
         with open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb") as input:
-            RN_pr_solved = pickle.load(input)
+            RN_loaded_pr_solved = pickle.load(input)
         # set up RN
         RN = copy.deepcopy(self.RN_build)
         RN.build_PR_record()
