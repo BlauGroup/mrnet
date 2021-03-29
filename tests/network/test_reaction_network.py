@@ -71,7 +71,7 @@ class TestReactionGenerator(PymatgenTest):
 
 class TestReactionPath(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_characterize_path(self):  # JSONS/PKLS
+    def test_characterize_path(self):  # FLAG
 
         # set up input variables
         with open(
@@ -355,8 +355,8 @@ class TestReactionNetwork(PymatgenTest):
         print(PRs_calc[12])
         print(PR_paths[12])
 
-        for node in PRs_calc:
-            for start in PRs_calc[node]:
+        for node in PR_paths:
+            for start in PR_paths[node]:
                 try:
                     self.assertEqual(
                         PRs_calc[node][start].all_prereqs, PR_paths[node][start].all_prereqs
@@ -371,9 +371,9 @@ class TestReactionNetwork(PymatgenTest):
                         PRs_calc[node][start].unsolved_prereqs,
                         PR_paths[node][start].unsolved_prereqs,
                     )
-                    # self.assertEqual(
-                    #    PRs_calc[node][start].full_path, PR_paths[node][start].full_path
-                    # )
+                    self.assertEqual(
+                        PRs_calc[node][start].full_path, PR_paths[node][start].full_path
+                    )
                     # self.assertEqual(PRs_calc[node][start].path, PR_paths[node][start].path)
 
                     if PRs_calc[node][start].cost != PR_paths[node][start].cost:
@@ -387,11 +387,12 @@ class TestReactionNetwork(PymatgenTest):
                             places=2,
                         )
                 except KeyError:
+                    self.assertTrue(False)
                     print("Node: ", node)
                     print("Start: ", start)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_find_path_cost(self):  # JSONS/PKLS
+    def test_find_path_cost(self):  # FLAG
         # set up RN
 
         with open(
@@ -466,7 +467,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(PRs_cal[313], {})
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_identify_solved_PRs(self):  # JSONS/PKLS
+    def test_identify_solved_PRs(self):  # FLAG
 
         # set up RN
         with open(
@@ -560,7 +561,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertTrue(output.__contains__("No path found from any start to PR 539"))
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_find_or_remove_bad_nodes(self):  # FAIL
+    def test_find_or_remove_bad_nodes(self):  # PASS
 
         # set up RN
         RN = copy.deepcopy(self.RN_build)
@@ -800,7 +801,7 @@ class TestReactionNetwork(PymatgenTest):
             [([19, 32], [673]), ([41], [992]), ([1, 652], [40, 53]), ([4], [5, 6])],
         )
 
-    def test_generate_node_string(self):  # PASS
+    def test_generate_node_string(self):  # FLAG
 
         react_prod = [
             ([19, 32], [673]),
@@ -816,7 +817,7 @@ class TestReactionNetwork(PymatgenTest):
 
         self.assertListEqual(node_strings, ["19+PR_32,673", "41,992", "1+PR_652,40+53", "4,5+6"])
 
-    def test_build_matrix(self):  # PASS
+    def test_build_matrix(self):  # FLAG
 
         with open(
             os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
@@ -835,7 +836,7 @@ class TestReactionNetwork(PymatgenTest):
 
         self.assertEqual(RN_loaded.matrix_inverse, loaded_inverse_matrix)
 
-    def test_concerted_reaction_filter(self):  # PASS
+    def test_concerted_reaction_filter(self):  # FLAG
         r, r_node = ReactionNetwork.concerted_reaction_filter("6,2+7", "2+PR_1,3")
         self.assertEqual([[1, 6], [3, 7]], r)
         self.assertEqual([[1, 6], [3, 7], ["6,2+7", "2+PR_1,3"]], r_node)
@@ -843,7 +844,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(r, None)
         self.assertEqual(r_node, None)
 
-    def test_identify_concerted_rxns_via_intermediates(self):  # PASS
+    def test_identify_concerted_rxns_via_intermediates(self):  # FLAG
 
         # v1 and v2 comparison
         # load reactions from v1 of concerted reactions
@@ -932,7 +933,7 @@ class TestReactionNetwork(PymatgenTest):
 
         self.assertEqual(len(new_by_v3), 0)
 
-    def test_identify_concerted_rxns_for_specific_intermediate(self):  # PASS
+    def test_identify_concerted_rxns_for_specific_intermediate(self):  # FLAG
 
         with open(
             os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
@@ -948,7 +949,7 @@ class TestReactionNetwork(PymatgenTest):
         unique_reactions = set(map(lambda x: repr(x), reactions))
         self.assertEqual(len(unique_reactions), 6901)
 
-    def test_add_concerted_rxns(self):  # JSONS/PICKLES
+    def test_add_concerted_rxns(self):  # FLAG
         with open(
             os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
         ) as input:
