@@ -1,10 +1,7 @@
 from typing import Tuple, Optional, Union, List, Dict, TextIO
-import math
 import numpy as np
 import pickle
 import os
-import random
-import sys
 
 from mrnet.core.reactions import Reaction
 from mrnet.network.reaction_network import ReactionNetwork
@@ -15,11 +12,6 @@ from mrnet.utils.visualization import (
     visualize_molecule_entry,
     visualize_molecule_count_histogram,
 )
-
-from pymatgen.core.structure import Molecule
-from pymatgen.analysis.graphs import MoleculeGraph
-from pymatgen.analysis.local_env import OpenBabelNN
-from pymatgen.analysis.fragmenter import metal_edge_extender
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
