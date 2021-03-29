@@ -1,14 +1,17 @@
 import logging
+from abc import ABCMeta, abstractmethod
+from typing import List, Optional, Union
 
 import numpy as np
-from scipy.constants import h, k, N_A, pi, epsilon_0, elementary_charge
+from scipy.constants import N_A, k, pi, epsilon_0, elementary_charge
 
 from monty.json import MSONable
 
 from pymatgen.core.units import amu_to_kg
 
+from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.math import product
-from mrnet.utils.constants import ROOM_TEMP
+from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
 
 
 __author__ = "Evan Spotte-Smith"
@@ -21,7 +24,7 @@ __date__ = "September 2019"
 logger = logging.getLogger(__name__)
 
 
-class ReactionRateCalculator(MSONable):
+class ReactionRateCalculator(MSONable, metaclass=ABCMeta):
     """
     An object which can be used to calculate the rate constant, rate law,
     and chemical kinetics of reaction.
@@ -35,30 +38,10 @@ class ReactionRateCalculator(MSONable):
     Returns:
         None
     """
-    pass
 
-
-
-class TransitionStateTheoryCalculator(MSONable):
-
-    """
-    An object which represents a chemical reaction (in terms of reactants, transition state,
-    and products) and which can, from the energetics of those individual molecules, predict the
-    rate constant, rate law, and thus the chemical kinetics of the reaction.
-
-    NOTE: It is assumed that only one transition state is present.
-
-    Args:
-        reactants (list): list of MoleculeEntry objects
-        products (list): list of MoleculeEntry objects
-        transition_state (MoleculeEntry): MoleculeEntry representing the transition state between
-            the reactants and the products
-
-    Returns:
-        None
-    """
-
-    def __init__(self, reactants, products, transition_state):
+    def __init__(self,
+                 reactants: List[MoleculeEntry],
+                 products: List[MoleculeEntry]):
 
         # Assume rate law is first-order in terms of each reactant/product
         self.rate_law = {
@@ -66,27 +49,16 @@ class TransitionStateTheoryCalculator(MSONable):
             "products": np.ones(len(products)),
         }
 
-        # Store relevant information from reactants, products, rather than storing obj
-        # Here, they are stored as np arrays, which have a smaller footprint
         self.product_energy = sum([p.energy if p.energy else 0 for p in products])
         self.reactant_energy = sum([r.energy if r.energy else 0 for r in reactants])
-        self.transition_state_energy = (
-            None if transition_state is None else transition_state.energy
-        )
 
         self.product_enthalpy = sum([p.enthalpy if p.enthalpy else 0 for p in products])
         self.reactant_enthalpy = sum(
             [r.enthalpy if r.enthalpy else 0 for r in reactants]
         )
-        self.transition_state_enthalpy = (
-            None if transition_state is None else transition_state.enthalpy
-        )
 
         self.product_entropy = sum([p.entropy if p.entropy else 0 for p in products])
         self.reactant_entropy = sum([r.entropy if r.entropy else 0 for r in reactants])
-        self.transition_state_entropy = (
-            None if transition_state is None else transition_state.entropy
-        )
 
         self.reactant_str = " + ".join(
             [r.molecule.composition.alphabetical_formula for r in reactants]
@@ -142,6 +114,124 @@ class TransitionStateTheoryCalculator(MSONable):
         }
 
         return net_thermo
+
+    @abstractmethod
+    def calculate_barrier(self, temperature: float = ROOM_TEMP, reverse: bool = False):
+        pass
+
+    @abstractmethod
+    def calculate_rate_constant(self,
+                                temperature: float = ROOM_TEMP,
+                                reverse: bool = False,
+                                kappa: float = 1.0):
+        pass
+
+    @abstractmethod
+    def calculate_rate(self,
+                       concentrations: List[float],
+                       temperature: float = ROOM_TEMP,
+                       reverse: bool = False,
+                       kappa: float = 1.0):
+        pass
+
+    def __repr__(self):
+        return "Rate Calculator for: {} --> {}".format(
+            self.reactant_str, self.product_str
+        )
+
+    def __str__(self):
+        return self.__repr__()
+
+
+class BarrierlessRateCalculator(ReactionRateCalculator):
+    """
+    Based on the assumption that a reaction is driven by thermodynamics and has
+    no energy barrier (no transition state), this class calculates a simple
+    approximation for the reaction rate.
+
+    Args:
+    reactants (list): list of MoleculeEntry objects
+    products (list): list of MoleculeEntry objectss
+    """
+
+    def __init__(self,
+                 reactants: List[MoleculeEntry],
+                 products: List[MoleculeEntry]
+                 ):
+
+        super().__init__(reactants, products)
+
+    def calculate_barrier(self, temperature: float = ROOM_TEMP, reverse: bool = False):
+        return 0.0
+
+    def calculate_rate_constant(self,
+                                temperature: float = ROOM_TEMP,
+                                reverse: bool = False,
+                                kappa: float = 1.0):
+
+        gibbs = self.calculate_net_gibbs(temperature=temperature)
+
+        if reverse:
+            gibbs *= -1
+
+        if gibbs < 0.0:
+            return kappa * KB * temperature / PLANCK
+        else:
+            return (
+                    kappa * KB * temperature / PLANCK * np.exp(-gibbs / (KB * temperature))
+            )
+
+    def calculate_rate(self,
+                       concentrations: List[float],
+                       temperature: float = ROOM_TEMP,
+                       reverse: bool = False,
+                       kappa: float = 1.0):
+
+        rate_constant = self.calculate_rate_constant(
+            temperature=temperature, reverse=reverse, kappa=kappa
+        )
+
+        if reverse:
+            exponents = self.rate_law["products"]
+        else:
+            exponents = self.rate_law["reactants"]
+
+        rate = rate_constant * product(np.array(concentrations) ** exponents)
+
+        return rate
+
+
+class TSTRateCalculator(ReactionRateCalculator):
+    """
+    This class uses transition-state theory (or activated complex theory) to
+    calculate chemical kinetics.
+
+    NOTE: It is assumed that only one transition state is present.
+
+    Args:
+        reactants (list): list of MoleculeEntry objects
+        products (list): list of MoleculeEntry objects
+        transition_state (MoleculeEntry): MoleculeEntry representing the transition state between
+            the reactants and the products
+
+    """
+
+    def __init__(self,
+                 reactants: List[MoleculeEntry],
+                 products: List[MoleculeEntry],
+                 transition_state: MoleculeEntry):
+
+        self.transition_state_energy = (
+            None if transition_state is None else transition_state.energy
+        )
+        self.transition_state_enthalpy = (
+            None if transition_state is None else transition_state.enthalpy
+        )
+        self.transition_state_entropy = (
+            None if transition_state is None else transition_state.entropy
+        )
+
+        super().__init__(reactants, products)
 
     def calculate_act_energy(self, reverse=False):
         """
@@ -202,7 +292,7 @@ class TransitionStateTheoryCalculator(MSONable):
         else:
             return (trans_entropy - self.reactant_entropy) * 0.0000433641
 
-    def calculate_act_gibbs(self, temperature=ROOM_TEMP, reverse=False):
+    def calculate_barrier(self, temperature=ROOM_TEMP, reverse=False):
         """
         Calculate Gibbs free energy of activation at a given temperature.
 
@@ -240,7 +330,7 @@ class TransitionStateTheoryCalculator(MSONable):
             "energy": self.calculate_act_energy(reverse=reverse),
             "enthalpy": self.calculate_act_enthalpy(reverse=reverse),
             "entropy": self.calculate_act_entropy(reverse=reverse),
-            "gibbs": self.calculate_act_gibbs(temperature, reverse=reverse),
+            "gibbs": self.calculate_barrier(temperature, reverse=reverse),
         }
 
         return act_thermo
@@ -260,14 +350,14 @@ class TransitionStateTheoryCalculator(MSONable):
             k_rate (float): temperature-dependent rate constant
         """
 
-        gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
+        gibbs = self.calculate_barrier(temperature=temperature, reverse=reverse)
 
         k_rate = (
             kappa
-            * k
+            * KB
             * temperature
-            / h
-            * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
+            / PLANCK
+            * np.exp(-gibbs / (KB * temperature))
         )
         return k_rate
 
@@ -305,18 +395,10 @@ class TransitionStateTheoryCalculator(MSONable):
 
         return rate
 
-    def __repr__(self):
-        return "Rate Calculator for: {} --> {}".format(
-            self.reactant_str, self.product_str
-        )
-
-    def __str__(self):
-        return self.__repr__()
-
 
 class BEPRateCalculator(ReactionRateCalculator):
     """
-    A modified reaction rate calculator that uses the Bell-Evans-Polanyi principle to predict the
+    A reaction rate calculator that uses the Bell-Evans-Polanyi principle to predict the
     activation energies (and, thus, the rate constants and reaction rates) of chemical reactions.
 
     The Bell-Evans-Polanyi principle states that, for reactions within a similar class or family,
@@ -330,8 +412,8 @@ class BEPRateCalculator(ReactionRateCalculator):
     alpha = the location of the transition state along the reaction coordinate (0 <= alpha <= 1)
     ΔH = the enthalpy of reaction
 
-    Whereas ReactionRateCalculator uses the Eyring equation, here we are forced to use collision
-    theory to estimate reaction rates.
+    Whereas ReactionRateCalculator uses the Eyring equation, here we use collision theory to
+    estimate reaction rates.
 
     Args:
         reactants (list): list of MoleculeEntry objects
@@ -345,7 +427,12 @@ class BEPRateCalculator(ReactionRateCalculator):
         alpha (float): the reaction coordinate (must between 0 and 1)
     """
 
-    def __init__(self, reactants, products, ea_reference, delta_h_reference, alpha=0.5):
+    def __init__(self,
+                 reactants: List[MoleculeEntry],
+                 products: List[MoleculeEntry],
+                 ea_reference: float,
+                 delta_h_reference: float,
+                 alpha:float = 0.5):
 
         self.ea_reference = ea_reference
         self.delta_h_reference = delta_h_reference
@@ -375,9 +462,9 @@ class BEPRateCalculator(ReactionRateCalculator):
             ** 2
         )
 
-        super().__init__(reactants, products, None)
+        super().__init__(reactants, products)
 
-    def calculate_act_energy(self, reverse=False):
+    def calculate_barrier(self, temperature: float = ROOM_TEMP, reverse: bool = False):
         """
         Use the Bell-Evans-Polanyi principle to calculate the activation energy of the reaction.
 
@@ -397,27 +484,10 @@ class BEPRateCalculator(ReactionRateCalculator):
         ea = self.ea_reference + self.alpha * (enthalpy - self.delta_h_reference)
         return ea
 
-    def calculate_act_enthalpy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_enthalpy is not valid for " "BEPRateCalculator,"
-        )
-
-    def calculate_act_entropy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_entropy is not valid for " "BEPRateCalculator,"
-        )
-
-    def calculate_act_gibbs(self, temperature, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_gibbs is not valid for " "BEPRateCalculator,"
-        )
-
-    def calculate_activation_thermo(self, temperature=ROOM_TEMP, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_activation_thermo is not valid for " "BEPRateCalculator,"
-        )
-
-    def calculate_rate_constant(self, temperature=ROOM_TEMP, reverse=False, kappa=None):
+    def calculate_rate_constant(self,
+                                temperature: float = ROOM_TEMP,
+                                reverse: bool = False,
+                                kappa: float = 1.0):
         """
         Calculate the rate constant predicted by collision theory.
 
@@ -433,12 +503,16 @@ class BEPRateCalculator(ReactionRateCalculator):
 
         ea = self.calculate_act_energy(reverse=reverse)
 
-        k_rate = np.exp(-ea / (8.617333262 * 10 ** -5 * temperature))
+        k_rate = np.exp(-ea / (KB * temperature))
 
         return k_rate
 
     def calculate_rate(
-        self, concentrations, temperature=ROOM_TEMP, reverse=False, kappa=1.0
+            self,
+            concentrations: List[float],
+            temperature: float = ROOM_TEMP,
+            reverse: bool = False,
+            kappa: float = 1.0
     ):
         """
         Calculate the rate using collision theory.
@@ -484,7 +558,7 @@ class BEPRateCalculator(ReactionRateCalculator):
 
 class ExpandedBEPRateCalculator(ReactionRateCalculator):
     """
-    A modified reaction rate calculator that uses a modified version of the Bell-Evans-Polanyi
+    A reaction rate calculator that uses a modified version of the Bell-Evans-Polanyi
     principle to predict the Gibbs free energy of activation (and, thus, the rate constants and
     reaction rates) of chemical reactions.
 
@@ -500,7 +574,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
     ΔH_rel = ΔH - ΔH_0 = the difference in enthalpy change between the reaction of interest and the
         reference reaction
 
-    Here, we assume that
+    This class works on the principle that
 
     ΔG_a = ΔG_a,0 + alpha * (ΔG), where
 
@@ -553,25 +627,9 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
         # Reaction coordinate
         self.alpha = alpha
 
-        super().__init__(reactants, products, None)
+        super().__init__(reactants, products)
 
-    def calculate_act_energy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_energy is not valid for " "ExpandedBEPRateCalculator,"
-        )
-
-    def calculate_act_enthalpy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_enthalpy is not valid for "
-            "ExpandedBEPRateCalculator,"
-        )
-
-    def calculate_act_entropy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_entropy is not valid for " "ExpandedBEPCalculator,"
-        )
-
-    def calculate_act_gibbs(self, temperature=ROOM_TEMP, reverse=False):
+    def calculate_barrier(self, temperature: float = ROOM_TEMP, reverse: bool = False):
         """
         Calculate Gibbs free energy of activation at a given temperature.
 
@@ -606,13 +664,10 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
 
         return delta_ga
 
-    def calculate_activation_thermo(self, temperature=ROOM_TEMP, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_activation_thermo is not valid for "
-            "ExpandedBEPRateCalculator,"
-        )
-
-    def calculate_rate_constant(self, temperature=ROOM_TEMP, reverse=False, kappa=1.0):
+    def calculate_rate_constant(self,
+                                temperature: float = ROOM_TEMP,
+                                reverse: bool = False,
+                                kappa: float = 1.0):
         """
         Calculate the rate constant k by the Eyring-Polanyi equation of transition state theory.
 
@@ -627,19 +682,39 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
             k_rate (float): temperature-dependent rate constant
         """
 
-        gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
+        gibbs = self.calculate_barrier(temperature=temperature, reverse=reverse)
 
         k_rate = (
             kappa
-            * k
+            * KB
             * temperature
-            / h
+            / PLANCK
             * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
         )
         return k_rate
 
+    @abstractmethod
+    def calculate_rate(self,
+                       concentrations: List[float],
+                       temperature: float = ROOM_TEMP,
+                       reverse: bool = False,
+                       kappa: float = 1.0):
 
-class RedoxRateCalculator(ReactionRateCalculator):
+        rate_constant = self.calculate_rate_constant(
+            temperature=temperature, reverse=reverse, kappa=kappa
+        )
+
+        if reverse:
+            exponents = self.rate_law["products"]
+        else:
+            exponents = self.rate_law["reactants"]
+
+        rate = rate_constant * product(np.array(concentrations) ** exponents)
+
+        return rate
+
+
+class MarcusRateCalculator(ReactionRateCalculator):
     """
     This reaction rate calculator uses expressions from Marcus Theory to
     estimate the reaction rate for a reduction or oxidation reaction. It assumes
@@ -740,21 +815,6 @@ class RedoxRateCalculator(ReactionRateCalculator):
         for kk in reference.keys():
             setattr(self, kk, reference.get(kk))
 
-    def calculate_act_energy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_energy is not valid for " "RedoxRateCalculator,"
-        )
-
-    def calculate_act_enthalpy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_enthalpy is not valid for " "RedoxRateCalculator,"
-        )
-
-    def calculate_act_entropy(self, reverse=False):
-        raise NotImplementedError(
-            "Method calculate_act_entropy is not valid for " "RedoxRateCalculator,"
-        )
-
     def calculate_outer_reorganization_energy(self):
         """
         Calculate the outer reorganization energy lambda_o using the Marcus
@@ -829,9 +889,9 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
         k_rate = (
             kappa
-            * k
+            * KB
             * temperature
-            / h
+            / PLANCK
             * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
         )
 

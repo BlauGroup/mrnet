@@ -10,7 +10,6 @@ import numpy as np
 from monty.json import MSONable
 from monty.serialization import loadfn
 from pymatgen.analysis.graphs import MolGraphSplitError
-from scipy.constants import R, h, k
 
 from mrnet.core.extract_reactions import FindConcertedReactions
 from mrnet.core.mol_entry import MoleculeEntry
@@ -20,7 +19,7 @@ from mrnet.core.rates import (
     RedoxRateCalculator,
 )
 from mrnet.utils.mols import mol_free_energy
-from mrnet.utils.constants import ROOM_TEMP
+from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -523,25 +522,25 @@ class RedoxReaction(Reaction):
                 delta_g_b = lam_reorg / 4 * (1 + self.free_energy_B / lam_reorg) ** 2
 
             if self.inner_reorganization_energy is None and self.free_energy_A < 0:
-                self.k_A = kappa * k * temperature / h
+                self.k_A = kappa * KB * temperature / PLANCK
             else:
                 self.k_A = (
                     kappa
-                    * k
+                    * KB
                     * temperature
-                    / h
-                    * np.exp(-96487 * delta_g_a / (R * temperature))
+                    / PLANCK
+                    * np.exp(-1 * delta_g_a / (KB * temperature))
                 )
 
             if self.inner_reorganization_energy is None and self.free_energy_B < 0:
-                self.k_B = kappa * k * temperature / h
+                self.k_B = kappa * KB * temperature / PLANCK
             else:
                 self.k_B = (
                     kappa
-                    * k
+                    * KB
                     * temperature
-                    / h
-                    * np.exp(-96487 * delta_g_b / (R * temperature))
+                    / PLANCK
+                    * np.exp(-1 * delta_g_b / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -835,17 +834,17 @@ class IntramolSingleBondChangeReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB * temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -1167,17 +1166,17 @@ class IntermolecularReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB * temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -1546,17 +1545,17 @@ class CoordinationBondChangeReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB* temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -1907,17 +1906,17 @@ class ConcertedReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB * temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -2281,17 +2280,17 @@ class RecoordinationReaction(Reaction):
 
         if ga < self.barrier:
             self.k_A = (
-                k * temperature / h * np.exp(-1 * self.barrier * 96487 / (R * temperature))
+                KB * temperature / PLANCK * np.exp(-1 * self.barrier / (KB * temperature))
             )
         else:
-            self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+            self.k_A = KB * temperature / PLANCK * np.exp(-1 * ga/ (KB * temperature))
 
         if gb < self.barrier:
             self.k_B = (
-                k * temperature / h * np.exp(-1 * self.barrier * 96487 / (R * temperature))
+                KB * temperature / PLANCK * np.exp(-1 * self.barrier / (KB * temperature))
             )
         else:
-            self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+            self.k_B = KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
 
     def as_dict(self) -> dict:
 
@@ -2490,7 +2489,7 @@ def boltz_const(free_energy: float, c: float = 1.0, temp: float = ROOM_TEMP) -> 
         raise ValueError("Negative constant-cost could lead to pathfinding failure!")
 
     d = np.array([[free_energy]], dtype=np.float128)
-    r = np.exp(d / (k * temp))
+    r = np.exp(d / (KB * temp))
 
     return r[0][0] + c
 
@@ -2509,7 +2508,7 @@ def eyring(free_energy: float, temp: float = ROOM_TEMP) -> float:
     else:
         d = np.array([[free_energy]], dtype=np.float128)
 
-    r = h / (k * temp) * np.exp(d / (k * temp))
+    r = PLANCK / (KB * temp) * np.exp(d / (KB * temp))
 
     return r
 
