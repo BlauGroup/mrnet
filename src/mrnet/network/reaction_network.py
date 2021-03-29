@@ -157,14 +157,23 @@ class ReactionPath(MSONable):
             pool = []
             pool.append(path[0])
             for ii, step in enumerate(path):
-                # print(step,pool, path)
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
-                    if isinstance(step, str):
-                        if "PR" in step:
+                    # print(step)
+                    if isinstance(step, str):  # REACTION NODE
+                        a = path[ii - 1]  # source reactant (non-pr)
+                        reactants = step.split(",")[0]
+                        products = step.split(",")[1]
+                        if "+" in reactants:  # prs for this reaction
                             prod = []  # type: List[Union[str, int]]
-                            a = int(step.split(",")[0].split("+PR_")[0])
-                            pr = int(step.split(",")[0].split("+PR_")[1])
+                            # a = int(step.split(",")[0].split("+PR_")[0])
+                            rct_indices = list(set(reactants.split("+")))
+                            if len(rct_indices) == 1:
+                                pr = int(rct_indices[0])
+                            else:
+                                other_el = [el for el in rct_indices if int(el) != a]
+                                pr = other_el[0]
+                            # pr = int(step.split(",")[0].split("+PR_")[1])
                             if "+" in step.split(",")[1]:
                                 c = int(step.split(",")[1].split("+")[0])
                                 d = int(step.split(",")[1].split("+")[1])
@@ -638,8 +647,8 @@ class ReactionNetwork(MSONable):
                 else:
                     PR_record[pr] = [edge]
         PR_record = {key: list(set(PR_record[key])) for key in PR_record}
-        list_cp = list(PR_record.keys())
-        [PR_record.pop(k) for k in list_cp if PR_record[k] == []]
+        # list_cp = list(PR_record.keys())
+        # [PR_record.pop(k) for k in list_cp if PR_record[k] == []]
         self.PR_record = PR_record
         return PR_record
 
@@ -753,12 +762,6 @@ class ReactionNetwork(MSONable):
                 for start in starts:
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
-            if ii == 4:
-                pickle_in = open(
-                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
-                    "wb",
-                )
-                pickle.dump(self, pickle_in)
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs
             )
@@ -767,13 +770,20 @@ class ReactionNetwork(MSONable):
                 PRs, solved_PRs, cost_from_start
             )
 
-            print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
+            # print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
+            """
             if ii == 4:
                 pickle_in = open(
                     os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"),
                     "wb",
                 )
                 pickle.dump(self, pickle_in)
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN_ak.pkl"),
+                    "wb",
+                )
+                pickle.dump(self.graph, pickle_in)
+            """
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
             self.min_cost = copy.deepcopy(min_cost)
@@ -1053,7 +1063,7 @@ class ReactionNetwork(MSONable):
         return solved_PRs, new_solved_PRs, cost_from_start
 
     def update_edge_weights(
-        self, min_cost: Dict[int, float], orig_graph: nx.DiGraph
+        self, min_cost: Dict[int, float], orig_graph: nx.DiGraph,
     ) -> Dict[Tuple[int, str], Dict[str, float]]:
         """
             A method to update the ReactionNetwork.graph edge weights based on
@@ -1073,10 +1083,13 @@ class ReactionNetwork(MSONable):
             self.graph = self.build()
         if self.PR_record is None:
             self.PR_record = self.build_PR_record()
-
+        print(self.PR_record.keys())
         attrs = {}
         for PR_ind in min_cost:  # all PRs in path
             for weighted_edge in self.PR_record[PR_ind]:  # all edges with this PR
+                # split = weighted_edge.split(",")
+                # u = split[0]
+                # v = split[1]
                 attrs[weighted_edge] = {
                     self.weight: orig_graph[weighted_edge[0]][weighted_edge[1]][self.weight]
                     + min_cost[PR_ind]

@@ -305,7 +305,7 @@ class TestReactionNetwork(PymatgenTest):
         # assert
         self.assertEqual(len(PR_record[0]), 42)
         self.assertEqual(PR_record[44], [(165, "44+165,434")])
-        self.assertTrue(529 not in PR_record.keys())
+        self.assertEqual(len(PR_record[529]), 0)
         self.assertEqual(len(PR_record[556]), 104)
         self.assertEqual(len(PR_record[564]), 165)
 
@@ -509,22 +509,24 @@ class TestReactionNetwork(PymatgenTest):
             os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN.json")
         )
         with open(
-            os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN.pkl"), "rb",
+            os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN_ak.pkl"), "rb",
         ) as input:
             orig_graph = pickle.load(input)
 
         min_cost = {}
         for key in min_cost_str:
-            min_cost[int(key)] = min_cost_str[key]
+            temp = min_cost_str[key]
+            min_cost[int(key)] = temp
 
         # perform calc
         attrs_cal = RN_pr_ii_4.update_edge_weights(min_cost, orig_graph)
 
         # assert
+        # print(attrs_cal.keys())
         self.assertEqual(len(attrs_cal), 6143)
-        self.assertEqual(attrs_cal[(556, "556+PR_456,421")]["softplus"], 0.24363920804933614)
-        self.assertEqual(attrs_cal[(41, "41+PR_556,42")]["softplus"], 0.26065563056500646)
-        self.assertEqual(attrs_cal[(308, "308+PR_556,277")]["softplus"], 0.08666835894406484)
+        self.assertEqual(attrs_cal[(556, "456+556,421")]["softplus"], 0.24363920804933614)
+        self.assertEqual(attrs_cal[(41, "41+556,42")]["softplus"], 0.26065563056500646)
+        self.assertEqual(attrs_cal[(308, "308+556,277")]["softplus"], 0.08666835894406484)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_final_PR_check(self):  # PASS
