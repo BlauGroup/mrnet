@@ -16,7 +16,7 @@ from mrnet.core.reactions import (
 
 
 from mrnet.utils.classes import load_class
-
+from multiprocessing import Pool
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Daniel Barter"
 __maintainer__ = "Daniel Barter"
@@ -30,6 +30,21 @@ class ReactionGenerator:
     This allows looping over concerteds without needing to have them
     all reside in memory simultaneously
     """
+
+    def generate_concerted_reactions_parallel(
+            self,
+            entries: List[MoleculeEntry],
+    ) -> List[ConcertedReaction]:
+        with Pool(self.number_of_threads) as p:
+            ls = p.map(self.generate_concerted_reactions,entries)
+
+        concerteds = []
+        for l in ls:
+            for c in l:
+                concerteds.append(c)
+
+        return concerteds
+
 
     def generate_concerted_reactions(
         self,
@@ -80,13 +95,18 @@ class ReactionGenerator:
 
         next_chunk = []
         while not next_chunk:
-            self.intermediate_index += 1
+            next_indices = []
+            for i in range(self.number_of_threads):
+                j = i + self.intermediate_index
+                if j < len(self.rn.entries_list):
+                    next_indices.append(j)
 
-            if self.intermediate_index == len(self.rn.entries_list):
+            if len(next_indices) == 0:
                 raise StopIteration()
 
-            next_chunk = self.current_chunk = self.generate_concerted_reactions(
-                self.rn.entries_list[self.intermediate_index]
+            self.intermediate_index += len(next_indices)
+            next_chunk = self.current_chunk = self.generate_concerted_reactions_parallel(
+                [self.rn.entries_list[i] for i in next_indices]
             )
 
         self.chunk_index = 0
@@ -99,14 +119,7 @@ class ReactionGenerator:
 
             reaction = self.current_chunk[self.chunk_index]
             self.chunk_index += 1
-            reaction_sig = (
-                frozenset(reaction.reactant_indices),
-                frozenset(reaction.product_indices),
-            )
-
-            if reaction_sig not in self.previously_seen_reactions:
-                self.previously_seen_reactions.add(reaction_sig)
-                return reaction
+            return reaction
 
     def __iter__(self):
         return self
@@ -117,16 +130,17 @@ class ReactionGenerator:
     def __init__(
         self,
         input_entries,
+        number_of_threads,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
     ):
 
         self.rn = ReactionNetwork.from_input_entries(input_entries)
         self.rn.build()
         self.single_elem_interm_ignore = single_elem_interm_ignore
+        self.number_of_threads = number_of_threads
 
         # generator state
 
         self.current_chunk = self.rn.reactions
         self.chunk_index = 0
         self.intermediate_index = -1
-        self.previously_seen_reactions = set()

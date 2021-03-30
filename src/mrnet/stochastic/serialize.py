@@ -116,6 +116,7 @@ class SerializedReactionNetwork:
         index_to_reaction = []
         index = 0
         reaction_count = 0
+        duplicate_set = set()
 
         for reaction in reactions:
             reaction_count += 1
@@ -133,23 +134,28 @@ class SerializedReactionNetwork:
                 species_to_index[product] for product in reaction.product_ids
             ]
 
-            forward_free_energy = reaction.free_energy_A
-            backward_free_energy = reaction.free_energy_B
+            duplicate_string = '_'.join([str(i) for i in reactant_indices]) + '=' + '_'.join([str(i) for i in product_indices])
+            if duplicate_string not in duplicate_set:
 
-            index_to_reaction.append(
-                {
-                    "reactants": reactant_indices,
-                    "products": product_indices,
-                    "free_energy": forward_free_energy,
-                }
-            )
-            index_to_reaction.append(
-                {
-                    "reactants": product_indices,
-                    "products": reactant_indices,
-                    "free_energy": backward_free_energy,
-                }
-            )
+                duplicate_set.add(duplicate_string)
+                forward_free_energy = reaction.free_energy_A
+                backward_free_energy = reaction.free_energy_B
+
+                index_to_reaction.append(
+                    {
+                        "reactants": reactant_indices,
+                        "products": product_indices,
+                        "free_energy": forward_free_energy,
+                    }
+                )
+
+                index_to_reaction.append(
+                    {
+                        "reactants": product_indices,
+                        "products": reactant_indices,
+                        "free_energy": backward_free_energy,
+                    }
+                )
 
         for reaction in index_to_reaction:
 
