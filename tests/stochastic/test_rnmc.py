@@ -34,6 +34,7 @@ test_dir = os.path.join(
     "reaction_network_files",
 )
 
+
 class RNMC(PymatgenTest):
     def test_rnmc(self):
 

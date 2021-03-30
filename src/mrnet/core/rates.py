@@ -244,13 +244,7 @@ class ReactionRateCalculator(MSONable):
 
         gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
 
-        k_rate = (
-            kappa
-            * KB
-            * temperature
-            / PLANCK
-            * np.exp(-gibbs / (KB * temperature))
-        )
+        k_rate = kappa * KB * temperature / PLANCK * np.exp(-gibbs / (KB * temperature))
         return k_rate
 
     def calculate_rate(
@@ -611,13 +605,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
 
         gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
 
-        k_rate = (
-            kappa
-            * KB
-            * temperature
-            / PLANCK
-            * np.exp(-gibbs / (KB * temperature))
-        )
+        k_rate = kappa * KB * temperature / PLANCK * np.exp(-gibbs / (KB * temperature))
         return k_rate
 
 
@@ -809,12 +797,6 @@ class RedoxRateCalculator(ReactionRateCalculator):
         if not self.adiabatic:
             kappa = np.exp(-1 * self.decay_constant * self.electrode_distance)
 
-        k_rate = (
-            kappa
-            * KB
-            * temperature
-            / PLANCK
-            * np.exp(-gibbs / (KB * temperature))
-        )
+        k_rate = kappa * KB * temperature / PLANCK * np.exp(-gibbs / (KB * temperature))
 
         return k_rate
