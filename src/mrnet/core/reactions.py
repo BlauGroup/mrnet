@@ -1,6 +1,7 @@
 import copy
 import itertools
 from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -1532,12 +1533,14 @@ class CoordinationBondChangeReaction(Reaction):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
-            self.k_A: self.rate_calculator.calculate_rate_constant(
+            self.k_A = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature
             )
-            self.k_B: self.rate_calculator.calculate_rate_constant(
+
+            self.k_B = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature, reverse=True
             )
+
         else:
             self.set_free_energy(temperature=temperature)
 
@@ -2603,11 +2606,6 @@ def generate_atom_mapping_1_2(
         products: products molecule entry
         edges: a list of bonds in reactant, by breaking which can form the two products
 
-    Note:
-        This function assumes the two subgraphs of the reactant obtained by breaking
-        the edge are ordered the same as the products. i.e. subgraphs[0] corresponds to
-        products[0] and subgraphs[1] corresponds to products[1].
-
     Returns:
         reactant_atom_mapping: rdkit style atom mapping number for the reactant
         products_atom_mapping: rdkit style atom mapping number for the two products
@@ -2625,12 +2623,39 @@ def generate_atom_mapping_1_2(
         original.break_edge(edge[0], edge[1], allow_reverse=True)
     components = nx.weakly_connected_components(original.graph)
     sub_graphs = [original.graph.subgraph(c) for c in components]
+    assert (
+        len(sub_graphs) == 2
+    ), f"Expect 2 subgraphs after breaking the bonds; got {len(sub_graphs)}"
 
     products_atom_mapping = []
-    for subg, prdt in zip(sub_graphs, products):
-        _, node_mapping = is_isomorphic(prdt.graph, subg)
-        assert node_mapping is not None, "Cannot obtain node mapping."
+
+    # try to find correspondence between sub_graphs and products
+    _, node_mapping = is_isomorphic(products[0].graph, sub_graphs[0])
+
+    # 0~0 and 1~1
+    if node_mapping is not None:
         products_atom_mapping.append(node_mapping)
+
+        _, node_mapping = is_isomorphic(products[1].graph, sub_graphs[1])
+        assert node_mapping is not None, (
+            f"Cannot obtain node mapping. Reactant: {reactant}; "
+            f"Products: {'; '.join([str(m) for m in products])}"
+        )
+        products_atom_mapping.append(node_mapping)
+
+    # 0~1 and 1~0
+    else:
+        correspondence = OrderedDict()
+        correspondence[0] = 1
+        correspondence[1] = 0
+
+        for i, j in correspondence.items():
+            _, node_mapping = is_isomorphic(products[i].graph, sub_graphs[j])
+            assert node_mapping is not None, (
+                f"Cannot obtain node mapping. Reactant: {reactant}; "
+                f"Products: {'; '.join([str(m) for m in products])}"
+            )
+            products_atom_mapping.append(node_mapping)
 
     return reactant_atom_mapping, products_atom_mapping
 
