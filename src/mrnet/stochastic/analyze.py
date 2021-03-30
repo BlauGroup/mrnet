@@ -2,6 +2,10 @@ from typing import Tuple, Optional, Union, List, Dict, TextIO
 import numpy as np
 import pickle
 import os
+import copy
+import math
+
+import matplotlib.pyplot as plt
 
 from mrnet.core.reactions import Reaction
 from mrnet.network.reaction_network import ReactionNetwork
@@ -381,27 +385,13 @@ class SimulationAnalyzer:
                 self.latex_emit_reaction(f, reaction_index)
             f.write("\\end{document}")
 
-
-def load_analysis(network_folder: str) -> SimulationAnalyzer:
-    """
-    as part of serialization, the SerializedReactionNetwork is stored as a
-    pickle in the network folder. This allows for analysis to be picked up in a
-    new python session.
-    """
-    with open(network_folder + "/rnsd.pickle", "rb") as f:
-        rnsd = pickle.load(f)
-
-    with open(network_folder + "/initial_state", "r") as s:
-        initial_state = np.array([int(x) for x in s.readlines()], dtype=int)
-
-    sa = SimulationAnalyzer(rnsd, initial_state, network_folder)
-
-    return sa
-
-
-def generate_time_dep_profiles(self):
+    def generate_time_dep_profiles(self, frequency: int = 1):
         """
         Generate plottable time-dependent profiles of species and rxns from raw KMC output, obtain final states.
+
+        :param frequency (int): The system state will be sampled after every n
+            reactions, where n is the frequency. Default is 1, meaning that each
+            step will be sampled.
 
         :return dict containing species profiles, reaction profiles, and final states from each simulation.
                 {species_profiles: [ {mol_ind1: [(t0, n(t0)), (t1, n(t1)...], mol_ind2: [...] ,  ... }, {...}, ... ]
@@ -413,20 +403,19 @@ def generate_time_dep_profiles(self):
         reaction_profiles = list()
         final_states = list()
 
-        for n_sim in range(self.num_sims):
-            sim_time_history = self.time_history[n_sim]
-            sim_rxn_history = self.reaction_history[n_sim]
+        for n_sim in range(self.number_simulations):
+            sim_time_history = self.time_histories[n_sim]
+            sim_rxn_history = self.reaction_histories[n_sim]
             sim_species_profile = dict()
             sim_rxn_profile = dict()
-            cumulative_time = list(np.cumsum(np.array(sim_time_history)))
-            state = copy.deepcopy(self.initial_state_dict)
+            state = copy.deepcopy(self.initial_state)
             for mol_ind in state:
                 sim_species_profile[mol_ind] = [(0.0, self.initial_state_dict[mol_ind])]
             total_iterations = len(sim_rxn_history)
 
             for iter in range(total_iterations):
                 rxn_ind = sim_rxn_history[iter]
-                t = cumulative_time[iter]
+                t = sim_time_history[iter]
                 if rxn_ind not in sim_rxn_profile:
                     sim_rxn_profile[rxn_ind] = [t]
                 else:
@@ -483,6 +472,23 @@ def generate_time_dep_profiles(self):
             "reaction_profiles": reaction_profiles,
             "final_states": final_states,
         }
+
+
+def load_analysis(network_folder: str) -> SimulationAnalyzer:
+    """
+    as part of serialization, the SerializedReactionNetwork is stored as a
+    pickle in the network folder. This allows for analysis to be picked up in a
+    new python session.
+    """
+    with open(network_folder + "/rnsd.pickle", "rb") as f:
+        rnsd = pickle.load(f)
+
+    with open(network_folder + "/initial_state", "r") as s:
+        initial_state = np.array([int(x) for x in s.readlines()], dtype=int)
+
+    sa = SimulationAnalyzer(rnsd, initial_state, network_folder)
+
+    return sa
 
     def final_state_analysis(self, final_states):
         """
@@ -594,3 +600,121 @@ def generate_time_dep_profiles(self):
                 plt.show()
             else:
                 plt.savefig(file_dir + "/" + sim_filename)
+
+
+class KmcDataAnalyzer:
+    """
+    Functions to analyze (function-based) KMC outputs from many simulation runs. Ideally, the reaction history and
+    time history data are list of arrays.
+
+    Args:
+        reaction_network: fully generated ReactionNetwork, used for kMC simulation
+        molid_ind_mapping: dict mapping each entry's id to its index; of form {entry_id: mol_index, ... }
+        species_rxn_mapping: 2d array; each row i contains reactions which molecule_i takes part in
+        initial_state_dict: dict mapping mol_id to its initial amount {mol1_id: amt_1, mol2_id: amt2 ... }
+        products: (n_rxns x 2) array, each row containing product mol_index of forward reaction
+        reactants: (n_rxns x 2) array, each row containing reactant mol_index of forward reaction
+        reaction_history: list of arrays of reaction histories of each simulation.
+        time_history: list of arrays of time histories of each simulation.
+
+    """
+
+    def __init__(
+        self,
+        reaction_network,
+        molid_ind_mapping,
+        species_rxn_mapping,
+        initial_state_dict,
+        products,
+        reactants,
+        reaction_history,
+        time_history,
+    ):
+        self.reaction_network = reaction_network
+        self.molid_ind_mapping = molid_ind_mapping
+        self.species_rxn_mapping = species_rxn_mapping
+        self.initial_state_dict = initial_state_dict
+        self.products = products
+        self.reactants = reactants
+        self.reaction_history = reaction_history
+        self.time_history = time_history
+        self.num_sims = len(self.reaction_history)
+        if self.num_sims != len(self.time_history):
+            raise RuntimeError(
+                "Number of datasets for rxn history and time step history should be same!"
+            )
+        self.molind_id_mapping = [
+            mol.entry_id for mol in self.reaction_network.entries_list
+        ]
+
+
+def quantify_rank_reactions(self, reaction_type=None, num_rxns=None):
+    """
+    Given reaction histories, identify the most commonly occurring reactions, on average.
+    Can rank generally, or by reactions of a certain type.
+
+    Args:
+        reaction_profiles (list of dicts): reactions fired as a function of time
+        reaction_type (string)
+        num_rxns (int): the amount of reactions interested in collecting data on. If None, record for all.
+
+    Returns:
+        reaction_data: list of reactions and their avg, std of times fired. Sorted by the average times fired.
+        [(rxn1, (avg, std)), (rxn2, (avg, std)) ... ]
+    """
+    allowed_rxn_types = [
+        "One electron reduction",
+        "One electron oxidation",
+        "Intramolecular single bond breakage",
+        "Intramolecular single bond formation",
+        "Coordination bond breaking AM -> A+M",
+        "Coordination bond forming A+M -> AM",
+        "Molecular decomposition breaking one bond A -> B+C",
+        "Molecular formation from one new bond A+B -> C",
+        "Concerted",
+    ]
+    if reaction_type is not None:
+        rxns_of_type = list()
+        if reaction_type not in allowed_rxn_types:
+            raise RuntimeError(
+                "This reaction type does not (yet) exist in our reaction networks."
+            )
+
+        for ind, rxn in enumerate(self.reaction_network.reactions):
+            if rxn.reaction_type()["rxn_type_A"] == reaction_type:
+                rxns_of_type.append(2 * ind)
+            elif rxn.reaction_type()["rxn_type_B"] == reaction_type:
+                rxns_of_type.append(2 * ind + 1)
+    reaction_data = dict()  # keeping record of each iteration
+    # Loop to count all reactions fired
+    for n_sim in range(self.num_sims):
+        rxns_fired = set(self.reaction_history[n_sim])
+        if reaction_type is not None:
+            relevant_rxns = [r for r in rxns_fired if r in rxns_of_type]
+        else:
+            relevant_rxns = rxns_fired
+
+        for rxn_ind in relevant_rxns:
+            if rxn_ind not in reaction_data:
+                reaction_data[rxn_ind] = list()
+            reaction_data[rxn_ind].append(
+                np.sum(self.reaction_history[n_sim] == rxn_ind)
+            )
+
+    reaction_analysis = dict()
+    for rxn_ind, counts in reaction_data.items():
+        reaction_analysis[rxn_ind] = (
+            np.mean(np.array(counts)),
+            np.std(np.array(counts)),
+        )
+
+    # Sort reactions by the average amount fired
+    sorted_reaction_analysis = sorted(
+        [(i, c) for i, c in reaction_analysis.items()],
+        key=lambda x: x[1][0],
+        reverse=True,
+    )
+    if num_rxns is None:
+        return sorted_reaction_analysis
+    else:
+        return sorted_reaction_analysis[:num_rxns]

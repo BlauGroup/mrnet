@@ -317,52 +317,6 @@ def get_coordination(reactants, products, state, rxn_id, reverse):
 
     return h_prop
 
-
-class KmcDataAnalyzer:
-    """
-    Functions to analyze (function-based) KMC outputs from many simulation runs. Ideally, the reaction history and
-    time history data are list of arrays.
-
-    Args:
-        reaction_network: fully generated ReactionNetwork, used for kMC simulation
-        molid_ind_mapping: dict mapping each entry's id to its index; of form {entry_id: mol_index, ... }
-        species_rxn_mapping: 2d array; each row i contains reactions which molecule_i takes part in
-        initial_state_dict: dict mapping mol_id to its initial amount {mol1_id: amt_1, mol2_id: amt2 ... }
-        products: (n_rxns x 2) array, each row containing product mol_index of forward reaction
-        reactants: (n_rxns x 2) array, each row containing reactant mol_index of forward reaction
-        reaction_history: list of arrays of reaction histories of each simulation.
-        time_history: list of arrays of time histories of each simulation.
-
-    """
-
-    def __init__(
-        self,
-        reaction_network,
-        molid_ind_mapping,
-        species_rxn_mapping,
-        initial_state_dict,
-        products,
-        reactants,
-        reaction_history,
-        time_history,
-    ):
-        self.reaction_network = reaction_network
-        self.molid_ind_mapping = molid_ind_mapping
-        self.species_rxn_mapping = species_rxn_mapping
-        self.initial_state_dict = initial_state_dict
-        self.products = products
-        self.reactants = reactants
-        self.reaction_history = reaction_history
-        self.time_history = time_history
-        self.num_sims = len(self.reaction_history)
-        if self.num_sims != len(self.time_history):
-            raise RuntimeError(
-                "Number of datasets for rxn history and time step history should be same!"
-            )
-        self.molind_id_mapping = [
-            mol.entry_id for mol in self.reaction_network.entries_list
-        ]
-
     def generate_time_dep_profiles(self):
         """
         Generate plottable time-dependent profiles of species and rxns from raw KMC output, obtain final states.
