@@ -96,7 +96,7 @@ class ReactionGenerator:
         next_chunk = []
         while not next_chunk:
             next_indices = []
-            for i in range(self.number_of_threads):
+            for i in range(self.batch_size):
                 j = i + self.intermediate_index
                 if j < len(self.rn.entries_list):
                     next_indices.append(j)
@@ -130,7 +130,8 @@ class ReactionGenerator:
     def __init__(
         self,
         input_entries,
-        number_of_threads,
+        number_of_threads = 5,
+        batch_size = 100,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
     ):
 
@@ -139,6 +140,7 @@ class ReactionGenerator:
         rn.build_matrix()
         self.single_elem_interm_ignore = single_elem_interm_ignore
         self.number_of_threads = number_of_threads
+        self.batch_size = batch_size
 
         # generator state
 
