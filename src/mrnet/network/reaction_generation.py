@@ -144,4 +144,4 @@ class ReactionGenerator:
 
         self.current_chunk = self.rn.reactions
         self.chunk_index = 0
-        self.intermediate_index = -1
+        self.intermediate_index = 0
