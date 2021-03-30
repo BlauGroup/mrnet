@@ -137,7 +137,7 @@ class ReactionGenerator:
 
         self.rn = ReactionNetwork.from_input_entries(input_entries)
         self.rn.build()
-        rn.build_matrix()
+        self.rn.build_matrix()
         self.single_elem_interm_ignore = single_elem_interm_ignore
         self.number_of_threads = number_of_threads
         self.batch_size = batch_size
