@@ -18,6 +18,8 @@ from mrnet.core.rates import (
     ExpandedBEPRateCalculator,
     RedoxRateCalculator,
 )
+from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
+
 
 try:
     import openbabel as ob
@@ -207,15 +209,15 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         # Test normal forwards and reverse behavior
         self.assertEqual(
             self.calc.calculate_rate_constant(temperature=300.0),
-            k * 300 / h * np.exp(-gibbs_300 / (8.617333262 * 10 ** -5 * 300)),
+            KB * 300 / PLANCK * np.exp(-gibbs_300 / (KB * 300)),
         )
         self.assertEqual(
             self.calc.calculate_rate_constant(temperature=600),
-            k * 600 / h * np.exp(-gibbs_600 / (8.617333262 * 10 ** -5 * 600)),
+            KB * 600 / PLANCK * np.exp(-gibbs_600 / (KB * 600)),
         )
         self.assertEqual(
             self.calc.calculate_rate_constant(temperature=300.0, reverse=True),
-            k * 300 / h * np.exp(-gibbs_300_rev / (8.617333262 * 10 ** -5 * 300)),
+            KB * 300 / PLANCK * np.exp(-gibbs_300_rev / (KB * 300)),
         )
 
         # Test effect of kappa
@@ -522,7 +524,7 @@ class RedoxRateCalculatorTest(unittest.TestCase):
         )
 
         self.assertAlmostEqual(
-            self.calc_adiabatic.calculate_rate_constant() / 95631480.11437328, 1.0, 4
+            self.calc_adiabatic.calculate_rate_constant() / 96174924.70889263, 1.0, 4
         )
 
 

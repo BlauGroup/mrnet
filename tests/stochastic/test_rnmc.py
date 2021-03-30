@@ -32,6 +32,8 @@ test_dir = os.path.join(
     "reaction_network_files",
 )
 
+network_folder = os.path.join(os.path.dirname(__file__), "..", "RNMC_network")
+param_folder = os.path.join(os.path.dirname(__file__), "..", "RNMC_params")
 
 class RNMC(PymatgenTest):
     def test_reaction_network_serialization(self):
@@ -47,12 +49,9 @@ class RNMC(PymatgenTest):
             molecule_entries, (os.path.join(test_dir, "EC.xyz")), 0
         )
 
-        network_folder = "./RNMC_network"
-        param_folder = "./RNMC_params"
-
         initial_state_data = [(li_plus_mol_entry, 30), (ec_mol_entry, 30)]
 
-        rnsd = ReactionNetworkSerializationData(
+        rnsd = SerializedReactionNetwork(
             reaction_generator,
             initial_state_data,
             network_folder,
@@ -64,6 +63,11 @@ class RNMC(PymatgenTest):
 
     def test_reaction_network_serialization(self):
 
+        if os.path.exists(network_folder):
+            os.system("rm -r " + network_folder)
+        if os.path.exists(param_folder):
+            os.system("rm -r " + param_folder)
+
         molecule_entries = loadfn(os.path.join(test_dir, "ronalds_MoleculeEntry.json"))
 
         li_plus_mol_entry = find_mol_entry_from_xyz_and_charge(
@@ -73,9 +77,6 @@ class RNMC(PymatgenTest):
         ec_mol_entry = find_mol_entry_from_xyz_and_charge(
             molecule_entries, (os.path.join(test_dir, "EC.xyz")), 0
         )
-
-        network_folder = "./RNMC_network"
-        param_folder = "./RNMC_params"
 
         initial_state_data = [(li_plus_mol_entry, 30), (ec_mol_entry, 30)]
 
