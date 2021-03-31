@@ -17,9 +17,22 @@ from mrnet.core.reactions import (
 
 from mrnet.utils.classes import load_class
 from multiprocessing import Pool
+from functools import partial
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Daniel Barter"
 __maintainer__ = "Daniel Barter"
+
+def generate_concerted_reactions(
+        rn,
+        mols_to_keep,
+        single_elem_interm_ignore,
+        entry):
+    return ReactionNetwork.identify_concerted_rxns_for_specific_intermediate(
+            entry,
+            rn,
+            mols_to_keep=mols_to_keep,
+            single_elem_interm_ignore=single_elem_interm_ignore,
+        )
 
 
 class ReactionGenerator:
@@ -36,33 +49,18 @@ class ReactionGenerator:
             entries: List[MoleculeEntry],
     ) -> List[ConcertedReaction]:
         with Pool(self.number_of_threads) as p:
-            ls = p.map(self.generate_concerted_reactions,entries)
+            ls = p.map(
+                partial(
+                    generate_concerted_reactions,
+                    self.rn,
+                    [e.parameters["ind"] for e in self.rn.entries_list],
+                    self.single_elem_interm_ignore),
+                entries)
 
-        concerteds = []
+        reactions = []
         for l in ls:
-            for c in l:
-                concerteds.append(c)
-
-        return concerteds
-
-
-    def generate_concerted_reactions(
-        self,
-        entry: MoleculeEntry,
-    ) -> List[ConcertedReaction]:
-        """
-        generate all the concerted reactions with intermediate mol_entry
-        """
-        (
-            reactions,
-            _,
-        ) = ReactionNetwork.identify_concerted_rxns_for_specific_intermediate(
-            entry,
-            self.rn,
-            mols_to_keep=[e.parameters["ind"] for e in self.rn.entries_list],
-            single_elem_interm_ignore=self.single_elem_interm_ignore,
-        )
-
+            for c in l[0]:
+                reactions.append(tuple(c))
         return_list = []
 
         for (reactants, products) in reactions:
@@ -90,6 +88,8 @@ class ReactionGenerator:
                 print("products:", products)
 
         return return_list
+
+
 
     def next_chunk(self):
 
