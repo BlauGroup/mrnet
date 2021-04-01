@@ -8,6 +8,7 @@ from monty.json import MSONable
 from pymatgen.core.units import amu_to_kg
 
 from mrnet.utils.math import product
+from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
 
 
 __author__ = "Evan Spotte-Smith"
@@ -81,7 +82,7 @@ class ReactionRateCalculator(MSONable):
         self.net_enthalpy = (self.product_enthalpy - self.reactant_enthalpy) * 0.0433641
         self.net_entropy = (self.product_entropy - self.reactant_entropy) * 0.0000433641
 
-    def calculate_net_gibbs(self, temperature=298.0):
+    def calculate_net_gibbs(self, temperature=ROOM_TEMP):
         """
         Calculate net reaction Gibbs free energy at a given temperature.
 
@@ -106,7 +107,7 @@ class ReactionRateCalculator(MSONable):
 
         return pro_gibbs - rct_gibbs
 
-    def calculate_net_thermo(self, temperature=298.0):
+    def calculate_net_thermo(self, temperature=ROOM_TEMP):
         """
         Calculate net energy, enthalpy, and entropy for the reaction.
         Args:
@@ -183,7 +184,7 @@ class ReactionRateCalculator(MSONable):
         else:
             return (trans_entropy - self.reactant_entropy) * 0.0000433641
 
-    def calculate_act_gibbs(self, temperature=298.0, reverse=False):
+    def calculate_act_gibbs(self, temperature=ROOM_TEMP, reverse=False):
         """
         Calculate Gibbs free energy of activation at a given temperature.
 
@@ -204,7 +205,7 @@ class ReactionRateCalculator(MSONable):
 
         return act_energy + act_enthalpy - temperature * act_entropy
 
-    def calculate_act_thermo(self, temperature=298.0, reverse=False):
+    def calculate_act_thermo(self, temperature=ROOM_TEMP, reverse=False):
         """
         Calculate thermodynamics of activation for the reaction.
 
@@ -226,7 +227,7 @@ class ReactionRateCalculator(MSONable):
 
         return act_thermo
 
-    def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=1.0):
+    def calculate_rate_constant(self, temperature=ROOM_TEMP, reverse=False, kappa=1.0):
         """
         Calculate the rate constant k by the Eyring-Polanyi equation of transition state theory.
 
@@ -243,17 +244,11 @@ class ReactionRateCalculator(MSONable):
 
         gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
 
-        k_rate = (
-            kappa
-            * k
-            * temperature
-            / h
-            * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
-        )
+        k_rate = kappa * KB * temperature / PLANCK * np.exp(-gibbs / (KB * temperature))
         return k_rate
 
     def calculate_rate(
-        self, concentrations, temperature=298.0, reverse=False, kappa=1.0
+        self, concentrations, temperature=ROOM_TEMP, reverse=False, kappa=1.0
     ):
         """
         Calculate the based on the reaction stoichiometry.
@@ -388,17 +383,17 @@ class BEPRateCalculator(ReactionRateCalculator):
             "Method calculate_act_entropy is not valid for " "BEPRateCalculator,"
         )
 
-    def calculate_act_gibbs(self, temperature, reverse=False):
+    def calculate_act_gibbs(self, temperature=ROOM_TEMP, reverse=False):
         raise NotImplementedError(
             "Method calculate_act_gibbs is not valid for " "BEPRateCalculator,"
         )
 
-    def calculate_activation_thermo(self, temperature=298.0, reverse=False):
+    def calculate_activation_thermo(self, temperature=ROOM_TEMP, reverse=False):
         raise NotImplementedError(
             "Method calculate_activation_thermo is not valid for " "BEPRateCalculator,"
         )
 
-    def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=None):
+    def calculate_rate_constant(self, temperature=ROOM_TEMP, reverse=False, kappa=None):
         """
         Calculate the rate constant predicted by collision theory.
 
@@ -414,12 +409,12 @@ class BEPRateCalculator(ReactionRateCalculator):
 
         ea = self.calculate_act_energy(reverse=reverse)
 
-        k_rate = np.exp(-ea / (8.617333262 * 10 ** -5 * temperature))
+        k_rate = np.exp(-ea / (KB * temperature))
 
         return k_rate
 
     def calculate_rate(
-        self, concentrations, temperature=298.0, reverse=False, kappa=1.0
+        self, concentrations, temperature=ROOM_TEMP, reverse=False, kappa=1.0
     ):
         """
         Calculate the rate using collision theory.
@@ -552,7 +547,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
             "Method calculate_act_entropy is not valid for " "ExpandedBEPCalculator,"
         )
 
-    def calculate_act_gibbs(self, temperature=298.0, reverse=False):
+    def calculate_act_gibbs(self, temperature=ROOM_TEMP, reverse=False):
         """
         Calculate Gibbs free energy of activation at a given temperature.
 
@@ -587,13 +582,13 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
 
         return delta_ga
 
-    def calculate_activation_thermo(self, temperature=298.0, reverse=False):
+    def calculate_activation_thermo(self, temperature=ROOM_TEMP, reverse=False):
         raise NotImplementedError(
             "Method calculate_activation_thermo is not valid for "
             "ExpandedBEPRateCalculator,"
         )
 
-    def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=1.0):
+    def calculate_rate_constant(self, temperature=ROOM_TEMP, reverse=False, kappa=1.0):
         """
         Calculate the rate constant k by the Eyring-Polanyi equation of transition state theory.
 
@@ -610,13 +605,7 @@ class ExpandedBEPRateCalculator(ReactionRateCalculator):
 
         gibbs = self.calculate_act_gibbs(temperature=temperature, reverse=reverse)
 
-        k_rate = (
-            kappa
-            * k
-            * temperature
-            / h
-            * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
-        )
+        k_rate = kappa * KB * temperature / PLANCK * np.exp(-gibbs / (KB * temperature))
         return k_rate
 
 
@@ -751,7 +740,7 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
         return lambda_outer
 
-    def calculate_act_gibbs(self, temperature=298.0, reverse=False):
+    def calculate_act_gibbs(self, temperature=ROOM_TEMP, reverse=False):
         """
         Calculate Gibbs free energy of activation at a given temperature.
 
@@ -783,13 +772,13 @@ class RedoxRateCalculator(ReactionRateCalculator):
 
         return delta_ga
 
-    def calculate_activation_thermo(self, temperature=298.0, reverse=False):
+    def calculate_activation_thermo(self, temperature=ROOM_TEMP, reverse=False):
         raise NotImplementedError(
             "Method calculate_activation_thermo is not valid for "
             "RedoxRateCalculator,"
         )
 
-    def calculate_rate_constant(self, temperature=298.0, reverse=False, kappa=1.0):
+    def calculate_rate_constant(self, temperature=ROOM_TEMP, reverse=False, kappa=1.0):
         """
         Calculate the rate constant k by the Eyring-Polanyi equation of transition state theory.
 
@@ -808,12 +797,6 @@ class RedoxRateCalculator(ReactionRateCalculator):
         if not self.adiabatic:
             kappa = np.exp(-1 * self.decay_constant * self.electrode_distance)
 
-        k_rate = (
-            kappa
-            * k
-            * temperature
-            / h
-            * np.exp(-gibbs / (8.617333262 * 10 ** -5 * temperature))
-        )
+        k_rate = kappa * KB * temperature / PLANCK * np.exp(-gibbs / (KB * temperature))
 
         return k_rate

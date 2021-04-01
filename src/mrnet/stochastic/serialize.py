@@ -1,19 +1,18 @@
-from typing import Tuple, Optional, Union, List, Dict, TextIO
+from typing import Tuple, Optional, Union, List
 import math
 import numpy as np
 import pickle
 import os
 
-from mrnet.core.reactions import Reaction
-from mrnet.network.reaction_network import ReactionNetwork
-from mrnet.network.reaction_generation import ReactionGenerator
-from mrnet.core.mol_entry import MoleculeEntry
-
-
 from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
 from pymatgen.analysis.local_env import OpenBabelNN
 from pymatgen.analysis.fragmenter import metal_edge_extender
+
+from mrnet.network.reaction_network import ReactionNetwork
+from mrnet.network.reaction_generation import ReactionGenerator
+from mrnet.core.mol_entry import MoleculeEntry
+from mrnet.utils.constants import ROOM_TEMP, PLANCK, KB
 
 
 def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
@@ -44,12 +43,6 @@ def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
         return None
 
 
-# TODO: once there is a central place for these, import from there
-boltzman_constant = 8.617e-5  # eV/K
-planck_constant = 6.582e-16  # eV s
-room_temp = 298.15  # K
-
-
 class SerializedReactionNetwork:
     """
     An object designed to store data from a ReactionNetwork suitable for use with
@@ -60,7 +53,7 @@ class SerializedReactionNetwork:
         self,
         reaction_network: Union[ReactionNetwork, ReactionGenerator],
         logging: bool = False,
-        temperature=room_temp,
+        temperature=ROOM_TEMP,
         constant_barrier=None,
     ):
 
@@ -154,8 +147,8 @@ class SerializedReactionNetwork:
         for reaction in index_to_reaction:
 
             dG = reaction["free_energy"]
-            kT = boltzman_constant * self.temperature
-            max_rate = kT / planck_constant
+            kT = KB * self.temperature
+            max_rate = kT / PLANCK
 
             if self.constant_barrier is None:
                 if dG < 0:
