@@ -406,57 +406,47 @@ class SimulationAnalyzer:
         for n_sim in range(self.number_simulations):
             sim_time_history = self.time_histories[n_sim]
             sim_rxn_history = self.reaction_histories[n_sim]
+            state = copy.deepcopy(self.initial_state)
+            rxn_counts = dict()
+            snapshot_times = [0.0]
             sim_species_profile = dict()
             sim_rxn_profile = dict()
-            state = copy.deepcopy(self.initial_state)
             for mol_ind in state:
-                sim_species_profile[mol_ind] = [(0.0, self.initial_state_dict[mol_ind])]
+                sim_species_profile[mol_ind] = [self.initial_state[mol_ind]]
+            for index in self.rnsd.index_to_species:
+                if index not in sim_species_profile:
+                    sim_species_profile[index] = [0]
+                if index not in state:
+                    state[index] = 0
+            for index in range(len(self.rnsd.index_to_reaction)):
+                sim_rxn_profile[index] = [0]
+                rxn_counts[index] = 0
             total_iterations = len(sim_rxn_history)
 
             for iter in range(total_iterations):
                 rxn_ind = sim_rxn_history[iter]
                 t = sim_time_history[iter]
-                if rxn_ind not in sim_rxn_profile:
-                    sim_rxn_profile[rxn_ind] = [t]
-                else:
-                    sim_rxn_profile[rxn_ind].append(t)
-                converted_ind = math.floor(rxn_ind / 2)
+                rxn_counts[rxn_ind] += 1
 
-                if rxn_ind % 2:
-                    reacts = self.products[converted_ind, :]
-                    prods = self.reactants[converted_ind, :]
-                else:
-                    reacts = self.reactants[converted_ind, :]
-                    prods = self.products[converted_ind, :]
+                update_state(state, rxn_ind)
+                for i, v in state.items():
+                    if v < 0:
+                        raise ValueError("State invalid: negative specie {}".format(i))
 
-                for r_ind in reacts:
-                    if r_ind == -1:
-                        continue
-                    else:
-                        try:
-                            state[r_ind] -= 1
-                            if state[r_ind] < 0:
-                                raise ValueError(
-                                    "State invalid: negative specie: {}".format(r_ind)
-                                )
-                            sim_species_profile[r_ind].append((t, state[r_ind]))
-                        except KeyError:
-                            raise ValueError(
-                                "Reactant specie {} given is not in state!".format(
-                                    r_ind
-                                )
-                            )
-                for p_ind in prods:
-                    if p_ind == -1:
-                        continue
-                    else:
-                        if (p_ind in state) and (p_ind in sim_species_profile):
-                            state[p_ind] += 1
-                            sim_species_profile[p_ind].append((t, state[p_ind]))
-                        else:
-                            state[p_ind] = 1
-                            sim_species_profile[p_ind] = [(0.0, 0), (t, state[p_ind])]
+                if iter + 1 % frequency == 0:
+                    snapshot_times.append(t)
+                    for i, v in state.items():
+                        sim_species_profile[i].append(v)
+                    for rxn, count in rxn_counts.items():
+                        sim_rxn_profile[rxn].append(count)
 
+            # Always add the final state
+            if sim_time_history[-1] not in snapshot_times:
+                snapshot_times.append(sim_time_history[-1])
+                for i, v in state.items():
+                    sim_species_profile[i].append(v)
+                for rxn, count in rxn_counts.items():
+                    sim_rxn_profile[rxn].append(count)
             # for plotting convenience, add data point at final time
             for mol_ind in sim_species_profile:
                 sim_species_profile[mol_ind].append(
