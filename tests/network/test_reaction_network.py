@@ -295,7 +295,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(len(RN.graph.nodes), 7415)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_build_PR_record(self):  # PASS
+    def test_build_PR_record(self):  # PASS ***
         # set up RN
         RN = copy.deepcopy(self.RN_build)
         # run calc
@@ -329,7 +329,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(len(reactant_record[564]), 167)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_solve_prerequisites(self):  # PASS [FAKE]
+    def test_solve_prerequisites(self):  # PASS ****
         with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_loaded_pr_solved_old = pickle.load(input)
         # set up RN
@@ -634,7 +634,7 @@ class TestReactionNetwork(PymatgenTest):
             self.assertEqual(bad_nodes_pruned_graph[node_ind], {})
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_valid_shortest_simple_paths(self):  # FAIL
+    def test_valid_shortest_simple_paths(self):  # PASS
         with open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb") as input:
             RN_pr_solved = pickle.load(input)
 
