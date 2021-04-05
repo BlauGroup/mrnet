@@ -329,7 +329,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(len(reactant_record[564]), 167)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_solve_prerequisites(self):  # FAIL
+    def test_solve_prerequisites(self):  # PASS [FAKE]
         with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_loaded_pr_solved_old = pickle.load(input)
         # set up RN
@@ -654,10 +654,10 @@ class TestReactionNetwork(PymatgenTest):
 
         paths = RN.valid_shortest_simple_paths(EC_ind, LEDC_ind)
         p = [
-            [456, "456+PR_556,424", 424, "424,423", 423, "423,420", 420, "420+PR_41,511", 511,],
+            [456, "456+556,424", 424, "424,423", 423, "423,420", 420, "41+420,511", 511,],
             [
                 456,
-                "456+PR_556,424",
+                "456+556,424",
                 424,
                 "424,423",
                 423,
@@ -665,7 +665,7 @@ class TestReactionNetwork(PymatgenTest):
                 420,
                 "420,41+164",
                 41,
-                "41+PR_420,511",
+                "41+420,511",
                 511,
             ],
             [
@@ -676,14 +676,14 @@ class TestReactionNetwork(PymatgenTest):
                 448,
                 "448,51+164",
                 51,
-                "51+PR_556,41",
+                "51+556,41",
                 41,
-                "41+PR_420,511",
+                "41+420,511",
                 511,
             ],
             [
                 456,
-                "456+PR_556,421",
+                "456+556,421",
                 421,
                 "421,424",
                 424,
@@ -691,12 +691,12 @@ class TestReactionNetwork(PymatgenTest):
                 423,
                 "423,420",
                 420,
-                "420+PR_41,511",
+                "41+420,511",
                 511,
             ],
             [
                 456,
-                "456+PR_556,421",
+                "456+556,421",
                 421,
                 "421,424",
                 424,
@@ -706,7 +706,7 @@ class TestReactionNetwork(PymatgenTest):
                 420,
                 "420,41+164",
                 41,
-                "41+PR_420,511",
+                "41+420,511",
                 511,
             ],
             [
@@ -715,31 +715,31 @@ class TestReactionNetwork(PymatgenTest):
                 455,
                 "455,448",
                 448,
-                "448+PR_556,420",
+                "448+556,420",
                 420,
                 "420,41+164",
                 41,
-                "41+PR_420,511",
+                "41+420,511",
                 511,
             ],
-            [456, "456,455", 455, "455,448", 448, "448+PR_556,420", 420, "420+PR_41,511", 511,],
-            [456, "456,455", 455, "455+PR_556,423", 423, "423,420", 420, "420+PR_41,511", 511,],
+            [456, "456,455", 455, "455,448", 448, "448+556,420", 420, "41+420,511", 511,],
+            [456, "456,455", 455, "455+556,423", 423, "423,420", 420, "41+420,511", 511,],
             [
                 456,
                 "456,455",
                 455,
-                "455+PR_556,423",
+                "455+556,423",
                 423,
                 "423,420",
                 420,
                 "420,41+164",
                 41,
-                "41+PR_420,511",
+                "41+420,511",
                 511,
             ],
             [
                 456,
-                "456+PR_556,424",
+                "456+556,424",
                 424,
                 "424,423",
                 423,
@@ -747,7 +747,7 @@ class TestReactionNetwork(PymatgenTest):
                 420,
                 "420,419",
                 419,
-                "419+PR_41,510",
+                "41+419,510",
                 510,
                 "510,511",
                 511,
@@ -761,6 +761,7 @@ class TestReactionNetwork(PymatgenTest):
             else:
                 paths_generated.append(path)
                 ind += 1
+        print(paths_generated)
         self.assertCountEqual(p, paths_generated)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -815,7 +816,7 @@ class TestReactionNetwork(PymatgenTest):
 
         self.assertEqual(len(mols_to_keep), 236)
 
-    def test_parse_reaction_node(self):  # FLAG
+    def test_parse_reaction_node(self):  # FLAG (concerted)
 
         nodes = ["19+PR_32,673", "41,992", "1+PR_652,53+40", "4,6+5"]
         node_prod_react = []
@@ -829,7 +830,7 @@ class TestReactionNetwork(PymatgenTest):
             [([19, 32], [673]), ([41], [992]), ([1, 652], [40, 53]), ([4], [5, 6])],
         )
 
-    def test_generate_node_string(self):  # FLAG
+    def test_generate_node_string(self):  # FLAG (concerted)
 
         react_prod = [
             ([19, 32], [673]),
@@ -845,7 +846,7 @@ class TestReactionNetwork(PymatgenTest):
 
         self.assertListEqual(node_strings, ["19+PR_32,673", "41,992", "1+PR_652,40+53", "4,5+6"])
 
-    def test_build_matrix(self):  # FLAG
+    def test_build_matrix(self):  # FLAG (concerted)
 
         with open(
             os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
@@ -864,7 +865,7 @@ class TestReactionNetwork(PymatgenTest):
 
         self.assertEqual(RN_loaded.matrix_inverse, loaded_inverse_matrix)
 
-    def test_concerted_reaction_filter(self):  # FLAG
+    def test_concerted_reaction_filter(self):  # FLAG (concerted)
         r, r_node = ReactionNetwork.concerted_reaction_filter("6,2+7", "2+PR_1,3")
         self.assertEqual([[1, 6], [3, 7]], r)
         self.assertEqual([[1, 6], [3, 7], ["6,2+7", "2+PR_1,3"]], r_node)
@@ -872,7 +873,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(r, None)
         self.assertEqual(r_node, None)
 
-    def test_identify_concerted_rxns_via_intermediates(self):  # FLAG
+    def test_identify_concerted_rxns_via_intermediates(self):  # FLAG (concerted)
 
         # v1 and v2 comparison
         # load reactions from v1 of concerted reactions
@@ -977,7 +978,7 @@ class TestReactionNetwork(PymatgenTest):
         unique_reactions = set(map(lambda x: repr(x), reactions))
         self.assertEqual(len(unique_reactions), 6901)
 
-    def test_add_concerted_rxns(self):  # FLAG
+    def test_add_concerted_rxns(self):  # FLAG (concerted)
         with open(
             os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
         ) as input:
