@@ -1655,7 +1655,7 @@ class ReactionNetwork(MSONable):
         """
             A method to add concerted reactions (obtained from identify_concerted_rxns_via_intermediates() method)to
             the ReactonNetwork
-        :param RN: build Reaction Networl
+        :param RN: build Reaction Network
         :param reactions: list of reactions obtained from identify_concerted_rxns_via_intermediates() method
         :return: reaction network with concerted reactions added
         """
