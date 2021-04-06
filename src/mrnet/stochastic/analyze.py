@@ -423,11 +423,11 @@ class SimulationAnalyzer:
                 update_state(state, self.rnsd.index_to_reaction[rxn_ind])
                 for i, v in enumerate(state):
                     if v < 0:
-                        raise ValueError("State invalid: simulation {}, negative specie {}, time {}, step {}, reaction {}".format(n_sim,
-                                                                                                                                  i,
-                                                                                                                                  t,
-                                                                                                                                  iter,
-                                                                                                                                  rxn_ind))
+                        raise ValueError(
+                            "State invalid: simulation {}, negative specie {}, time {}, step {}, reaction {}".format(
+                                n_sim, i, t, iter, rxn_ind
+                            )
+                        )
 
                 if iter + 1 % frequency == 0:
                     snaps.append(t)
@@ -453,7 +453,7 @@ class SimulationAnalyzer:
             "species_profiles": species_profiles,
             "reaction_profiles": reaction_profiles,
             "final_states": final_states,
-            "snapshot_times": snapshot_times
+            "snapshot_times": snapshot_times,
         }
 
     def final_state_analysis(self, final_states):

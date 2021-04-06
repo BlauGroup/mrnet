@@ -104,8 +104,7 @@ class SerializedReactionNetwork:
     def mol_entry_to_internal_index(self, mol_entry):
         return self.species_to_index[mol_entry.entry_id]
 
-    def __extract_index_mappings(self, reactions,
-                                 use_thermo_cost: False):
+    def __extract_index_mappings(self, reactions, use_thermo_cost: False):
         """
         assign each species an index and construct
         forward and backward mappings between indicies and species.
@@ -145,7 +144,7 @@ class SerializedReactionNetwork:
                     "reactants": reactant_indices,
                     "products": product_indices,
                     "free_energy": forward_free_energy,
-                    "rate_constant": forward_rate
+                    "rate_constant": forward_rate,
                 }
             )
             index_to_reaction.append(
@@ -153,7 +152,7 @@ class SerializedReactionNetwork:
                     "reactants": product_indices,
                     "products": reactant_indices,
                     "free_energy": backward_free_energy,
-                    "rate_constant": backward_rate
+                    "rate_constant": backward_rate,
                 }
             )
 
