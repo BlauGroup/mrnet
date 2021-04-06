@@ -408,13 +408,8 @@ class SimulationAnalyzer:
             snaps = [0.0]
             sim_species_profile = dict()
             sim_rxn_profile = dict()
-            for mol_ind in state:
-                sim_species_profile[mol_ind] = [self.initial_state[mol_ind]]
-            for index in self.rnsd.index_to_species:
-                if index not in sim_species_profile:
-                    sim_species_profile[index] = [0]
-                if index not in state:
-                    state[index] = 0
+            for ii, mol_ind in enumerate(state):
+                sim_species_profile[ii] = [self.initial_state[ii]]
             for index in range(len(self.rnsd.index_to_reaction)):
                 sim_rxn_profile[index] = [0]
                 rxn_counts[index] = 0
@@ -425,14 +420,18 @@ class SimulationAnalyzer:
                 t = sim_time_history[iter]
                 rxn_counts[rxn_ind] += 1
 
-                update_state(state, rxn_ind)
-                for i, v in state.items():
+                update_state(state, self.rnsd.index_to_reaction[rxn_ind])
+                for i, v in enumerate(state):
                     if v < 0:
-                        raise ValueError("State invalid: negative specie {}".format(i))
+                        raise ValueError("State invalid: simulation {}, negative specie {}, time {}, step {}, reaction {}".format(n_sim,
+                                                                                                                                  i,
+                                                                                                                                  t,
+                                                                                                                                  iter,
+                                                                                                                                  rxn_ind))
 
                 if iter + 1 % frequency == 0:
                     snaps.append(t)
-                    for i, v in state.items():
+                    for i, v in enumerate(state):
                         sim_species_profile[i].append(v)
                     for rxn, count in rxn_counts.items():
                         sim_rxn_profile[rxn].append(count)
@@ -440,7 +439,7 @@ class SimulationAnalyzer:
             # Always add the final state
             if sim_time_history[-1] not in snaps:
                 snaps.append(sim_time_history[-1])
-                for i, v in state.items():
+                for i, v in enumerate(state):
                     sim_species_profile[i].append(v)
                 for rxn, count in rxn_counts.items():
                     sim_rxn_profile[rxn].append(count)
@@ -470,7 +469,7 @@ class SimulationAnalyzer:
         # For each molecule, compile an array of its final amounts
         state_arrays = dict()
         for iter, final_state in enumerate(final_states):
-            for index, amt in final_state.items():
+            for index, amt in enumerate(final_state):
                 # Store the amount, and convert key from mol_ind to entry_id
                 if index not in state_arrays:
                     state_arrays[index] = np.zeros(self.number_simulations)

@@ -104,7 +104,8 @@ class SerializedReactionNetwork:
     def mol_entry_to_internal_index(self, mol_entry):
         return self.species_to_index[mol_entry.entry_id]
 
-    def __extract_index_mappings(self, reactions):
+    def __extract_index_mappings(self, reactions,
+                                 use_thermo_cost: False):
         """
         assign each species an index and construct
         forward and backward mappings between indicies and species.
@@ -136,11 +137,15 @@ class SerializedReactionNetwork:
             forward_free_energy = reaction.free_energy_A
             backward_free_energy = reaction.free_energy_B
 
+            forward_rate = reaction.k_A
+            backward_rate = reaction.k_B
+
             index_to_reaction.append(
                 {
                     "reactants": reactant_indices,
                     "products": product_indices,
                     "free_energy": forward_free_energy,
+                    "rate_constant": forward_rate
                 }
             )
             index_to_reaction.append(
@@ -148,31 +153,33 @@ class SerializedReactionNetwork:
                     "reactants": product_indices,
                     "products": reactant_indices,
                     "free_energy": backward_free_energy,
+                    "rate_constant": backward_rate
                 }
             )
 
-        for reaction in index_to_reaction:
+        if use_thermo_cost:
+            for reaction in index_to_reaction:
 
-            dG = reaction["free_energy"]
-            kT = boltzman_constant * self.temperature
-            max_rate = kT / planck_constant
+                dG = reaction["free_energy"]
+                kT = boltzman_constant * self.temperature
+                max_rate = kT / planck_constant
 
-            if self.constant_barrier is None:
-                if dG < 0:
-                    rate = max_rate
+                if self.constant_barrier is None:
+                    if dG < 0:
+                        rate = max_rate
+                    else:
+                        rate = max_rate * math.exp(-dG / kT)
+
+                # if all rates are being set using a constant_barrier as in this formula,
+                # then the constant barrier will not actually affect the simulation. It
+                # becomes important when rates are being manually set.
                 else:
-                    rate = max_rate * math.exp(-dG / kT)
+                    if dG < 0:
+                        rate = max_rate * math.exp(-self.constant_barrier / kT)
+                    else:
+                        rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
 
-            # if all rates are being set using a constant_barrier as in this formula,
-            # then the constant barrier will not actually affect the simulation. It
-            # becomes important when rates are being manually set.
-            else:
-                if dG < 0:
-                    rate = max_rate * math.exp(-self.constant_barrier / kT)
-                else:
-                    rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
-
-            reaction["rate_constant"] = rate
+                reaction["rate_constant"] = rate
 
         rev = {i: species for species, i in species_to_index.items()}
         self.number_of_reactions = 2 * reaction_count
@@ -313,7 +320,7 @@ def serialize_simulation_parameters(
         f.write(str(number_of_threads) + "\n")
 
     with open(folder + seeds_postfix, "w") as f:
-        for seed in range(1000, 1000 + number_of_simulations * 2):
+        for seed in range(base_seed, base_seed + number_of_simulations * 2):
             f.write(str(seed) + "\n")
 
 

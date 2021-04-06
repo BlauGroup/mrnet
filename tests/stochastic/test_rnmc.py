@@ -7,7 +7,7 @@ import os
 
 import numpy as np
 from scipy.constants import N_A
-from monty.serialization import loadfn
+from monty.serialization import loadfn, dumpfn
 from pymatgen.util.testing import PymatgenTest
 
 from mrnet.network.reaction_generation import ReactionGenerator
@@ -36,7 +36,6 @@ test_dir = os.path.join(
 
 class RNMC(PymatgenTest):
     def test_rnmc(self):
-
         molecule_entries = loadfn(os.path.join(test_dir, "ronalds_MoleculeEntry.json"))
 
         li_plus_mol_entry = find_mol_entry_from_xyz_and_charge(
@@ -55,6 +54,10 @@ class RNMC(PymatgenTest):
         network_folder_2 = "/tmp/RNMC_network_2"
         param_folder = "/tmp/RNMC_params"
 
+        os.system("rm -r " + network_folder_1)
+        os.system("rm -r " + network_folder_2)
+        os.system("rm -r " + param_folder)
+
         initial_state_data_1 = [(li_plus_mol_entry, 300), (ec_mol_entry, 30)]
         initial_state_data_2 = [(li_plus_mol_entry, 30), (ec_mol_entry, 300)]
 
@@ -71,11 +74,17 @@ class RNMC(PymatgenTest):
         sa_1.generate_pathway_report(ledc_mol_entry, 10)
         sa_1.generate_consumption_report(ledc_mol_entry)
         sa_1.generate_reaction_tally_report()
+        profiles_1 = sa_1.generate_time_dep_profiles()
+        states_1 = sa_1.final_state_analysis(profiles_1["final_states"])
+        rxn_counts_1 = sa_1.rank_reaction_counts()
 
         sa_2 = load_analysis(network_folder_2)
         sa_2.generate_pathway_report(ledc_mol_entry, 10)
         sa_2.generate_consumption_report(ledc_mol_entry)
         sa_2.generate_reaction_tally_report()
+        profiles_2 = sa_2.generate_time_dep_profiles()
+        states_2 = sa_2.final_state_analysis(profiles_2["final_states"])
+        rxn_counts_2 = sa_2.rank_reaction_counts()
 
         os.system("rm -r " + network_folder_1)
         os.system("rm -r " + network_folder_2)
