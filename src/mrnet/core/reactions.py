@@ -336,6 +336,8 @@ class RedoxReaction(Reaction):
         # Initialized to none, generally overwritten by self.set_free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
+        self.k_A = None
+        self.k_B = None
         if self.electron_free_energy is not None:
             self.set_free_energy()
             self.set_rate_constant()
