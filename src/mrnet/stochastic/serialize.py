@@ -153,9 +153,9 @@ class SerializedReactionNetwork:
         if use_thermo_cost:
             for reaction in index_to_reaction:
 
-            dG = reaction["free_energy"]
-            kT = KB * self.temperature
-            max_rate = kT / PLANCK
+                dG = reaction["free_energy"]
+                kT = KB * self.temperature
+                max_rate = kT / PLANCK
 
                 if self.constant_barrier is None:
                     if dG < 0:
