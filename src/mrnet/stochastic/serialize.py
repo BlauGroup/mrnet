@@ -62,6 +62,7 @@ class SerializedReactionNetwork:
         logging: bool = False,
         temperature=room_temp,
         constant_barrier=None,
+        use_thermo_cost=True,
     ):
 
         if isinstance(reaction_network, ReactionGenerator):
@@ -76,7 +77,7 @@ class SerializedReactionNetwork:
         self.temperature = temperature
         self.constant_barrier = constant_barrier
 
-        self.__extract_index_mappings(reactions)
+        self.__extract_index_mappings(reactions, use_thermo_cost=use_thermo_cost)
         if logging:
             print("extracted index mappings")
 
@@ -104,7 +105,7 @@ class SerializedReactionNetwork:
     def mol_entry_to_internal_index(self, mol_entry):
         return self.species_to_index[mol_entry.entry_id]
 
-    def __extract_index_mappings(self, reactions, use_thermo_cost: False):
+    def __extract_index_mappings(self, reactions, use_thermo_cost=True):
         """
         assign each species an index and construct
         forward and backward mappings between indicies and species.
