@@ -59,10 +59,20 @@ class SerializedReactionNetwork:
 
         reactions = reaction_network
         entries_list = reaction_network.rn.entries_list
+        entries_dict = {}
+
+        for entry in entries_list:
+            entries_dict[entry.parameters['ind']] = entry
+
+        self.entries_dict = entries_dict
 
         self.logging = logging
         self.temperature = temperature
         self.constant_barrier = constant_barrier
+
+
+    def serialize(self):
+        
 
 
         # dG = reaction["free_energy"]
