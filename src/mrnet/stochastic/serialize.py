@@ -16,6 +16,29 @@ from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.constants import ROOM_TEMP, PLANCK, KB
 
 
+create_tables = """
+    CREATE TABLE metadata (
+            number_of_species   INTEGER NOT NULL,
+            number_of_reactions INTEGER NOT NULL
+    );
+
+    CREATE TABLE reactions (
+            reaction_id         INTEGER NOT NULL PRIMARY KEY,
+            reaction_string     TEXT NOT NULL,
+            number_of_reactants INTEGER NOT NULL,
+            number_of_products  INTEGER NOT NULL,
+            reactant_1          INTEGER NOT NULL,
+            reactant_2          INTEGER NOT NULL,
+            product_1           INTEGER NOT NULL,
+            product_2           INTEGER NOT NULL,
+            rate                REAL NOT NULL
+    );
+
+    CREATE UNIQUE INDEX reaction_string_idx ON reactions (reaction_string);
+"""
+
+
+
 def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
     """
     given a file 'molecule.xyz', find the mol_entry corresponding to the
@@ -81,7 +104,27 @@ class SerializedReactionNetwork:
         factor_duplicate: float = 1.0,
     ):
 
-        con = sqlite3.connect('rn.sqlite')
+        """
+        write the reaction networks to files for ingestion by RNMC
+        """
+
+        # these variables are used like folder + number_of_species_postfix
+        # postfix is to remind us that they are not total paths
+        db_postfix = "/rn.sqlite"
+        factor_zero_postfix = "/factor_zero"
+        factor_two_postfix = "/factor_two"
+        factor_duplicate_postfix = "/factor_duplicate"
+        initial_state_postfix = "/initial_state"
+
+        os.mkdir(folder)
+
+
+
+        con = sqlite3.connect(folder + db_postfix)
+        cur = con.cursor()
+        cur.executescript(create_tables)
+
+
         con.close()
 
         # dG = reaction["free_energy"]
