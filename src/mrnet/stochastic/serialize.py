@@ -24,7 +24,7 @@ create_tables = """
 
     CREATE TABLE reactions (
             reaction_id         INTEGER NOT NULL PRIMARY KEY,
-            reaction_string     TEXT NOT NULL,
+            reaction_string     TEXT UNIQUE NOT NULL,
             number_of_reactants INTEGER NOT NULL,
             number_of_products  INTEGER NOT NULL,
             reactant_1          INTEGER NOT NULL,
@@ -38,7 +38,7 @@ create_tables = """
 """
 
 insert_reaction = """
-  INSERT IGNORE INTO reactions (
+  INSERT OR IGNORE INTO reactions (
           reaction_id,
           reaction_string,
           number_of_reactants,
