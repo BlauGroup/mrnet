@@ -3,6 +3,7 @@ import math
 import numpy as np
 import pickle
 import os
+import sqlite3
 
 from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
@@ -71,9 +72,17 @@ class SerializedReactionNetwork:
         self.constant_barrier = constant_barrier
 
 
-    def serialize(self):
-        
+    def serialize(
+        self,
+        folder: str,
+        initial_state_data: List[Tuple[MoleculeEntry, int]],
+        factor_zero: float = 1.0,
+        factor_two: float = 1.0,
+        factor_duplicate: float = 1.0,
+    ):
 
+        con = sqlite3.connect('rn.sqlite')
+        con.close()
 
         # dG = reaction["free_energy"]
         # kT = KB * self.temperature
