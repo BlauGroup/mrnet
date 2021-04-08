@@ -37,6 +37,27 @@ create_tables = """
     CREATE UNIQUE INDEX reaction_string_idx ON reactions (reaction_string);
 """
 
+insert_reaction = """
+  INSERT INTO reactions (
+          reaction_id,
+          reaction_string,
+          number_of_reactants,
+          number_of_products,
+          reactant_1,
+          reactant_2,
+          product_1,
+          product_2,
+          rate)
+  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);
+"""
+
+insert_metadata = """
+  INSERT INTO metadata (
+          number_of_species,
+          number_of_reactions)
+  VALUES (?1, ?2);
+"""
+
 
 
 def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
@@ -66,6 +87,27 @@ def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
     else:
         return None
 
+def rate(dG, constant_barrier, temperature):
+    kT = KB * temperature
+    max_rate = kT / PLANCK
+
+    if constant_barrier is None:
+        if dG < 0:
+            rate = max_rate
+        else:
+            rate = max_rate * math.exp(-dG / kT)
+
+    # if all rates are being set using a constant_barrier as in this formula,
+    # then the constant barrier will not actually affect the simulation. It
+    # becomes important when rates are being manually set.
+    else:
+        if dG < 0:
+            rate = max_rate * math.exp(-constant_barrier / kT)
+        else:
+            rate = max_rate * math.exp(-(constant_barrier + dG) / kT)
+
+    return rate
+
 
 class SerializedReactionNetwork:
     """
@@ -88,6 +130,7 @@ class SerializedReactionNetwork:
         for entry in entries_list:
             entries_dict[entry.parameters['ind']] = entry
 
+        self.entries_list = entries_list
         self.entries_dict = entries_dict
 
         self.logging = logging
@@ -127,54 +170,81 @@ class SerializedReactionNetwork:
 
         number_of_reactions = 0
         for reaction in self.reactions:
-            number_of_reactions += 1
+
+            reactant_strings = []
+            product_strings = []
             try:
                 reactant_1_index = reaction.reactants[0].parameters['ind']
+                reactant_strings.append(str(reactant_1_index))
             except:
                 reactant_1_index = -1
 
             try:
                 reactant_2_index = reaction.reactants[1].parameters['ind']
+                reactant_strings.append(str(reactant_2_index))
             except:
                 reactant_2_index = -1
 
             try:
                 product_1_index = reaction.products[0].parameters['ind']
+                product_strings.append(str(product_1_index))
             except:
                 product_1_index = -1
 
             try:
                 product_2_index = reaction.products[1].parameters['ind']
+                product_strings.append(str(product_2_index))
+
             except:
                 product_2_index = -1
 
+            forward_reaction_string = '+'.join(reactant_strings) + '->' + '+'.join(product_strings)
+            reverse_reaction_string = '+'.join(product_strings) + '->' + '+'.join(reactant_strings)
+
+            forward_free_energy = reaction.free_energy_A
+            backward_free_energy = reaction.free_energy_B
+            forward_rate = rate(
+                forward_free_energy,
+                self.constant_barrier,
+                self.temperature)
+            backward_rate = rate(
+                backward_free_energy,
+                self.constant_barrier,
+                self.temperature)
+
+            cur.execute(
+                insert_reaction,
+                ( number_of_reactions,
+                  forward_reaction_string,
+                  len(reactant_strings),
+                  len(product_strings),
+                  reactant_1_index,
+                  reactant_2_index,
+                  product_1_index,
+                  product_2_index,
+                  forward_rate))
+
+            cur.execute(
+                insert_reaction,
+                ( number_of_reactions + 1,
+                  reverse_reaction_string,
+                  len(product_strings),
+                  len(reactant_strings),
+                  product_1_index,
+                  product_2_index,
+                  reactant_1_index,
+                  reactant_2_index,
+                  backward_rate))
 
 
+            number_of_reactions += 2
 
+            if number_of_reactions % 10000 == 0:
+                con.commit()
 
-
+        cur.execute(insert_metadata, (len(self.entries_list),number_of_reactions))
+        con.commit()
         con.close()
-
-        # dG = reaction["free_energy"]
-        # kT = KB * self.temperature
-        # max_rate = kT / PLANCK
-
-        # if self.constant_barrier is None:
-        #     if dG < 0:
-        #         rate = max_rate
-        #     else:
-        #         rate = max_rate * math.exp(-dG / kT)
-
-        # # if all rates are being set using a constant_barrier as in this formula,
-        # # then the constant barrier will not actually affect the simulation. It
-        # # becomes important when rates are being manually set.
-        # else:
-        #     if dG < 0:
-        #         rate = max_rate * math.exp(-self.constant_barrier / kT)
-        #     else:
-        #         rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
-
-        # reaction["rate_constant"] = rate
 
 
 def serialize_simulation_parameters(
