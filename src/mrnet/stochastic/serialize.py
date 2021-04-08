@@ -38,7 +38,7 @@ create_tables = """
 """
 
 insert_reaction = """
-  INSERT INTO reactions (
+  INSERT IGNORE INTO reactions (
           reaction_id,
           reaction_string,
           number_of_reactants,
