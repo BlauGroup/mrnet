@@ -130,14 +130,37 @@ class SerializedReactionNetwork:
         self.temperature = temperature
         self.constant_barrier = constant_barrier
 
-
-    def serialize(
+    def serialize_intial_state(
         self,
-        folder: str,
+        folder:str,
         initial_state_data: List[Tuple[MoleculeEntry, int]],
         factor_zero: float = 1.0,
         factor_two: float = 1.0,
         factor_duplicate: float = 1.0,
+    ):
+        with open(folder + factor_two_postfix, "w") as f:
+            f.write(("%e" % factor_two) + "\n")
+
+        with open(folder + factor_zero_postfix, "w") as f:
+            f.write(("%e" % factor_zero) + "\n")
+
+        with open(folder + factor_duplicate_postfix, "w") as f:
+            f.write(("%e" % factor_duplicate) + "\n")
+
+        initial_state = np.zeros(len(self.entries_list))
+        for (mol_entry, count) in initial_state_data:
+            index = mol_entry.parameters['ind']
+            initial_state[index] = count
+
+        with open(folder + initial_state_postfix, "w") as f:
+            for i in range(len(initial_state)):
+                f.write(str(int(initial_state[i])) + "\n")
+
+
+
+    def serialize_network(
+        self,
+        folder: str,
     ):
 
         """
@@ -238,24 +261,6 @@ class SerializedReactionNetwork:
         cur.execute(insert_metadata, (len(self.entries_list),number_of_reactions))
         con.commit()
         con.close()
-
-        with open(folder + factor_two_postfix, "w") as f:
-            f.write(("%e" % factor_two) + "\n")
-
-        with open(folder + factor_zero_postfix, "w") as f:
-            f.write(("%e" % factor_zero) + "\n")
-
-        with open(folder + factor_duplicate_postfix, "w") as f:
-            f.write(("%e" % factor_duplicate) + "\n")
-
-        initial_state = np.zeros(len(self.entries_list))
-        for (mol_entry, count) in initial_state_data:
-            index = mol_entry.parameters['ind']
-            initial_state[index] = count
-
-        with open(folder + initial_state_postfix, "w") as f:
-            for i in range(len(initial_state)):
-                f.write(str(int(initial_state[i])) + "\n")
 
 
 
