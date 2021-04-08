@@ -81,7 +81,7 @@ class SerializedReactionNetwork:
         constant_barrier=None,
     ):
 
-        reactions = reaction_network
+        self.reactions = reaction_network
         entries_list = reaction_network.rn.entries_list
         entries_dict = {}
 
@@ -123,6 +123,34 @@ class SerializedReactionNetwork:
         con = sqlite3.connect(folder + db_postfix)
         cur = con.cursor()
         cur.executescript(create_tables)
+        con.commit()
+
+        number_of_reactions = 0
+        for reaction in self.reactions:
+            number_of_reactions += 1
+            try:
+                reactant_1_index = reaction.reactants[0].parameters['ind']
+            except:
+                reactant_1_index = -1
+
+            try:
+                reactant_2_index = reaction.reactants[1].parameters['ind']
+            except:
+                reactant_2_index = -1
+
+            try:
+                product_1_index = reaction.products[0].parameters['ind']
+            except:
+                product_1_index = -1
+
+            try:
+                product_2_index = reaction.products[1].parameters['ind']
+            except:
+                product_2_index = -1
+
+
+
+
 
 
         con.close()
