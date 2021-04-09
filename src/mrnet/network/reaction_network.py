@@ -592,6 +592,8 @@ class ReactionNetwork(MSONable):
             if r.__class__.__name__ == "RedoxReaction":
                 redox_c += 1
                 r.electron_free_energy = self.electron_free_energy
+                r.set_free_energy()
+                r.set_rate_constant()
             elif r.__class__.__name__ == "IntramolSingleBondChangeReaction":
                 intra_c += 1
             elif r.__class__.__name__ == "IntermolecularReaction":
