@@ -2,6 +2,8 @@ import copy
 import heapq
 import itertools
 import operator
+import os
+import pickle
 import time as time
 from functools import reduce
 from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set, TypeVar
@@ -9,6 +11,7 @@ from ast import literal_eval
 
 import networkx as nx
 from monty.json import MSONable
+from monty.serialization import loadfn, dumpfn
 from networkx.readwrite import json_graph
 
 from mrnet.core.mol_entry import MoleculeEntry
@@ -615,6 +618,8 @@ class ReactionNetwork(MSONable):
 
         if build_matrix:
             self.build_matrix()
+
+        print("build() end", time.time())
 
         return self.graph
 
@@ -1674,7 +1679,7 @@ class ReactionNetwork(MSONable):
                                             ReactionNetwork.add_reactions_to_matrix(
                                                 RN.matrix2, reaction
                                             )
-
+                                            
         return rxn_from_filer_iter1, rxn_from_filer_iter1_nodes
 
     @staticmethod
