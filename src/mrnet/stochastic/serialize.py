@@ -121,7 +121,6 @@ class SerializedReactionNetwork:
         logging: bool = False,
         temperature=ROOM_TEMP,
         constant_barrier=None,
-        use_thermo_cost=True,
     ):
 
         self.reactions = reaction_network
@@ -139,6 +138,7 @@ class SerializedReactionNetwork:
         factor_two: float = 1.0,
         factor_duplicate: float = 1.0,
     ):
+
         factor_zero_postfix = "/factor_zero"
         factor_two_postfix = "/factor_two"
         factor_duplicate_postfix = "/factor_duplicate"
@@ -163,66 +163,6 @@ class SerializedReactionNetwork:
             for i in range(len(initial_state)):
                 f.write(str(int(initial_state[i])) + "\n")
 
-            forward_rate = reaction.k_A
-            backward_rate = reaction.k_B
-
-            index_to_reaction.append(
-                {
-                    "reactants": reactant_indices,
-                    "products": product_indices,
-                    "free_energy": forward_free_energy,
-                    "rate_constant": forward_rate,
-                }
-            )
-            index_to_reaction.append(
-                {
-                    "reactants": product_indices,
-                    "products": reactant_indices,
-                    "free_energy": backward_free_energy,
-                    "rate_constant": backward_rate,
-                }
-            )
-
-        if use_thermo_cost:
-            for reaction in index_to_reaction:
-
-                dG = reaction["free_energy"]
-                kT = KB * self.temperature
-                max_rate = kT / PLANCK
-
-                if self.constant_barrier is None:
-                    if dG < 0:
-                        rate = max_rate
-                    else:
-                        rate = max_rate * math.exp(-dG / kT)
-
-                # if all rates are being set using a constant_barrier as in this formula,
-                # then the constant barrier will not actually affect the simulation. It
-                # becomes important when rates are being manually set.
-                else:
-                    if dG < 0:
-                        rate = max_rate * math.exp(-self.constant_barrier / kT)
-                    else:
-                        rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
-
-                reaction["rate_constant"] = rate
-
-        rev = {i: species for species, i in species_to_index.items()}
-        self.number_of_reactions = 2 * reaction_count
-        self.number_of_species = index
-        self.species_to_index = species_to_index
-        self.index_to_species = rev
-        self.index_to_reaction = index_to_reaction
-
-    def __extract_species_data(self, entries_list):
-        """
-        store MoleculeEntry data so it can be recalled later
-        """
-        species_data = {}
-        for entry in entries_list:
-            entry_id = entry.entry_id
-            if entry_id in self.species_to_index:
-                species_data[self.species_to_index[entry_id]] = entry
 
 
     def serialize_network(
@@ -365,7 +305,7 @@ def serialize_simulation_parameters(
         f.write(str(number_of_threads) + "\n")
 
     with open(folder + seeds_postfix, "w") as f:
-        for seed in range(base_seed, base_seed + number_of_simulations * 2):
+        for seed in range(1000, 1000 + number_of_simulations * 2):
             f.write(str(seed) + "\n")
 
 
