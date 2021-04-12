@@ -17,6 +17,15 @@ get_metadata = """
     SELECT * FROM metadata;
 """
 
+get_reaction = """
+    SELECT reactant_1,
+           reactant_2,
+           product_1,
+           product_2,
+           dG
+    FROM reactions WHERE reaction_id = ?;
+"""
+
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
     pathway_dict: Dict[frozenset, dict] = {}
@@ -70,6 +79,9 @@ class SimulationAnalyzer:
         for entry in mol_list:
             self.mol_entries[entry.parameters['ind']] = entry
 
+
+        self.reaction_data = {}
+
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
         self.reaction_histories = list()
         self.time_histories = list()
@@ -107,6 +119,22 @@ class SimulationAnalyzer:
         self.number_simulations = len(self.reaction_histories)
         self.visualize_molecules()
 
+    def index_to_reaction(self, reaction_index):
+        if reaction_index in self.reaction_data:
+            return self.reaction_data[reaction_index]
+        else:
+            print("fetching data for reaction", reaction_index)
+            cur = self.connection.cursor()
+            # reaction_index is type numpy.int64 which sqlite doesn't like.
+            res = list(cur.execute(get_reaction, (int(reaction_index), )))[0]
+            reaction = {}
+            reaction['reactants'] = [i for i in res[0:2] if i >= 0]
+            reaction['products'] = [i for i in res[2:4] if i >= 0]
+            reaction['dG'] = res[4]
+            self.reaction_data[reaction_index] = reaction
+            return reaction
+
+
     def visualize_molecules(self):
         folder = self.network_folder + "/molecule_diagrams"
         if os.path.isdir(folder):
@@ -134,7 +162,7 @@ class SimulationAnalyzer:
             running_count = self.initial_state[target_species_index]
 
             for reaction_index in reaction_history:
-                reaction = self.rnsd.index_to_reaction[reaction_index]
+                reaction = self.index_to_reaction(reaction_index)
 
                 for reactant_index in reaction["reactants"]:
                     if target_species_index == reactant_index:
@@ -174,7 +202,7 @@ class SimulationAnalyzer:
             # index of reaction if target was produced
             reaction_producing_target_index = -1
             for reaction_index in reaction_history:
-                reaction = self.rnsd.index_to_reaction[reaction_index]
+                reaction = self.index_to_reaction(reaction_index)
                 if target_species_index in reaction["products"]:
                     reaction_producing_target_index = reaction_index
                     break
@@ -184,7 +212,7 @@ class SimulationAnalyzer:
             else:
                 pathway = [reaction_producing_target_index]
                 partial_state = np.copy(self.initial_state)
-                final_reaction = self.rnsd.index_to_reaction[pathway[0]]
+                final_reaction = self.index_to_reaction(pathway[0])
                 update_state(partial_state, final_reaction)
 
                 negative_species = list(np.where(partial_state < 0)[0])
@@ -192,7 +220,7 @@ class SimulationAnalyzer:
                 while len(negative_species) != 0:
                     for species_index in negative_species:
                         for reaction_index in reaction_history:
-                            reaction = self.rnsd.index_to_reaction[reaction_index]
+                            reaction = self.index_to_reaction(reaction_index)
                             if species_index in reaction["products"]:
                                 update_state(partial_state, reaction)
                                 pathway.insert(0, reaction_index)
@@ -206,7 +234,7 @@ class SimulationAnalyzer:
         self.reaction_pathways_dict[target_species_index] = reaction_pathway_dict
 
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
-        target_species_index = self.rnsd.mol_entry_to_internal_index(mol_entry)
+        target_species_index = mol_entry.parameters['ind']
         folder = (
             self.network_folder + "/consumption_report_" + str(target_species_index)
         )
@@ -268,7 +296,7 @@ class SimulationAnalyzer:
             f.write("\\end{document}")
 
     def generate_pathway_report(self, mol_entry: MoleculeEntry, min_frequency: int):
-        target_species_index = self.rnsd.mol_entry_to_internal_index(mol_entry)
+        target_species_index = mol_entry.parameters['ind']
         folder = self.network_folder + "/pathway_report_" + str(target_species_index)
         os.mkdir(folder)
 
@@ -315,7 +343,7 @@ class SimulationAnalyzer:
 
     def latex_emit_initial_state(self, f: TextIO):
         f.write("initial state:\n\n\n")
-        for species_index in range(self.rnsd.number_of_species):
+        for species_index in range(self.number_of_species):
             num = self.initial_state[species_index]
             if num > 0:
                 f.write(str(num) + " of ")
@@ -328,7 +356,7 @@ class SimulationAnalyzer:
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
         f.write("$$\n")
-        reaction = self.rnsd.index_to_reaction[reaction_index]
+        reaction = self.index_to_reaction(reaction_index)
         first = True
         for reactant_index in reaction["reactants"]:
             if first:
@@ -343,12 +371,9 @@ class SimulationAnalyzer:
                 + ".pdf}}\n"
             )
 
-            # these are mrnet indices, which differ from the internal
-            # MC indices
-            mrnet_index = self.rnsd.internal_to_mrnet_index(reactant_index)
-            f.write(str(mrnet_index) + "\n")
+            f.write(str(reactant_index) + "\n")
 
-        f.write("\\xrightarrow{" + ("%.2f" % reaction["free_energy"]) + "}\n")
+        f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
 
         first = True
         for product_index in reaction["products"]:
@@ -364,10 +389,7 @@ class SimulationAnalyzer:
                 + ".pdf}}\n"
             )
 
-            # these are mrnet indices, which differ from the internal
-            # MC indices
-            mrnet_index = self.rnsd.internal_to_mrnet_index(product_index)
-            f.write(str(mrnet_index) + "\n")
+            f.write(str(product_index) + "\n")
 
         f.write("$$")
         f.write("\n\n\n")
@@ -430,7 +452,7 @@ class SimulationAnalyzer:
             sim_rxn_profile = dict()
             for ii, mol_ind in enumerate(state):
                 sim_species_profile[ii] = [self.initial_state[ii]]
-            for index in range(len(self.rnsd.index_to_reaction)):
+            for index in range(self.number_of_reactions):
                 sim_rxn_profile[index] = [0]
                 rxn_counts[index] = 0
             total_iterations = len(sim_rxn_history)
@@ -440,7 +462,7 @@ class SimulationAnalyzer:
                 t = sim_time_history[iter]
                 rxn_counts[rxn_ind] += 1
 
-                update_state(state, self.rnsd.index_to_reaction[rxn_ind])
+                update_state(state, self.index_to_reaction(rxn_ind))
                 for i, v in enumerate(state):
                     if v < 0:
                         raise ValueError(

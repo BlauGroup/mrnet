@@ -31,7 +31,8 @@ create_tables = """
             reactant_2          INTEGER NOT NULL,
             product_1           INTEGER NOT NULL,
             product_2           INTEGER NOT NULL,
-            rate                REAL NOT NULL
+            rate                REAL NOT NULL,
+            dG                  REAL NOT NULL
     );
 
     CREATE UNIQUE INDEX reaction_string_idx ON reactions (reaction_string);
@@ -47,8 +48,9 @@ insert_reaction = """
           reactant_2,
           product_1,
           product_2,
-          rate)
-  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);
+          rate,
+          dG)
+  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
 """
 
 insert_metadata = """
@@ -225,7 +227,8 @@ def serialize_network(
               reactant_2_index,
               product_1_index,
               product_2_index,
-              forward_rate))
+              forward_rate,
+              forward_free_energy))
 
         cur.execute(
             insert_reaction,
@@ -237,7 +240,8 @@ def serialize_network(
               product_2_index,
               reactant_1_index,
               reactant_2_index,
-              backward_rate))
+              backward_rate,
+              backward_free_energy))
 
 
         number_of_reactions += 2
