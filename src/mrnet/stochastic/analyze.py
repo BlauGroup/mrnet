@@ -2,6 +2,7 @@ from typing import Tuple, List, Dict, TextIO
 import pickle
 import os
 import copy
+import sqlite3
 
 import numpy as np
 
@@ -10,6 +11,11 @@ from mrnet.utils.visualization import (
     visualize_molecule_entry,
     visualize_molecule_count_histogram,
 )
+
+
+get_metadata = """
+    SELECT * FROM metadata;
+"""
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -42,16 +48,27 @@ class SimulationAnalyzer:
 
         initial_state_postfix = "/initial_state"
         simulation_histories_postfix = "/simulation_histories"
+        database_postfix = "/rn.sqlite"
+
+        self.connection = sqlite3.connect(network_folder + database_postfix)
+        cur = self.connection.cursor()
+        md = list(cur.execute(get_metadata))[0]
+        self.number_of_species = md[0]
+        self.number_of_reactions = md[1]
 
 
         self.network_folder = network_folder
-        self.histories_folder = network_folder + simulation_histories_postifx
+        self.histories_folder = network_folder + simulation_histories_postfix
 
         with open(network_folder + initial_state_postfix, 'r') as f:
             initial_state_list = [int(c) for c in f.readlines()]
-            self.initial_state = np.array(initial_state)
+            self.initial_state = np.array(initial_state_list, dtype=int)
 
 
+        self.mol_entries = {}
+
+        for entry in mol_list:
+            self.mol_entries[entry.parameters['ind']] = entry
 
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
         self.reaction_histories = list()
@@ -96,8 +113,8 @@ class SimulationAnalyzer:
             return
 
         os.mkdir(folder)
-        for index in range(self.rnsd.number_of_species):
-            molecule_entry = self.rnsd.species_data[index]
+        for index in range(self.number_of_species):
+            molecule_entry = self.mol_entries[index]
             visualize_molecule_entry(molecule_entry, folder + "/" + str(index) + ".pdf")
 
     def extract_species_consumption_info(
@@ -529,18 +546,3 @@ class SimulationAnalyzer:
         return sorted_reaction_analysis
 
 
-def load_analysis(network_folder: str) -> SimulationAnalyzer:
-    """
-    as part of serialization, the SerializedReactionNetwork is stored as a
-    pickle in the network folder. This allows for analysis to be picked up in a
-    new python session.
-    """
-    with open(network_folder + "/rnsd.pickle", "rb") as f:
-        rnsd = pickle.load(f)
-
-    with open(network_folder + "/initial_state", "r") as s:
-        initial_state = np.array([int(x) for x in s.readlines()], dtype=int)
-
-    sa = SimulationAnalyzer(rnsd, initial_state, network_folder)
-
-    return sa
