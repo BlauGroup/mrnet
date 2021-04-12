@@ -1,22 +1,9 @@
-import networkx as nx
-from monty.json import MSONable
-import itertools
-import time as time
-from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set
+from typing import List
+
 from mrnet.network.reaction_network import ReactionNetwork
 from mrnet.core.mol_entry import MoleculeEntry
-from mrnet.core.reactions import (
-    ConcertedReaction,
-    CoordinationBondChangeReaction,
-    IntermolecularReaction,
-    IntramolSingleBondChangeReaction,
-    Reaction,
-    RedoxReaction,
-)
-
-
-from mrnet.utils.classes import load_class
-
+from mrnet.core.reactions import ConcertedReaction
+from mrnet.utils.constants import ROOM_TEMP
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Daniel Barter"
 __maintainer__ = "Daniel Barter"
@@ -118,9 +105,19 @@ class ReactionGenerator:
         self,
         input_entries,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
+        electron_free_energy=-2.15,
+        temperature=ROOM_TEMP,
+        solvent_dielectric=18.5,
+        solvent_refractive_index=1.415,
     ):
 
-        self.rn = ReactionNetwork.from_input_entries(input_entries)
+        self.rn = ReactionNetwork.from_input_entries(
+            input_entries,
+            electron_free_energy=electron_free_energy,
+            temperature=temperature,
+            solvent_dielectric=solvent_dielectric,
+            solvent_refractive_index=solvent_refractive_index,
+        )
         self.rn.build()
         self.single_elem_interm_ignore = single_elem_interm_ignore
 

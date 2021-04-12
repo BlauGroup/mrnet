@@ -1,11 +1,10 @@
-from typing import Tuple, Optional, Union, List, Dict, TextIO
-import numpy as np
+from typing import Tuple, List, Dict, TextIO
 import pickle
 import os
+import copy
 
-from mrnet.core.reactions import Reaction
-from mrnet.network.reaction_network import ReactionNetwork
-from mrnet.network.reaction_generation import ReactionGenerator
+import numpy as np
+
 from mrnet.stochastic.serialize import SerializedReactionNetwork
 from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.visualization import (
@@ -380,6 +379,151 @@ class SimulationAnalyzer:
                 f.write(str(number) + " occourances of:")
                 self.latex_emit_reaction(f, reaction_index)
             f.write("\\end{document}")
+
+    def generate_time_dep_profiles(self, frequency: int = 1):
+        """
+        Generate plottable time-dependent profiles of species and rxns from raw KMC output, obtain final states.
+
+        :param frequency (int): The system state will be sampled after every n
+            reactions, where n is the frequency. Default is 1, meaning that each
+            step will be sampled.
+
+        :return dict containing species profiles, reaction profiles, and final states from each simulation.
+                {species_profiles: [ {mol_ind1: [n(t0), n(t1)...], mol_ind2: [...],  ... }, {...}, ... ]
+                reaction_profiles: [ {rxn_ind1: [n(t0), n(t1)...], rxn_ind2: [...],  ...}, {...}, ...]
+                final_states: [ {mol_ind1: n1, mol_ind2: ..., ...}, {...}, ...],
+                snapshot_times: [[t0, t1, ...], [...], ...]}
+
+        """
+        species_profiles = list()
+        reaction_profiles = list()
+        snapshot_times = list()
+        final_states = list()
+
+        for n_sim in range(self.number_simulations):
+            sim_time_history = self.time_histories[n_sim]
+            sim_rxn_history = self.reaction_histories[n_sim]
+            state = copy.deepcopy(self.initial_state)
+            rxn_counts = dict()
+            snaps = [0.0]
+            sim_species_profile = dict()
+            sim_rxn_profile = dict()
+            for ii, mol_ind in enumerate(state):
+                sim_species_profile[ii] = [self.initial_state[ii]]
+            for index in range(len(self.rnsd.index_to_reaction)):
+                sim_rxn_profile[index] = [0]
+                rxn_counts[index] = 0
+            total_iterations = len(sim_rxn_history)
+
+            for iter in range(total_iterations):
+                rxn_ind = sim_rxn_history[iter]
+                t = sim_time_history[iter]
+                rxn_counts[rxn_ind] += 1
+
+                update_state(state, self.rnsd.index_to_reaction[rxn_ind])
+                for i, v in enumerate(state):
+                    if v < 0:
+                        raise ValueError(
+                            "State invalid: simulation {}, negative specie {}, time {}, step {}, reaction {}".format(
+                                n_sim, i, t, iter, rxn_ind
+                            )
+                        )
+
+                if iter + 1 % frequency == 0:
+                    snaps.append(t)
+                    for i, v in enumerate(state):
+                        sim_species_profile[i].append(v)
+                    for rxn, count in rxn_counts.items():
+                        sim_rxn_profile[rxn].append(count)
+
+            # Always add the final state
+            if sim_time_history[-1] not in snaps:
+                snaps.append(sim_time_history[-1])
+                for i, v in enumerate(state):
+                    sim_species_profile[i].append(v)
+                for rxn, count in rxn_counts.items():
+                    sim_rxn_profile[rxn].append(count)
+
+            species_profiles.append(sim_species_profile)
+            reaction_profiles.append(sim_rxn_profile)
+            final_states.append(state)
+            snapshot_times.append(snaps)
+
+        return {
+            "species_profiles": species_profiles,
+            "reaction_profiles": reaction_profiles,
+            "final_states": final_states,
+            "snapshot_times": snapshot_times,
+        }
+
+    def final_state_analysis(self, final_states):
+        """
+        Gather statistical analysis of the final states of simulation.
+
+        Args:
+            final_states: list of dicts of final states, as generated in generate_time_dep_profiles()
+
+        :return: list of tuples containing statistical data for each species, sorted from highest to low avg occurrence
+        """
+
+        # For each molecule, compile an array of its final amounts
+        state_arrays = dict()
+        for iter, final_state in enumerate(final_states):
+            for index, amt in enumerate(final_state):
+                # Store the amount, and convert key from mol_ind to entry_id
+                if index not in state_arrays:
+                    state_arrays[index] = np.zeros(self.number_simulations)
+                state_arrays[index][iter] = amt
+        analyzed_states = dict()  # will contain statistical results of final states
+        for mol_entry, state_array in state_arrays.items():
+            analyzed_states[mol_entry] = (np.mean(state_array), np.std(state_array))
+        # Sort from highest avg final amount to lowest
+        sorted_analyzed_states = sorted(
+            [(entry_id, data_tup) for entry_id, data_tup in analyzed_states.items()],
+            key=lambda x: x[1][0],
+            reverse=True,
+        )
+        return sorted_analyzed_states
+
+    def rank_reaction_counts(self):
+        """
+        Given reaction histories, identify the most commonly occurring reactions, on average.
+        Can rank generally, or by reactions of a certain type.
+
+        Args:
+
+        Returns:
+            reaction_data: list of reactions and their avg, std of times fired. Sorted by the average times fired.
+            [(rxn1, (avg, std)), (rxn2, (avg, std)) ... ]
+        """
+
+        reaction_data = dict()  # keeping record of each iteration
+        # Loop to count all reactions fired
+        for n_sim in range(self.number_simulations):
+            rxns_fired = set(self.reaction_histories[n_sim])
+
+            for rxn_ind in rxns_fired:
+                if rxn_ind not in reaction_data:
+                    reaction_data[rxn_ind] = list()
+                reaction_data[rxn_ind].append(
+                    np.sum(self.reaction_histories[n_sim] == rxn_ind)
+                )
+
+        reaction_analysis = dict()
+        for rxn_ind, counts in reaction_data.items():
+            reaction_analysis[rxn_ind] = (
+                np.mean(np.array(counts)),
+                np.std(np.array(counts)),
+            )
+
+        # Sort reactions by the average amount fired
+        sorted_reaction_analysis = sorted(
+            [(i, c) for i, c in reaction_analysis.items()],
+            key=lambda x: x[1][0],
+            reverse=True,
+        )
+
+        return sorted_reaction_analysis
 
 
 def load_analysis(network_folder: str) -> SimulationAnalyzer:

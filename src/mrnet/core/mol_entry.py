@@ -7,10 +7,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
+
 from monty.json import MSONable
+
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
 from pymatgen.analysis.local_env import OpenBabelNN, metal_edge_extender
 from pymatgen.core.structure import Molecule
+
+from mrnet.utils.constants import ROOM_TEMP
 
 __author__ = "Sam Blau, Mingjian Wen"
 __copyright__ = "Copyright 2019, The Materials Project"
@@ -253,7 +257,7 @@ class MoleculeEntry(MSONable):
     def coords(self) -> np.ndarray:
         return self.molecule.cart_coords
 
-    def get_free_energy(self, temperature: float = 298.15) -> Optional[float]:
+    def get_free_energy(self, temperature: float = ROOM_TEMP) -> Optional[float]:
         """
         Get the free energy at the give temperature.
         """
