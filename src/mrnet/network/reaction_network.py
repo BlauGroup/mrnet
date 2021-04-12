@@ -1681,7 +1681,7 @@ class ReactionNetwork(MSONable):
                                             ReactionNetwork.add_reactions_to_matrix(
                                                 RN.matrix2, reaction
                                             )
-                                            
+
         return rxn_from_filer_iter1, rxn_from_filer_iter1_nodes
 
     @staticmethod
