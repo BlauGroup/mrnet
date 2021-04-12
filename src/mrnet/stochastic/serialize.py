@@ -109,162 +109,145 @@ def rate(dG, constant_barrier, temperature):
     return rate
 
 
-class SerializedReactionNetwork:
+def serialize_initial_state(
+    folder:str,
+    entries_list,
+    initial_state_data: List[Tuple[MoleculeEntry, int]],
+    factor_zero: float = 1.0,
+    factor_two: float = 1.0,
+    factor_duplicate: float = 1.0,
+):
+
+    factor_zero_postfix = "/factor_zero"
+    factor_two_postfix = "/factor_two"
+    factor_duplicate_postfix = "/factor_duplicate"
+    initial_state_postfix = "/initial_state"
+
+
+    with open(folder + factor_two_postfix, "w") as f:
+        f.write(("%e" % factor_two) + "\n")
+
+    with open(folder + factor_zero_postfix, "w") as f:
+        f.write(("%e" % factor_zero) + "\n")
+
+    with open(folder + factor_duplicate_postfix, "w") as f:
+        f.write(("%e" % factor_duplicate) + "\n")
+
+    initial_state = np.zeros(len(entries_list))
+    for (mol_entry, count) in initial_state_data:
+        index = mol_entry.parameters['ind']
+        initial_state[index] = count
+
+    with open(folder + initial_state_postfix, "w") as f:
+        for i in range(len(initial_state)):
+            f.write(str(int(initial_state[i])) + "\n")
+
+
+
+
+
+
+def serialize_network(
+    folder: str,
+    reaction_generator: ReactionGenerator,
+    temperature=ROOM_TEMP,
+    constant_barrier=None
+):
+
     """
-    An object designed to store data from a ReactionNetwork suitable for use with
-    the C RNMC code.
+    write the reaction networks to files for ingestion by RNMC
     """
 
-    def __init__(
-        self,
-        reaction_network: ReactionGenerator,
-        logging: bool = False,
-        temperature=ROOM_TEMP,
-        constant_barrier=None,
-    ):
-
-        self.reactions = reaction_network
-        self.entries_list = reaction_network.rn.entries_list
-
-        self.logging = logging
-        self.temperature = temperature
-        self.constant_barrier = constant_barrier
-
-    def serialize_initial_state(
-        self,
-        folder:str,
-        initial_state_data: List[Tuple[MoleculeEntry, int]],
-        factor_zero: float = 1.0,
-        factor_two: float = 1.0,
-        factor_duplicate: float = 1.0,
-    ):
-
-        factor_zero_postfix = "/factor_zero"
-        factor_two_postfix = "/factor_two"
-        factor_duplicate_postfix = "/factor_duplicate"
-        initial_state_postfix = "/initial_state"
+    entries_list = reaction_generator.rn.entries_list
+    db_postfix = "/rn.sqlite"
 
 
-        with open(folder + factor_two_postfix, "w") as f:
-            f.write(("%e" % factor_two) + "\n")
-
-        with open(folder + factor_zero_postfix, "w") as f:
-            f.write(("%e" % factor_zero) + "\n")
-
-        with open(folder + factor_duplicate_postfix, "w") as f:
-            f.write(("%e" % factor_duplicate) + "\n")
-
-        initial_state = np.zeros(len(self.entries_list))
-        for (mol_entry, count) in initial_state_data:
-            index = mol_entry.parameters['ind']
-            initial_state[index] = count
-
-        with open(folder + initial_state_postfix, "w") as f:
-            for i in range(len(initial_state)):
-                f.write(str(int(initial_state[i])) + "\n")
+    os.mkdir(folder)
 
 
 
-    def serialize_network(
-        self,
-        folder: str,
-    ):
+    con = sqlite3.connect(folder + db_postfix)
+    cur = con.cursor()
+    cur.executescript(create_tables)
+    con.commit()
 
-        """
-        write the reaction networks to files for ingestion by RNMC
-        """
+    number_of_reactions = 0
+    for reaction in reaction_generator:
 
-        # these variables are used like folder + number_of_species_postfix
-        # postfix is to remind us that they are not total paths
-        db_postfix = "/rn.sqlite"
+        reactant_strings = []
+        product_strings = []
+        try:
+            reactant_1_index = reaction.reactants[0].parameters['ind']
+            reactant_strings.append(str(reactant_1_index))
+        except:
+            reactant_1_index = -1
 
+        try:
+            reactant_2_index = reaction.reactants[1].parameters['ind']
+            reactant_strings.append(str(reactant_2_index))
+        except:
+            reactant_2_index = -1
 
-        os.mkdir(folder)
+        try:
+            product_1_index = reaction.products[0].parameters['ind']
+            product_strings.append(str(product_1_index))
+        except:
+            product_1_index = -1
 
+        try:
+            product_2_index = reaction.products[1].parameters['ind']
+            product_strings.append(str(product_2_index))
 
+        except:
+            product_2_index = -1
 
-        con = sqlite3.connect(folder + db_postfix)
-        cur = con.cursor()
-        cur.executescript(create_tables)
-        con.commit()
+        forward_reaction_string = '+'.join(reactant_strings) + '->' + '+'.join(product_strings)
+        reverse_reaction_string = '+'.join(product_strings) + '->' + '+'.join(reactant_strings)
 
-        number_of_reactions = 0
-        for reaction in self.reactions:
+        forward_free_energy = reaction.free_energy_A
+        backward_free_energy = reaction.free_energy_B
+        forward_rate = rate(
+            forward_free_energy,
+            constant_barrier,
+            temperature)
+        backward_rate = rate(
+            backward_free_energy,
+            constant_barrier,
+            temperature)
 
-            reactant_strings = []
-            product_strings = []
-            try:
-                reactant_1_index = reaction.reactants[0].parameters['ind']
-                reactant_strings.append(str(reactant_1_index))
-            except:
-                reactant_1_index = -1
+        cur.execute(
+            insert_reaction,
+            ( number_of_reactions,
+              forward_reaction_string,
+              len(reactant_strings),
+              len(product_strings),
+              reactant_1_index,
+              reactant_2_index,
+              product_1_index,
+              product_2_index,
+              forward_rate))
 
-            try:
-                reactant_2_index = reaction.reactants[1].parameters['ind']
-                reactant_strings.append(str(reactant_2_index))
-            except:
-                reactant_2_index = -1
-
-            try:
-                product_1_index = reaction.products[0].parameters['ind']
-                product_strings.append(str(product_1_index))
-            except:
-                product_1_index = -1
-
-            try:
-                product_2_index = reaction.products[1].parameters['ind']
-                product_strings.append(str(product_2_index))
-
-            except:
-                product_2_index = -1
-
-            forward_reaction_string = '+'.join(reactant_strings) + '->' + '+'.join(product_strings)
-            reverse_reaction_string = '+'.join(product_strings) + '->' + '+'.join(reactant_strings)
-
-            forward_free_energy = reaction.free_energy_A
-            backward_free_energy = reaction.free_energy_B
-            forward_rate = rate(
-                forward_free_energy,
-                self.constant_barrier,
-                self.temperature)
-            backward_rate = rate(
-                backward_free_energy,
-                self.constant_barrier,
-                self.temperature)
-
-            cur.execute(
-                insert_reaction,
-                ( number_of_reactions,
-                  forward_reaction_string,
-                  len(reactant_strings),
-                  len(product_strings),
-                  reactant_1_index,
-                  reactant_2_index,
-                  product_1_index,
-                  product_2_index,
-                  forward_rate))
-
-            cur.execute(
-                insert_reaction,
-                ( number_of_reactions + 1,
-                  reverse_reaction_string,
-                  len(product_strings),
-                  len(reactant_strings),
-                  product_1_index,
-                  product_2_index,
-                  reactant_1_index,
-                  reactant_2_index,
-                  backward_rate))
+        cur.execute(
+            insert_reaction,
+            ( number_of_reactions + 1,
+              reverse_reaction_string,
+              len(product_strings),
+              len(reactant_strings),
+              product_1_index,
+              product_2_index,
+              reactant_1_index,
+              reactant_2_index,
+              backward_rate))
 
 
-            number_of_reactions += 2
+        number_of_reactions += 2
 
-            if number_of_reactions % 10000 == 0:
-                con.commit()
+        if number_of_reactions % 10000 == 0:
+            con.commit()
 
-        cur.execute(insert_metadata, (len(self.entries_list),number_of_reactions))
-        con.commit()
-        con.close()
+    cur.execute(insert_metadata, (len(entries_list),number_of_reactions))
+    con.commit()
+    con.close()
 
 
 

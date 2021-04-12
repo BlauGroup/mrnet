@@ -82,12 +82,16 @@ class ReactionGenerator:
         while not next_chunk:
             self.intermediate_index += 1
 
+
             if self.intermediate_index == len(self.rn.entries_list):
                 raise StopIteration()
 
             next_chunk = self.current_chunk = self.generate_concerted_reactions(
                 self.rn.entries_list[self.intermediate_index]
             )
+
+            print("computed concerted chunk for intermediate", self.intermediate_index)
+
 
         self.chunk_index = 0
 

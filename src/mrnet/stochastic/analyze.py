@@ -5,7 +5,6 @@ import copy
 
 import numpy as np
 
-from mrnet.stochastic.serialize import SerializedReactionNetwork
 from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.visualization import (
     visualize_molecule_entry,
@@ -38,13 +37,8 @@ class SimulationAnalyzer:
     """
 
     def __init__(
-        self, rnsd: SerializedReactionNetwork, initial_state, network_folder: str
+            self, network_folder: str, mol_list: List[MoleculeEntry]
     ):
-        """
-        Params:
-            rnsd (SerializedReactionNetwork):
-            network_folder (Path):
-        """
 
         self.network_folder = network_folder
         self.histories_folder = network_folder + "/simulation_histories"
