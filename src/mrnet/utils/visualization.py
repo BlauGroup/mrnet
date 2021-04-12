@@ -25,7 +25,7 @@ def visualize_molecule_entry(molecule_entry, path):
 
     atom_colors = {"O": "red", "H": "gray", "C": "black", "Li": "purple",
                    "N": "blue", "S": "yellow", "Cl": "green", "P": "orange",
-                   "F": "#03C04A", "B": "#FFAA77"}
+                   "F": "#03C04A", "B": "#FFAA77", "Mg": "#FF66CC"}
 
     graph = deepcopy(molecule_entry.graph).to_undirected()
 

@@ -380,13 +380,15 @@ class SimulationAnalyzer:
                 self.latex_emit_reaction(f, reaction_index)
             f.write("\\end{document}")
 
-    def generate_time_dep_profiles(self, frequency: int = 1):
+    def generate_time_dep_profiles(self, frequency: int = 1, track_reactions: bool = True):
         """
         Generate plottable time-dependent profiles of species and rxns from raw KMC output, obtain final states.
 
         :param frequency (int): The system state will be sampled after every n
             reactions, where n is the frequency. Default is 1, meaning that each
             step will be sampled.
+        :param track_reactions (bool): If True (default), generate time-dependent profiles
+            for reactions as well as for species
 
         :return dict containing species profiles, reaction profiles, and final states from each simulation.
                 {species_profiles: [ {mol_ind1: [n(t0), n(t1)...], mol_ind2: [...],  ... }, {...}, ... ]
@@ -404,21 +406,23 @@ class SimulationAnalyzer:
             sim_time_history = self.time_histories[n_sim]
             sim_rxn_history = self.reaction_histories[n_sim]
             state = copy.deepcopy(self.initial_state)
-            rxn_counts = dict()
             snaps = [0.0]
             sim_species_profile = dict()
             sim_rxn_profile = dict()
             for ii, mol_ind in enumerate(state):
                 sim_species_profile[ii] = [self.initial_state[ii]]
-            for index in range(len(self.rnsd.index_to_reaction)):
-                sim_rxn_profile[index] = [0]
-                rxn_counts[index] = 0
+            if track_reactions:
+                rxn_counts = dict()
+                for index in range(len(self.rnsd.index_to_reaction)):
+                    sim_rxn_profile[index] = [0]
+                    rxn_counts[index] = 0
             total_iterations = len(sim_rxn_history)
 
             for iter in range(total_iterations):
                 rxn_ind = sim_rxn_history[iter]
                 t = sim_time_history[iter]
-                rxn_counts[rxn_ind] += 1
+                if track_reactions:
+                    rxn_counts[rxn_ind] += 1
 
                 update_state(state, self.rnsd.index_to_reaction[rxn_ind])
                 for i, v in enumerate(state):
@@ -433,28 +437,35 @@ class SimulationAnalyzer:
                     snaps.append(t)
                     for i, v in enumerate(state):
                         sim_species_profile[i].append(v)
-                    for rxn, count in rxn_counts.items():
-                        sim_rxn_profile[rxn].append(count)
+                    if track_reactions:
+                        for rxn, count in rxn_counts.items():
+                            sim_rxn_profile[rxn].append(count)
 
             # Always add the final state
             if sim_time_history[-1] not in snaps:
                 snaps.append(sim_time_history[-1])
                 for i, v in enumerate(state):
                     sim_species_profile[i].append(v)
-                for rxn, count in rxn_counts.items():
-                    sim_rxn_profile[rxn].append(count)
+                if track_reactions:
+                    for rxn, count in rxn_counts.items():
+                        sim_rxn_profile[rxn].append(count)
 
             species_profiles.append(sim_species_profile)
-            reaction_profiles.append(sim_rxn_profile)
             final_states.append(state)
             snapshot_times.append(snaps)
+            if track_reactions:
+                reaction_profiles.append(sim_rxn_profile)
 
-        return {
+        result = {
             "species_profiles": species_profiles,
-            "reaction_profiles": reaction_profiles,
             "final_states": final_states,
             "snapshot_times": snapshot_times,
         }
+
+        if track_reactions:
+            result["reaction_profiles"] = reaction_profiles
+
+        return result
 
     def final_state_analysis(self, final_states):
         """
