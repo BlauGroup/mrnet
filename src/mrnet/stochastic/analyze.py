@@ -40,10 +40,19 @@ class SimulationAnalyzer:
             self, network_folder: str, mol_list: List[MoleculeEntry]
     ):
 
+        initial_state_postfix = "/initial_state"
+        simulation_histories_postfix = "/simulation_histories"
+
+
         self.network_folder = network_folder
-        self.histories_folder = network_folder + "/simulation_histories"
-        self.rnsd = rnsd
-        self.initial_state = initial_state
+        self.histories_folder = network_folder + simulation_histories_postifx
+
+        with open(network_folder + initial_state_postfix, 'r') as f:
+            initial_state_list = [int(c) for c in f.readlines()]
+            self.initial_state = np.array(initial_state)
+
+
+
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
         self.reaction_histories = list()
         self.time_histories = list()
