@@ -86,14 +86,6 @@ class ReactionGenerator:
 
             reaction = self.current_chunk[self.chunk_index]
             self.chunk_index += 1
-            reaction_sig = (
-                frozenset(reaction.reactant_indices),
-                frozenset(reaction.product_indices),
-            )
-
-            if reaction_sig not in self.previously_seen_reactions:
-                self.previously_seen_reactions.add(reaction_sig)
-                return reaction
 
     def __iter__(self):
         return self
@@ -126,4 +118,3 @@ class ReactionGenerator:
         self.current_chunk = self.rn.reactions
         self.chunk_index = 0
         self.intermediate_index = -1
-        self.previously_seen_reactions = set()
