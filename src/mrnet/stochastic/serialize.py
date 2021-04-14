@@ -39,18 +39,22 @@ create_tables = """
 """
 
 insert_reaction = """
-  INSERT OR IGNORE INTO reactions (
-          reaction_id,
-          reaction_string,
-          number_of_reactants,
-          number_of_products,
-          reactant_1,
-          reactant_2,
-          product_1,
-          product_2,
-          rate,
-          dG)
-  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
+    INSERT INTO reactions (
+            reaction_id,
+            reaction_string,
+            number_of_reactants,
+            number_of_products,
+            reactant_1,
+            reactant_2,
+            product_1,
+            product_2,
+            rate,
+            dG)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
+"""
+
+does_reaction_exist = """
+    SELECT COUNT(*) FROM reactions WHERE reaction_string = ?
 """
 
 insert_metadata = """
@@ -174,77 +178,80 @@ def serialize_network(
     con.commit()
 
     number_of_reactions = 0
-    for reaction in reaction_generator:
+    for (reactants, products, forward_free_energy, backward_free_energy) in reaction_generator:
 
-        reactant_strings = []
-        product_strings = []
-        try:
-            reactant_1_index = reaction.reactants[0].parameters['ind']
-            reactant_strings.append(str(reactant_1_index))
-        except:
-            reactant_1_index = -1
+        forward_reaction_string = ''.join([
+            '+'.join([str(i) for i in reactants]),
+            '->',
+            '+'.join([str(i) for i in products])])
 
-        try:
-            reactant_2_index = reaction.reactants[1].parameters['ind']
-            reactant_strings.append(str(reactant_2_index))
-        except:
-            reactant_2_index = -1
+        cur.execute(does_reaction_exist, (forward_reaction_string,))
+        count = cur.fetchone()
+        if count[0] == 0:
 
-        try:
-            product_1_index = reaction.products[0].parameters['ind']
-            product_strings.append(str(product_1_index))
-        except:
-            product_1_index = -1
-
-        try:
-            product_2_index = reaction.products[1].parameters['ind']
-            product_strings.append(str(product_2_index))
-
-        except:
-            product_2_index = -1
-
-        forward_reaction_string = '+'.join(reactant_strings) + '->' + '+'.join(product_strings)
-        reverse_reaction_string = '+'.join(product_strings) + '->' + '+'.join(reactant_strings)
-
-        forward_free_energy = reaction.free_energy_A
-        backward_free_energy = reaction.free_energy_B
-        forward_rate = rate(
-            forward_free_energy,
-            constant_barrier,
-            temperature)
-        backward_rate = rate(
-            backward_free_energy,
-            constant_barrier,
-            temperature)
-
-        cur.execute(
-            insert_reaction,
-            ( number_of_reactions,
-              forward_reaction_string,
-              len(reactant_strings),
-              len(product_strings),
-              reactant_1_index,
-              reactant_2_index,
-              product_1_index,
-              product_2_index,
-              forward_rate,
-              forward_free_energy))
-
-        cur.execute(
-            insert_reaction,
-            ( number_of_reactions + 1,
-              reverse_reaction_string,
-              len(product_strings),
-              len(reactant_strings),
-              product_1_index,
-              product_2_index,
-              reactant_1_index,
-              reactant_2_index,
-              backward_rate,
-              backward_free_energy))
+            reverse_reaction_string = ''.join([
+                '+'.join([str(i) for i in products]),
+                '->',
+                '+'.join([str(i) for i in reactants])])
 
 
-        number_of_reactions += 2
+            try:
+                reactant_1_index = int(reactants[0])
+            except:
+                reactant_1_index = -1
+
+            try:
+                reactant_2_index = int(reactants[1])
+            except:
+                reactant_2_index = -1
+
+            try:
+                product_1_index = int(products[0])
+            except:
+                product_1_index = -1
+
+            try:
+                product_2_index = int(products[1])
+            except:
+                product_2_index = -1
+
+            forward_rate = rate(
+                forward_free_energy,
+                constant_barrier,
+                temperature)
+            backward_rate = rate(
+                backward_free_energy,
+                constant_barrier,
+                temperature)
+
+            cur.execute(
+                insert_reaction,
+                ( number_of_reactions,
+                  forward_reaction_string,
+                  len(reactants),
+                  len(products),
+                  reactant_1_index,
+                  reactant_2_index,
+                  product_1_index,
+                  product_2_index,
+                  forward_rate,
+                  forward_free_energy))
+
+            cur.execute(
+                insert_reaction,
+                ( number_of_reactions + 1,
+                  reverse_reaction_string,
+                  len(products),
+                  len(reactants),
+                  product_1_index,
+                  product_2_index,
+                  reactant_1_index,
+                  reactant_2_index,
+                  backward_rate,
+                  backward_free_energy))
+
+
+            number_of_reactions += 2
 
         if number_of_reactions % 10000 == 0:
             con.commit()

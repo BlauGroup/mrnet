@@ -68,7 +68,11 @@ class ReactionGenerator:
             )
 
             if cs:
-                return_list.append(cs)
+                return_list.append(
+                    (list(cs.reactant_indices),
+                     list(cs.product_indices),
+                     cs.free_energy_A,
+                     cs.free_energy_B))
             else:
                 print("concerted reaction not created:")
                 print("reactants:", reactants)
@@ -122,6 +126,15 @@ class ReactionGenerator:
 
         # generator state
 
-        self.current_chunk = self.rn.reactions
+        first_chunk = []
+        for reaction in self.rn.reactions:
+            first_chunk.append(
+                (list(reaction.reactant_indices),
+                 list(reaction.product_indices),
+                 reaction.free_energy_A,
+                 reaction.free_energy_B))
+
+
+        self.current_chunk = first_chunk
         self.chunk_index = 0
         self.intermediate_index = -1
