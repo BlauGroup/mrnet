@@ -308,3 +308,14 @@ def run_simulator(network_folder, param_folder, path=None):
         os.system(path + " " + network_folder + " " + param_folder)
     else:
         os.system("RNMC " + network_folder + " " + param_folder)
+
+def clone_database(network_folder_1, network_folder_2):
+    """
+    serializing a network takes a long time, so instead of serializing twice
+    we symlink the db from the first network folder into the second
+    """
+    db_postfix = '/rn.sqlite '
+    os.system("mkdir " + network_folder_2)
+    os.system("ln -s " + network_folder_1 + db_postfix + network_folder_2 + db_postfix)
+
+
