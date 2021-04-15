@@ -94,7 +94,11 @@ class ReactionGenerator:
                 self.rn.entries_list[self.intermediate_index]
             )
 
-            print("computed concerted chunk for intermediate", self.intermediate_index)
+            print("concerted chunk for intermediate",
+                  self.intermediate_index,
+                  ">",
+                  len(next_chunk),
+                  "reactions")
 
 
         self.chunk_index = 0

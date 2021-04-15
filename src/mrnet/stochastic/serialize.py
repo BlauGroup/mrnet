@@ -187,6 +187,7 @@ class SerializeNetwork:
         if shard > self.current_shard:
             self.new_shard()
 
+        # not sure if we want to have a single cursor or create new local cursors like we currently are
         cur = self.con.cursor()
         cur.execute(
             self.insert_statements[self.current_shard],
