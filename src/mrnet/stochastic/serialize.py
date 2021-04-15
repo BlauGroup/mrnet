@@ -69,7 +69,7 @@ def create_reactions_table(n):
                 dG                  REAL NOT NULL
         );
 
-CREATE UNIQUE INDEX reaction_string_idx ON reactions_""" + str(n) + " (reaction_string);"
+CREATE UNIQUE INDEX reaction_""" + str(n) + "_string_idx ON reactions_" + str(n) + " (reaction_string);"
 
 
 def insert_reaction(n):
@@ -110,6 +110,7 @@ class SerializeNetwork:
             folder: str,
             reaction_generator: ReactionGenerator,
             shard_size = 1000000,
+            commit_barrier = 10000,
             temperature=ROOM_TEMP,
             constant_barrier=None
     ):
@@ -120,51 +121,98 @@ class SerializeNetwork:
         self.folder = folder
         self.reaction_generator = reaction_generator
         self.shard_size = shard_size
+        self.commit_barrier = commit_barrier
         self.temperature = temperature
         self.constant_barrier = constant_barrier
         self.entries_list = self.reaction_generator.rn.entries_list
-
-        self.serialize()
-
-
-    def rate(self,dG):
-        kT = KB * self.temperature
-        max_rate = kT / PLANCK
-
-        if self.constant_barrier is None:
-            if dG < 0:
-                rate = max_rate
-            else:
-                rate = max_rate * math.exp(-dG / kT)
-
-        # if all rates are being set using a constant_barrier as in this formula,
-        # then the constant barrier will not actually affect the simulation. It
-        # becomes important when rates are being manually set.
-        else:
-            if dG < 0:
-                rate = max_rate * math.exp(-self.constant_barrier / kT)
-            else:
-                rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
-
-        return rate
-
-
-    def serialize(self):
-        db_postfix = "/rn.sqlite"
-
+        self.db_postfix = "/rn.sqlite"
+        self.current_shard = -1
+        self.number_of_reactions = 0
+        self.insert_statements = {}
+        self.does_exist_statements = {}
 
 
         os.mkdir(self.folder)
+        self.con = sqlite3.connect(self.folder + self.db_postfix)
 
-
-
-        con = sqlite3.connect(self.folder + db_postfix)
-        cur = con.cursor()
+        cur = self.con.cursor()
         cur.executescript(create_metadata_table)
-        cur.executescript(create_reactions_table(0))
-        con.commit()
 
-        number_of_reactions = 0
+        self.new_shard()
+        self.serialize()
+
+
+        cur.execute(
+            insert_metadata,
+            (len(self.entries_list),
+             self.number_of_reactions,
+             self.shard_size))
+
+        self.con.commit()
+        self.con.close()
+
+
+    def new_shard(self):
+        self.current_shard += 1
+        cur = self.con.cursor()
+        cur.executescript(create_reactions_table(self.current_shard))
+        self.insert_statements[self.current_shard] = insert_reaction(self.current_shard)
+        self.does_exist_statements[self.current_shard] = does_reaction_exist(self.current_shard)
+        self.con.commit()
+
+    def does_reaction_exist(self,reaction_string):
+        cur = self.con.cursor()
+        for i in range(self.current_shard + 1):
+            cur.execute(self.does_exist_statements[i],(reaction_string,))
+            count = cur.fetchone()
+            if count[0] != 0:
+                return True
+
+        return False
+
+    def insert_reaction(
+            self,
+            reaction_string,
+            number_of_reactants,
+            number_of_products,
+            reactant_1,
+            reactant_2,
+            product_1,
+            product_2,
+            rate,
+            free_energy):
+
+
+        shard = self.number_of_reactions // self.shard_size
+        if shard > self.current_shard:
+            self.new_shard()
+
+        cur = self.con.cursor()
+        cur.execute(
+            self.insert_statements[self.current_shard],
+            ( self.number_of_reactions,
+              reaction_string,
+              number_of_reactants,
+              number_of_products,
+              reactant_1,
+              reactant_2,
+              product_1,
+              product_2,
+              rate,
+              free_energy))
+
+        self.number_of_reactions += 1
+
+
+        if self.number_of_reactions % self.commit_barrier == 0:
+            self.con.commit()
+
+
+
+
+    def serialize(self):
+
+
         for (reactants,
              products,
              forward_free_energy,
@@ -175,9 +223,7 @@ class SerializeNetwork:
                 '->',
                 '+'.join([str(i) for i in products])])
 
-            cur.execute(does_reaction_exist(0), (forward_reaction_string,))
-            count = cur.fetchone()
-            if count[0] == 0:
+            if not self.does_reaction_exist(forward_reaction_string):
 
                 reverse_reaction_string = ''.join([
                     '+'.join([str(i) for i in products]),
@@ -208,41 +254,50 @@ class SerializeNetwork:
                 forward_rate = self.rate(forward_free_energy)
                 backward_rate = self.rate(backward_free_energy)
 
-                cur.execute(
-                    insert_reaction(0),
-                    ( number_of_reactions,
-                      forward_reaction_string,
-                      len(reactants),
-                      len(products),
-                      reactant_1_index,
-                      reactant_2_index,
-                      product_1_index,
-                      product_2_index,
-                      forward_rate,
-                      forward_free_energy))
+                self.insert_reaction(
+                    forward_reaction_string,
+                    len(reactants),
+                    len(products),
+                    reactant_1_index,
+                    reactant_2_index,
+                    product_1_index,
+                    product_2_index,
+                    forward_rate,
+                    forward_free_energy)
 
-                cur.execute(
-                    insert_reaction(0),
-                    ( number_of_reactions + 1,
-                      reverse_reaction_string,
-                      len(products),
-                      len(reactants),
-                      product_1_index,
-                      product_2_index,
-                      reactant_1_index,
-                      reactant_2_index,
-                      backward_rate,
-                      backward_free_energy))
+                self.insert_reaction(
+                    reverse_reaction_string,
+                    len(products),
+                    len(reactants),
+                    product_1_index,
+                    product_2_index,
+                    reactant_1_index,
+                    reactant_2_index,
+                    backward_rate,
+                    backward_free_energy)
 
 
-                number_of_reactions += 2
+    def rate(self,dG):
+        kT = KB * self.temperature
+        max_rate = kT / PLANCK
 
-            if number_of_reactions % 10000 == 0:
-                con.commit()
+        if self.constant_barrier is None:
+            if dG < 0:
+                rate = max_rate
+            else:
+                rate = max_rate * math.exp(-dG / kT)
 
-        cur.execute(insert_metadata, (len(self.entries_list),number_of_reactions, self.shard_size))
-        con.commit()
-        con.close()
+        # if all rates are being set using a constant_barrier as in this formula,
+        # then the constant barrier will not actually affect the simulation. It
+        # becomes important when rates are being manually set.
+        else:
+            if dG < 0:
+                rate = max_rate * math.exp(-self.constant_barrier / kT)
+            else:
+                rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
+
+        return rate
+
 
 
 def serialize_initial_state(
