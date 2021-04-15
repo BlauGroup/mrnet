@@ -16,54 +16,6 @@ from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.constants import ROOM_TEMP, PLANCK, KB
 
 
-create_tables = """
-    CREATE TABLE metadata (
-            number_of_species   INTEGER NOT NULL,
-            number_of_reactions INTEGER NOT NULL
-    );
-
-    CREATE TABLE reactions (
-            reaction_id         INTEGER NOT NULL PRIMARY KEY,
-            reaction_string     TEXT UNIQUE NOT NULL,
-            number_of_reactants INTEGER NOT NULL,
-            number_of_products  INTEGER NOT NULL,
-            reactant_1          INTEGER NOT NULL,
-            reactant_2          INTEGER NOT NULL,
-            product_1           INTEGER NOT NULL,
-            product_2           INTEGER NOT NULL,
-            rate                REAL NOT NULL,
-            dG                  REAL NOT NULL
-    );
-
-    CREATE UNIQUE INDEX reaction_string_idx ON reactions (reaction_string);
-"""
-
-insert_reaction = """
-    INSERT INTO reactions (
-            reaction_id,
-            reaction_string,
-            number_of_reactants,
-            number_of_products,
-            reactant_1,
-            reactant_2,
-            product_1,
-            product_2,
-            rate,
-            dG)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
-"""
-
-does_reaction_exist = """
-    SELECT COUNT(*) FROM reactions WHERE reaction_string = ?
-"""
-
-insert_metadata = """
-  INSERT INTO metadata (
-          number_of_species,
-          number_of_reactions)
-  VALUES (?1, ?2);
-"""
-
 
 
 def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
@@ -93,26 +45,204 @@ def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
     else:
         return None
 
-def rate(dG, constant_barrier, temperature):
-    kT = KB * temperature
-    max_rate = kT / PLANCK
 
-    if constant_barrier is None:
-        if dG < 0:
-            rate = max_rate
+
+create_metadata_table = """
+    CREATE TABLE metadata (
+            number_of_species   INTEGER NOT NULL,
+            number_of_reactions INTEGER NOT NULL,
+            shard_size          INTEGER NOT NULL
+    );
+"""
+
+def create_reactions_table(n):
+    return "CREATE TABLE reactions_" + str(n) + """ (
+                reaction_id         INTEGER NOT NULL PRIMARY KEY,
+                reaction_string     TEXT UNIQUE NOT NULL,
+                number_of_reactants INTEGER NOT NULL,
+                number_of_products  INTEGER NOT NULL,
+                reactant_1          INTEGER NOT NULL,
+                reactant_2          INTEGER NOT NULL,
+                product_1           INTEGER NOT NULL,
+                product_2           INTEGER NOT NULL,
+                rate                REAL NOT NULL,
+                dG                  REAL NOT NULL
+        );
+
+CREATE UNIQUE INDEX reaction_string_idx ON reactions_""" + str(n) + " (reaction_string);"
+
+
+def insert_reaction(n):
+    return "INSERT INTO reactions_" + str(n) + """ (
+        reaction_id,
+        reaction_string,
+        number_of_reactants,
+        number_of_products,
+        reactant_1,
+        reactant_2,
+        product_1,
+        product_2,
+        rate,
+        dG)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
+"""
+
+def does_reaction_exist(n):
+    return "SELECT COUNT(*) FROM reactions_" + str(n) +" WHERE reaction_string = ?"
+
+insert_metadata = """
+  INSERT INTO metadata (
+          number_of_species,
+          number_of_reactions,
+          shard_size)
+  VALUES (?1, ?2, ?3);
+"""
+
+
+
+class SerializeNetwork:
+    """
+    write the reaction network to a database for ingestion by RNMC
+    """
+
+    def __init__(
+            self,
+            folder: str,
+            reaction_generator: ReactionGenerator,
+            shard_size = 1000000,
+            temperature=ROOM_TEMP,
+            constant_barrier=None
+    ):
+
+        if shard_size < 0 or shard_size % 2 != 0:
+            raise ValueError("shard_size must be positive and even")
+
+        self.folder = folder
+        self.reaction_generator = reaction_generator
+        self.shard_size = shard_size
+        self.temperature = temperature
+        self.constant_barrier = constant_barrier
+        self.entries_list = self.reaction_generator.rn.entries_list
+
+        self.serialize()
+
+
+    def rate(self,dG):
+        kT = KB * self.temperature
+        max_rate = kT / PLANCK
+
+        if self.constant_barrier is None:
+            if dG < 0:
+                rate = max_rate
+            else:
+                rate = max_rate * math.exp(-dG / kT)
+
+        # if all rates are being set using a constant_barrier as in this formula,
+        # then the constant barrier will not actually affect the simulation. It
+        # becomes important when rates are being manually set.
         else:
-            rate = max_rate * math.exp(-dG / kT)
+            if dG < 0:
+                rate = max_rate * math.exp(-self.constant_barrier / kT)
+            else:
+                rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
 
-    # if all rates are being set using a constant_barrier as in this formula,
-    # then the constant barrier will not actually affect the simulation. It
-    # becomes important when rates are being manually set.
-    else:
-        if dG < 0:
-            rate = max_rate * math.exp(-constant_barrier / kT)
-        else:
-            rate = max_rate * math.exp(-(constant_barrier + dG) / kT)
+        return rate
 
-    return rate
+
+    def serialize(self):
+        db_postfix = "/rn.sqlite"
+
+
+
+        os.mkdir(self.folder)
+
+
+
+        con = sqlite3.connect(self.folder + db_postfix)
+        cur = con.cursor()
+        cur.executescript(create_metadata_table)
+        cur.executescript(create_reactions_table(0))
+        con.commit()
+
+        number_of_reactions = 0
+        for (reactants,
+             products,
+             forward_free_energy,
+             backward_free_energy) in self.reaction_generator:
+
+            forward_reaction_string = ''.join([
+                '+'.join([str(i) for i in reactants]),
+                '->',
+                '+'.join([str(i) for i in products])])
+
+            cur.execute(does_reaction_exist(0), (forward_reaction_string,))
+            count = cur.fetchone()
+            if count[0] == 0:
+
+                reverse_reaction_string = ''.join([
+                    '+'.join([str(i) for i in products]),
+                    '->',
+                    '+'.join([str(i) for i in reactants])])
+
+
+                try:
+                    reactant_1_index = int(reactants[0])
+                except:
+                    reactant_1_index = -1
+
+                try:
+                    reactant_2_index = int(reactants[1])
+                except:
+                    reactant_2_index = -1
+
+                try:
+                    product_1_index = int(products[0])
+                except:
+                    product_1_index = -1
+
+                try:
+                    product_2_index = int(products[1])
+                except:
+                    product_2_index = -1
+
+                forward_rate = self.rate(forward_free_energy)
+                backward_rate = self.rate(backward_free_energy)
+
+                cur.execute(
+                    insert_reaction(0),
+                    ( number_of_reactions,
+                      forward_reaction_string,
+                      len(reactants),
+                      len(products),
+                      reactant_1_index,
+                      reactant_2_index,
+                      product_1_index,
+                      product_2_index,
+                      forward_rate,
+                      forward_free_energy))
+
+                cur.execute(
+                    insert_reaction(0),
+                    ( number_of_reactions + 1,
+                      reverse_reaction_string,
+                      len(products),
+                      len(reactants),
+                      product_1_index,
+                      product_2_index,
+                      reactant_1_index,
+                      reactant_2_index,
+                      backward_rate,
+                      backward_free_energy))
+
+
+                number_of_reactions += 2
+
+            if number_of_reactions % 10000 == 0:
+                con.commit()
+
+        cur.execute(insert_metadata, (len(self.entries_list),number_of_reactions, self.shard_size))
+        con.commit()
+        con.close()
 
 
 def serialize_initial_state(
@@ -147,118 +277,6 @@ def serialize_initial_state(
     with open(folder + initial_state_postfix, "w") as f:
         for i in range(len(initial_state)):
             f.write(str(int(initial_state[i])) + "\n")
-
-
-
-
-
-
-def serialize_network(
-    folder: str,
-    reaction_generator: ReactionGenerator,
-    temperature=ROOM_TEMP,
-    constant_barrier=None
-):
-
-    """
-    write the reaction networks to files for ingestion by RNMC
-    """
-
-    entries_list = reaction_generator.rn.entries_list
-    db_postfix = "/rn.sqlite"
-
-
-    os.mkdir(folder)
-
-
-
-    con = sqlite3.connect(folder + db_postfix)
-    cur = con.cursor()
-    cur.executescript(create_tables)
-    con.commit()
-
-    number_of_reactions = 0
-    for (reactants, products, forward_free_energy, backward_free_energy) in reaction_generator:
-
-        forward_reaction_string = ''.join([
-            '+'.join([str(i) for i in reactants]),
-            '->',
-            '+'.join([str(i) for i in products])])
-
-        cur.execute(does_reaction_exist, (forward_reaction_string,))
-        count = cur.fetchone()
-        if count[0] == 0:
-
-            reverse_reaction_string = ''.join([
-                '+'.join([str(i) for i in products]),
-                '->',
-                '+'.join([str(i) for i in reactants])])
-
-
-            try:
-                reactant_1_index = int(reactants[0])
-            except:
-                reactant_1_index = -1
-
-            try:
-                reactant_2_index = int(reactants[1])
-            except:
-                reactant_2_index = -1
-
-            try:
-                product_1_index = int(products[0])
-            except:
-                product_1_index = -1
-
-            try:
-                product_2_index = int(products[1])
-            except:
-                product_2_index = -1
-
-            forward_rate = rate(
-                forward_free_energy,
-                constant_barrier,
-                temperature)
-            backward_rate = rate(
-                backward_free_energy,
-                constant_barrier,
-                temperature)
-
-            cur.execute(
-                insert_reaction,
-                ( number_of_reactions,
-                  forward_reaction_string,
-                  len(reactants),
-                  len(products),
-                  reactant_1_index,
-                  reactant_2_index,
-                  product_1_index,
-                  product_2_index,
-                  forward_rate,
-                  forward_free_energy))
-
-            cur.execute(
-                insert_reaction,
-                ( number_of_reactions + 1,
-                  reverse_reaction_string,
-                  len(products),
-                  len(reactants),
-                  product_1_index,
-                  product_2_index,
-                  reactant_1_index,
-                  reactant_2_index,
-                  backward_rate,
-                  backward_free_energy))
-
-
-            number_of_reactions += 2
-
-        if number_of_reactions % 10000 == 0:
-            con.commit()
-
-    cur.execute(insert_metadata, (len(entries_list),number_of_reactions))
-    con.commit()
-    con.close()
 
 
 
