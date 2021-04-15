@@ -135,14 +135,14 @@ class SerializeNetwork:
         os.mkdir(self.folder)
         self.con = sqlite3.connect(self.folder + self.db_postfix)
 
-        self.cur = self.con.cursor()
-        self.cur.executescript(create_metadata_table)
+        cur = self.con.cursor()
+        cur.executescript(create_metadata_table)
 
         self.new_shard()
         self.serialize()
 
 
-        self.cur.execute(
+        cur.execute(
             insert_metadata,
             (len(self.entries_list),
              self.number_of_reactions,
@@ -153,16 +153,18 @@ class SerializeNetwork:
 
 
     def new_shard(self):
+        cur = self.con.cursor()
         self.current_shard += 1
-        self.cur.executescript(create_reactions_table(self.current_shard))
+        cur.executescript(create_reactions_table(self.current_shard))
         self.insert_statements[self.current_shard] = insert_reaction(self.current_shard)
         self.does_exist_statements[self.current_shard] = does_reaction_exist(self.current_shard)
         self.con.commit()
 
     def does_reaction_exist(self,reaction_string):
+        cur = self.con.cursor()
         for i in range(self.current_shard + 1):
-            self.cur.execute(self.does_exist_statements[i],(reaction_string,))
-            count = self.cur.fetchone()
+            cur.execute(self.does_exist_statements[i],(reaction_string,))
+            count = cur.fetchone()
             if count[0] != 0:
                 return True
 
@@ -180,13 +182,14 @@ class SerializeNetwork:
             rate,
             free_energy):
 
+        cur = self.con.cursor()
+
 
         shard = self.number_of_reactions // self.shard_size
         if shard > self.current_shard:
             self.new_shard()
 
-        # not sure if we want to have a single cursor or create new local cursors like we currently are
-        self.cur.execute(
+        cur.execute(
             self.insert_statements[self.current_shard],
             ( self.number_of_reactions,
               reaction_string,
