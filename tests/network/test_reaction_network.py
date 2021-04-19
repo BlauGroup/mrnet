@@ -78,16 +78,14 @@ class TestReactionPath(PymatgenTest):  # DONE
     def test_characterize_path(self):  # DONE
         # set up input variables
         with open(
-            os.path.join(test_dir, "unittest_RN_before_characterize_path_ak.pkl"), "rb"
+            os.path.join(test_dir, "unittest_RN_before_characterize_path.pkl"), "rb"
         ) as input:
             RN = pickle.load(input)
 
         solved_PRs = loadfn(
             os.path.join(test_dir, "unittest_characterize_path_old_solved_PRs_IN.json")
         )
-        path = loadfn(
-            os.path.join(test_dir, "unittest_characterize_path_path_IN_ak.json")
-        )
+        path = loadfn(os.path.join(test_dir, "unittest_characterize_path_path_IN.json"))
 
         # run calc
         path_instance = ReactionPath.characterize_path(
@@ -128,13 +126,11 @@ class TestReactionPath(PymatgenTest):  # DONE
     def test_characterize_path_final(self):  # DONE
 
         # set up input variables
-        with open(
-            os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb"
-        ) as input:
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_pr_solved = pickle.load(input)
 
         # perform calc
-        # print(RN_pr_solved.PRs[2], RN_pr_solved_ak.PRs[2])
+        # print(RN_pr_solved.PRs[2], RN_pr_solved.PRs[2])
         path_class = ReactionPath.characterize_path_final(
             RN_pr_solved.PRs[2][456].path,
             RN_pr_solved.weight,
@@ -225,13 +221,11 @@ class TestReactionNetwork(PymatgenTest):
 
             # dumpfn(cls.LiEC_reextended_entries, "unittest_input_molentries.json")
 
-            with open(
-                os.path.join(test_dir, "unittest_rn_build_ak.pkl"), "rb"
-            ) as input:
+            with open(os.path.join(test_dir, "unittest_rn_build.pkl"), "rb") as input:
                 cls.RN_build = pickle.load(input)
 
             with open(
-                os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb"
+                os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb"
             ) as input:
                 cls.RN_pr_solved = pickle.load(input)
 
@@ -363,7 +357,7 @@ class TestReactionNetwork(PymatgenTest):
 
         # assert
         with open(
-            os.path.join(test_dir, "unittest_RN_pr_solved_PRs_ak.pkl"), "rb"
+            os.path.join(test_dir, "unittest_RN_pr_solved_PRs.pkl"), "rb"
         ) as input:
             PR_paths = pickle.load(input)
         print(PRs_calc[12])
@@ -459,7 +453,7 @@ class TestReactionNetwork(PymatgenTest):
         # set up RN
 
         with open(
-            os.path.join(test_dir, "unittest_RN_pr_ii_4_before_find_path_cost_ak.pkl"),
+            os.path.join(test_dir, "unittest_RN_pr_ii_4_before_find_path_cost.pkl"),
             "rb",
         ) as input:
             RN_pr_ii_4 = pickle.load(input)
@@ -477,19 +471,19 @@ class TestReactionNetwork(PymatgenTest):
         Li1_ind = RN_pr_ii_4.entries["Li1"][0][1][0].parameters["ind"]
 
         loaded_cost_from_start_str = loadfn(
-            os.path.join(test_dir, "unittest_find_path_cost_cost_from_start_IN_ak.json")
+            os.path.join(test_dir, "unittest_find_path_cost_cost_from_start_IN.json")
         )
 
         old_solved_PRs = loadfn(
-            os.path.join(test_dir, "unittest_find_path_cost_old_solved_prs_IN_ak.json")
+            os.path.join(test_dir, "unittest_find_path_cost_old_solved_prs_IN.json")
         )
 
         loaded_min_cost_str = loadfn(
-            os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN_ak.json")
+            os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN.json")
         )
 
         with open(
-            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN_ak.pkl"), "rb"
+            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "rb"
         ) as input:
             loaded_PRs = pickle.load(input)
 
@@ -538,7 +532,7 @@ class TestReactionNetwork(PymatgenTest):
         # set up RN
         with open(
             os.path.join(
-                test_dir, "unittest_RN_pr_ii_4_before_identify_solved_PRs_ak.pkl"
+                test_dir, "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl"
             ),
             "rb",
         ) as input:
@@ -547,14 +541,14 @@ class TestReactionNetwork(PymatgenTest):
         # set up input variables
         cost_from_start_IN_str = loadfn(
             os.path.join(
-                test_dir, "unittest_identify_solved_PRs_cost_from_start_IN_ak.json"
+                test_dir, "unittest_identify_solved_PRs_cost_from_start_IN.json"
             )
         )
         solved_PRs = loadfn(
-            os.path.join(test_dir, "unittest_identify_solved_PRs_solved_PRs_IN_ak.json")
+            os.path.join(test_dir, "unittest_identify_solved_PRs_solved_PRs_IN.json")
         )
         with open(
-            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN_ak.pkl"), "rb"
+            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "rb"
         ) as input:
             PRs = pickle.load(input)
 
@@ -589,7 +583,7 @@ class TestReactionNetwork(PymatgenTest):
 
         with open(
             os.path.join(
-                test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl"
+                test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights.pkl"
             ),
             "rb",
         ) as input:
@@ -597,10 +591,10 @@ class TestReactionNetwork(PymatgenTest):
 
         # set up input variables
         min_cost_str = loadfn(
-            os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN_ak.json")
+            os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN.json")
         )
         with open(
-            os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN_ak.pkl"),
+            os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN.pkl"),
             "rb",
         ) as input:
             orig_graph = pickle.load(input)
@@ -625,9 +619,7 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_final_PR_check(self):  # DONE
-        with open(
-            os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb"
-        ) as input:
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_pr_solved = pickle.load(input)
 
         # set up RN
@@ -695,9 +687,7 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_valid_shortest_simple_paths(self):  # DONE
-        with open(
-            os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb"
-        ) as input:
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_pr_solved = pickle.load(input)
 
         RN = copy.deepcopy(RN_pr_solved)
@@ -858,9 +848,7 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_find_paths(self):  # DONE
-        with open(
-            os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb"
-        ) as input:
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_pr_solved = pickle.load(input)
 
         # set up RN
@@ -901,9 +889,7 @@ class TestReactionNetwork(PymatgenTest):
             self.assertTrue(abs(path["cost"] - path["pure_cost"]) < 0.000000001)
 
     def test_mols_w_cuttoff(self):  # DONE
-        with open(
-            os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb"
-        ) as input:
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
             RN_pr_solved = pickle.load(input)
 
         RN_loaded = copy.deepcopy(RN_pr_solved)

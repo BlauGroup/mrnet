@@ -800,33 +800,31 @@ class ReactionNetwork(MSONable):
             if ii == 4 and generate_test_files:
                 pickle_in = open(
                     os.path.join(
-                        test_dir, "unittest_RN_pr_ii_4_before_find_path_cost_ak.pkl"
+                        test_dir, "unittest_RN_pr_ii_4_before_find_path_cost.pkl"
                     ),
                     "wb",
                 )
                 pickle.dump(self, pickle_in)
                 pickle_in = open(
-                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN_ak.pkl"),
+                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"),
                     "wb",
                 )
                 pickle.dump(PRs, pickle_in)
                 dumpfn(
                     cost_from_start,
                     os.path.join(
-                        test_dir, "unittest_find_path_cost_cost_from_start_IN_ak.json"
+                        test_dir, "unittest_find_path_cost_cost_from_start_IN.json"
                     ),
                 )
                 dumpfn(
                     old_solved_PRs,
                     os.path.join(
-                        test_dir, "unittest_find_path_cost_old_solved_prs_IN_ak.json"
+                        test_dir, "unittest_find_path_cost_old_solved_prs_IN.json"
                     ),
                 )
                 dumpfn(
                     min_cost,
-                    os.path.join(
-                        test_dir, "unittest_find_path_cost_min_cost_IN_ak.json"
-                    ),
+                    os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN.json"),
                 )
 
             PRs, cost_from_start, min_cost = self.find_path_cost(
@@ -844,13 +842,13 @@ class ReactionNetwork(MSONable):
                 pickle_in = open(
                     os.path.join(
                         test_dir,
-                        "unittest_RN_pr_ii_4_before_identify_solved_PRs_ak.pkl",
+                        "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl",
                     ),
                     "wb",
                 )
                 pickle.dump(self, pickle_in)
                 with open(
-                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN_ak.pkl"),
+                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"),
                     "wb",
                 ) as handle:
                     pickle.dump(PRs, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -858,13 +856,13 @@ class ReactionNetwork(MSONable):
                     cost_from_start,
                     os.path.join(
                         test_dir,
-                        "unittest_identify_solved_PRs_cost_from_start_IN_ak.json",
+                        "unittest_identify_solved_PRs_cost_from_start_IN.json",
                     ),
                 )
                 dumpfn(
                     solved_PRs,
                     os.path.join(
-                        test_dir, "unittest_identify_solved_PRs_solved_PRs_IN_ak.json"
+                        test_dir, "unittest_identify_solved_PRs_solved_PRs_IN.json"
                     ),
                 )
             solved_PRs, new_solved_PRs, cost_from_start = self.identify_solved_PRs(
@@ -876,14 +874,14 @@ class ReactionNetwork(MSONable):
                 pickle_in = open(
                     os.path.join(
                         test_dir,
-                        "unittest_RN_pr_ii_4_before_update_edge_weights_ak.pkl",
+                        "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",
                     ),
                     "wb",
                 )
                 pickle.dump(self, pickle_in)
                 pickle_in = open(
                     os.path.join(
-                        test_dir, "unittest_update_edge_weights_orig_graph_IN_ak.pkl"
+                        test_dir, "unittest_update_edge_weights_orig_graph_IN.pkl"
                     ),
                     "wb",
                 )
@@ -891,7 +889,7 @@ class ReactionNetwork(MSONable):
                 dumpfn(
                     min_cost,
                     os.path.join(
-                        test_dir, "unittest_update_edge_weights_min_cost_IN_ak.json"
+                        test_dir, "unittest_update_edge_weights_min_cost_IN.json"
                     ),
                 )
             attrs = self.update_edge_weights(min_cost, orig_graph)
@@ -1156,14 +1154,14 @@ class ReactionNetwork(MSONable):
                             pickle_in = open(
                                 os.path.join(
                                     test_dir,
-                                    "unittest_RN_before_characterize_path_ak.pkl",
+                                    "unittest_RN_before_characterize_path.pkl",
                                 ),
                                 "wb",
                             )
                             pickle.dump(self, pickle_in)
                             pickle_in = open(
                                 os.path.join(
-                                    test_dir, "unittest_characterize_path_PRs_IN_ak.pkl"
+                                    test_dir, "unittest_characterize_path_PRs_IN.pkl"
                                 ),
                                 "wb",
                             )
@@ -1172,7 +1170,7 @@ class ReactionNetwork(MSONable):
                                 dist_and_path[start][node]["path"],
                                 os.path.join(
                                     test_dir,
-                                    "unittest_characterize_path_path_IN_ak.json",
+                                    "unittest_characterize_path_path_IN.json",
                                 ),
                             )
                         cost_from_start[node][start] = path_class.cost

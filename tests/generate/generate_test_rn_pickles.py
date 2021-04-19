@@ -87,15 +87,15 @@ for entry in reaction_network.entries["C4 H4 Li2 O6"][17][0]:
         LEDC_ind = entry.parameters["ind"]
         break
 Li1_ind = reaction_network.entries["Li1"][0][1][0].parameters["ind"]
-pickle_in = open(os.path.join(test_dir, "unittest_RN_build_ak.pkl"), "wb")
+pickle_in = open(os.path.join(test_dir, "unittest_RN_build.pkl"), "wb")
 pickle.dump(reaction_network, pickle_in)
 pickle_in.close()
 reaction_network.solve_prerequisites(
     [EC_ind, Li1_ind], weight="softplus", generate_test_files=True
 )
-pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "wb")
+pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "wb")
 pickle.dump(reaction_network, pickle_in)
 pickle_in.close()
-pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved_PRs_ak.pkl"), "wb")
+pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved_PRs.pkl"), "wb")
 pickle.dump(reaction_network.PRs, pickle_in)
 pickle_in.close()
