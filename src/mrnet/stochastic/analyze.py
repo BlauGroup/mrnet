@@ -65,7 +65,7 @@ class SimulationAnalyzer:
         self.number_of_species = md[0]
         self.number_of_reactions = md[1]
         self.shard_size = md[2]
-        self.number_of_shards = self.number_of_reactions // self.shard_size
+        self.number_of_shards = (self.number_of_reactions // self.shard_size) + 1
         self.get_reactions_sql = {}
 
         for i in range(self.number_of_shards):

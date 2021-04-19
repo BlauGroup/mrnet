@@ -109,8 +109,8 @@ class SerializeNetwork:
             self,
             folder: str,
             reaction_generator: ReactionGenerator,
-            shard_size = 1000000,
-            commit_barrier = 10000,
+            shard_size: int = 1000000,
+            commit_barrier: int = 10000,
             temperature=ROOM_TEMP,
             constant_barrier=None
     ):
@@ -160,7 +160,7 @@ class SerializeNetwork:
         self.does_exist_statements[self.current_shard] = does_reaction_exist(self.current_shard)
         self.con.commit()
 
-    def does_reaction_exist(self,reaction_string):
+    def does_reaction_exist(self,reaction_string: str):
         cur = self.con.cursor()
         for i in range(self.current_shard + 1):
             cur.execute(self.does_exist_statements[i],(reaction_string,))

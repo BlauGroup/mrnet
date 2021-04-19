@@ -12,7 +12,7 @@ from pymatgen.util.testing import PymatgenTest
 
 from mrnet.network.reaction_generation import ReactionGenerator
 from mrnet.stochastic.serialize import (
-    serialize_network,
+    SerializeNetwork,
     serialize_simulation_parameters,
     find_mol_entry_from_xyz_and_charge,
     run_simulator,
@@ -66,7 +66,9 @@ class RNMC(PymatgenTest):
         initial_state_data_2 = [(li_plus_mol_entry, 30), (ec_mol_entry, 300)]
 
         reaction_generator = ReactionGenerator(molecule_entries)
-        serialize_network(network_folder_1,reaction_generator)
+
+        # for large networks, you want to use shard_size=2000000
+        SerializeNetwork(network_folder_1,reaction_generator, shard_size=100)
 
         # serializing is expensive, so we only want to do it once
         # instead, for reaction_network_2 we symlink the database into the folder
