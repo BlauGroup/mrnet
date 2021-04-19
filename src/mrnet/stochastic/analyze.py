@@ -17,14 +17,14 @@ get_metadata = """
     SELECT * FROM metadata;
 """
 
-get_reaction = """
+def get_reaction(n):
+    return """
     SELECT reactant_1,
            reactant_2,
            product_1,
            product_2,
            dG
-    FROM reactions WHERE reaction_id = ?;
-"""
+    FROM reactions_""" + str(n) + " WHERE reaction_id = ?;"
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -64,6 +64,12 @@ class SimulationAnalyzer:
         md = list(cur.execute(get_metadata))[0]
         self.number_of_species = md[0]
         self.number_of_reactions = md[1]
+        self.shard_size = md[2]
+        self.number_of_shards = self.number_of_reactions // self.shard_size
+        self.get_reactions_sql = {}
+
+        for i in range(self.number_of_shards):
+            self.get_reactions_sql[i] = get_reaction(i)
 
 
         self.network_folder = network_folder
@@ -120,13 +126,14 @@ class SimulationAnalyzer:
         self.visualize_molecules()
 
     def index_to_reaction(self, reaction_index):
+        shard = reaction_index // self.shard_size
         if reaction_index in self.reaction_data:
             return self.reaction_data[reaction_index]
         else:
             print("fetching data for reaction", reaction_index)
             cur = self.connection.cursor()
             # reaction_index is type numpy.int64 which sqlite doesn't like.
-            res = list(cur.execute(get_reaction, (int(reaction_index), )))[0]
+            res = list(cur.execute(self.get_reactions_sql[shard], (int(reaction_index), )))[0]
             reaction = {}
             reaction['reactants'] = [i for i in res[0:2] if i >= 0]
             reaction['products'] = [i for i in res[2:4] if i >= 0]
