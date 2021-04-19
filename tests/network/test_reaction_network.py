@@ -323,8 +323,6 @@ class TestReactionNetwork(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_solve_prerequisites(self):  # PASS ****
-        with open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "rb") as input:
-            RN_loaded_pr_solved_old = pickle.load(input)
         # set up RN
         RN = copy.deepcopy(self.RN_build)
         RN.build_PR_record()
@@ -342,7 +340,8 @@ class TestReactionNetwork(PymatgenTest):
         PRs_calc, old_solved_PRs = RN.solve_prerequisites([EC_ind, Li1_ind], weight="softplus")
 
         # assert
-        PR_paths = copy.deepcopy(RN_loaded_pr_solved_old.PRs)
+        with open(os.path.join(test_dir, "unittest_RN_pr_solved_PRs_ak.pkl"), "rb") as input:
+            PR_paths = pickle.load(input)
         print(PRs_calc[12])
         print(PR_paths[12])
 
@@ -488,7 +487,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(PRs_cal[313], {})
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_identify_solved_PRs(self):  # FLAG
+    def test_identify_solved_PRs(self):  # DONE
 
         # set up RN
         with open(
