@@ -83,10 +83,13 @@ class TestReactionPath(PymatgenTest):
         ) as input:
             PR_paths = pickle.load(input)
 
+        solved_PRs = loadfn(
+            os.path.join(test_dir, "unittest_characterize_path_old_solved_PRs_IN.json")
+        )
         path = loadfn(os.path.join(test_dir, "unittest_characterize_path_path_IN_ak.json"))
 
         # run calc
-        path_instance = ReactionPath.characterize_path(path, "softplus", RN.graph)
+        path_instance = ReactionPath.characterize_path(path, "softplus", RN.graph, solved_PRs)
 
         # assert
         self.assertEqual(path_instance.byproducts, [356, 548])
