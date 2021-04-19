@@ -69,19 +69,14 @@ class TestReactionGenerator(PymatgenTest):
         self.assertEqual(len(mass_not_conserved), 0)
 
 
-class TestReactionPath(PymatgenTest):
+class TestReactionPath(PymatgenTest):  # DONE
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_characterize_path(self):  # FLAG
+    def test_characterize_path(self):  # DONE
         # set up input variables
         with open(
             os.path.join(test_dir, "unittest_RN_before_characterize_path_ak.pkl"), "rb"
         ) as input:
             RN = pickle.load(input)
-
-        with open(
-            os.path.join(test_dir, "unittest_characterize_path_PRs_IN_ak.pkl"), "rb"
-        ) as input:
-            PR_paths = pickle.load(input)
 
         solved_PRs = loadfn(
             os.path.join(test_dir, "unittest_characterize_path_old_solved_PRs_IN.json")
@@ -122,7 +117,7 @@ class TestReactionPath(PymatgenTest):
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_characterize_path_final(self):  # PASS
+    def test_characterize_path_final(self):  # DONE
 
         # set up input variables
         with open(os.path.join(test_dir, "unittest_RN_pr_solved_ak.pkl"), "rb") as input:
@@ -309,7 +304,7 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(len(PR_record[564]), 165)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_build_reactant_record(self):  # DONE*
+    def test_build_reactant_record(self):  # DONE
 
         # set up RN
         RN = copy.deepcopy(self.RN_build)
@@ -418,7 +413,7 @@ class TestReactionNetwork(PymatgenTest):
                     print("Start: ", start)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_find_path_cost(self):  # FLAG
+    def test_find_path_cost(self):  # DONE
         # set up RN
 
         with open(
@@ -439,18 +434,18 @@ class TestReactionNetwork(PymatgenTest):
         Li1_ind = RN_pr_ii_4.entries["Li1"][0][1][0].parameters["ind"]
 
         loaded_cost_from_start_str = loadfn(
-            os.path.join(test_dir, "unittest_find_path_cost_cost_from_start_IN.json")
+            os.path.join(test_dir, "unittest_find_path_cost_cost_from_start_IN_ak.json")
         )
 
         old_solved_PRs = loadfn(
-            os.path.join(test_dir, "unittest_find_path_cost_old_solved_prs_IN.json")
+            os.path.join(test_dir, "unittest_find_path_cost_old_solved_prs_IN_ak.json")
         )
 
         loaded_min_cost_str = loadfn(
-            os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN.json")
+            os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN_ak.json")
         )
 
-        with open(os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "rb") as input:
+        with open(os.path.join(test_dir, "unittest_find_path_cost_PRs_IN_ak.pkl"), "rb") as input:
             loaded_PRs = pickle.load(input)
 
         loaded_cost_from_start = {}

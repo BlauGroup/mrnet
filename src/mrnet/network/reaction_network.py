@@ -763,6 +763,28 @@ class ReactionNetwork(MSONable):
                 for start in starts:
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
+            if ii == 4 and generate_test_files:
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_find_path_cost_ak.pkl"),
+                    "wb",
+                )
+                pickle.dump(self, pickle_in)
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN_ak.pkl"), "wb",
+                )
+                pickle.dump(PRs, pickle_in)
+                dumpfn(
+                    cost_from_start,
+                    os.path.join(test_dir, "unittest_find_path_cost_cost_from_start_IN_ak.json"),
+                )
+                dumpfn(
+                    old_solved_PRs,
+                    os.path.join(test_dir, "unittest_find_path_cost_old_solved_prs_IN_ak.json"),
+                )
+                dumpfn(
+                    min_cost, os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN_ak.json"),
+                )
+
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs, generate=True
             )
