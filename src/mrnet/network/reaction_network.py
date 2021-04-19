@@ -792,7 +792,28 @@ class ReactionNetwork(MSONable):
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs, generate=True
             )
+
             solved_PRs = copy.deepcopy(old_solved_PRs)
+            if ii == 4 and generate_test_files:
+                pickle_in = open(
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_identify_solved_PRs_ak.pkl"),
+                    "wb",
+                )
+                pickle.dump(self, pickle_in)
+                with open(
+                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN_ak.pkl"), "wb"
+                ) as handle:
+                    pickle.dump(PRs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                dumpfn(
+                    cost_from_start,
+                    os.path.join(
+                        test_dir, "unittest_identify_solved_PRs_cost_from_start_IN_ak.json"
+                    ),
+                )
+                dumpfn(
+                    solved_PRs,
+                    os.path.join(test_dir, "unittest_identify_solved_PRs_solved_PRs_IN_ak.json"),
+                )
             solved_PRs, new_solved_PRs, cost_from_start = self.identify_solved_PRs(
                 PRs, solved_PRs, cost_from_start
             )
