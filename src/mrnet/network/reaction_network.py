@@ -4,6 +4,8 @@ import os
 import pickle
 import itertools
 import operator
+import os
+import pickle
 import time as time
 from functools import reduce
 from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set, TypeVar
@@ -615,6 +617,8 @@ class ReactionNetwork(MSONable):
 
         if build_matrix:
             self.build_matrix()
+
+        print("build() end", time.time())
 
         return self.graph
 
