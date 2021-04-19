@@ -764,7 +764,7 @@ class ReactionNetwork(MSONable):
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
             PRs, cost_from_start, min_cost = self.find_path_cost(
-                starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs
+                starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs, generate=True
             )
             solved_PRs = copy.deepcopy(old_solved_PRs)
             solved_PRs, new_solved_PRs, cost_from_start = self.identify_solved_PRs(
@@ -844,7 +844,9 @@ class ReactionNetwork(MSONable):
             nodes.pop(-1)
         return nodes, PR, Reactants
 
-    def find_path_cost(self, starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs):
+    def find_path_cost(
+        self, starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs, generate=False
+    ):
         """
             A method to characterize the path to all the PRs. Characterize by
             determining if the path exist or not, and
@@ -1012,6 +1014,31 @@ class ReactionNetwork(MSONable):
                         path_class = ReactionPath.characterize_path(
                             dist_and_path[start][node]["path"], weight, self.graph, old_solved_PRs,
                         )
+                        if (
+                            start == 456
+                            and node == 2
+                            and path_class.unsolved_prereqs == []
+                            and generate
+                        ):
+                            print("HERE")
+                            pickle_in = open(
+                                os.path.join(
+                                    test_dir, "unittest_RN_before_characterize_path_ak.pkl"
+                                ),
+                                "wb",
+                            )
+                            pickle.dump(self, pickle_in)
+                            pickle_in = open(
+                                os.path.join(test_dir, "unittest_characterize_path_PRs_IN_ak.pkl"),
+                                "wb",
+                            )
+                            pickle.dump(old_solved_PRs, pickle_in)
+                            dumpfn(
+                                dist_and_path[start][node]["path"],
+                                os.path.join(
+                                    test_dir, "unittest_characterize_path_path_IN_ak.json"
+                                ),
+                            )
                         cost_from_start[node][start] = path_class.cost
                         if len(path_class.unsolved_prereqs) == 0:
                             PRs[node][start] = path_class
