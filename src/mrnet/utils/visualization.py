@@ -32,9 +32,7 @@ def visualize_molecule_entry(molecule_entry, path):
     nx.set_node_attributes(graph, "circle", "shape")
     nx.set_node_attributes(graph, "0.2", "width")
     nx.set_node_attributes(
-        graph,
-        dict(enumerate([atom_colors[a] for a in molecule_entry.species])),
-        "color",
+        graph, dict(enumerate([atom_colors[a] for a in molecule_entry.species])), "color",
     )
 
     charge = molecule_entry.charge

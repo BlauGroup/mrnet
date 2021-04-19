@@ -768,12 +768,7 @@ def test_atom_mapping():
     """
 
     test_file = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "..",
-        "test_files",
-        "reaction_files",
-        "LiF2_to_Li_F2.json",
+        os.path.dirname(__file__), "..", "..", "test_files", "reaction_files", "LiF2_to_Li_F2.json",
     )
 
     entries = loadfn(test_file)

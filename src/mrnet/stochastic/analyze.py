@@ -37,9 +37,7 @@ class SimulationAnalyzer:
     A class to analyze the resutls of a set of MC runs
     """
 
-    def __init__(
-        self, rnsd: SerializedReactionNetwork, initial_state, network_folder: str
-    ):
+    def __init__(self, rnsd: SerializedReactionNetwork, initial_state, network_folder: str):
         """
         Params:
             rnsd (SerializedReactionNetwork):
@@ -55,12 +53,8 @@ class SimulationAnalyzer:
         self.time_histories = list()
 
         histories_contents = sorted(os.listdir(self.histories_folder))
-        reaction_histories_contents = [
-            x for x in histories_contents if x.startswith("reactions")
-        ]
-        time_histories_contents = [
-            x for x in histories_contents if x.startswith("times")
-        ]
+        reaction_histories_contents = [x for x in histories_contents if x.startswith("reactions")]
+        time_histories_contents = [x for x in histories_contents if x.startswith("times")]
 
         reaction_seeds = [x.split("_")[1] for x in reaction_histories_contents]
         time_seeds = [x.split("_")[1] for x in reaction_histories_contents]
@@ -187,9 +181,7 @@ class SimulationAnalyzer:
 
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
         target_species_index = self.rnsd.mol_entry_to_internal_index(mol_entry)
-        folder = (
-            self.network_folder + "/consumption_report_" + str(target_species_index)
-        )
+        folder = self.network_folder + "/consumption_report_" + str(target_species_index)
         os.mkdir(folder)
 
         (
@@ -198,9 +190,7 @@ class SimulationAnalyzer:
             final_counts,
         ) = self.extract_species_consumption_info(target_species_index)
 
-        visualize_molecule_count_histogram(
-            final_counts, folder + "/final_count_histogram.pdf"
-        )
+        visualize_molecule_count_histogram(final_counts, folder + "/final_count_histogram.pdf")
 
         with open(folder + "/consumption_report.tex", "w") as f:
             f.write("\\documentclass{article}\n")
@@ -505,9 +495,7 @@ class SimulationAnalyzer:
             for rxn_ind in rxns_fired:
                 if rxn_ind not in reaction_data:
                     reaction_data[rxn_ind] = list()
-                reaction_data[rxn_ind].append(
-                    np.sum(self.reaction_histories[n_sim] == rxn_ind)
-                )
+                reaction_data[rxn_ind].append(np.sum(self.reaction_histories[n_sim] == rxn_ind))
 
         reaction_analysis = dict()
         for rxn_ind, counts in reaction_data.items():
@@ -518,9 +506,7 @@ class SimulationAnalyzer:
 
         # Sort reactions by the average amount fired
         sorted_reaction_analysis = sorted(
-            [(i, c) for i, c in reaction_analysis.items()],
-            key=lambda x: x[1][0],
-            reverse=True,
+            [(i, c) for i, c in reaction_analysis.items()], key=lambda x: x[1][0], reverse=True,
         )
 
         return sorted_reaction_analysis

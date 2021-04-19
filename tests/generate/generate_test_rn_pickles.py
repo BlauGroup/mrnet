@@ -89,4 +89,3 @@ pickle_in.close()
 pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved_PRs_ak.pkl"), "wb")
 pickle.dump(reaction_network.PRs, pickle_in)
 pickle_in.close()
-

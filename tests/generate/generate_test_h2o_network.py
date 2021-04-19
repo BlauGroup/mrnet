@@ -12,11 +12,7 @@ __copyright__ = "Copyright 2020, The Materials Project"
 __version__ = "0.1"
 
 test_dir = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "test_files",
-    "reaction_network_files",
+    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
 )
 
 """
@@ -273,9 +269,7 @@ mol_entries = [
     H_1,
 ]
 
-reaction_network = ReactionNetwork.from_input_entries(
-    mol_entries, electron_free_energy=-2.15
-)
+reaction_network = ReactionNetwork.from_input_entries(mol_entries, electron_free_energy=-2.15)
 reaction_network.build()
 pickle_in = open(os.path.join(test_dir, "h2o_test_network.pickle"), "wb")
 pickle.dump(reaction_network, pickle_in)

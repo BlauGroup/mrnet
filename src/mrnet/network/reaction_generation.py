@@ -18,17 +18,11 @@ class ReactionGenerator:
     all reside in memory simultaneously
     """
 
-    def generate_concerted_reactions(
-        self,
-        entry: MoleculeEntry,
-    ) -> List[ConcertedReaction]:
+    def generate_concerted_reactions(self, entry: MoleculeEntry,) -> List[ConcertedReaction]:
         """
         generate all the concerted reactions with intermediate mol_entry
         """
-        (
-            reactions,
-            _,
-        ) = ReactionNetwork.identify_concerted_rxns_for_specific_intermediate(
+        (reactions, _,) = ReactionNetwork.identify_concerted_rxns_for_specific_intermediate(
             entry,
             self.rn,
             mols_to_keep=[e.parameters["ind"] for e in self.rn.entries_list],
@@ -49,9 +43,7 @@ class ReactionGenerator:
                     new_products.append(self.rn.entries_list[product_id])
 
             cs = ConcertedReaction(
-                new_reactants,
-                new_products,
-                electron_free_energy=self.rn.electron_free_energy,
+                new_reactants, new_products, electron_free_energy=self.rn.electron_free_energy,
             )
 
             if cs:
