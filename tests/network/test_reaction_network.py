@@ -521,7 +521,7 @@ class TestReactionNetwork(PymatgenTest):
         ) = RN_pr_ii_4.identify_solved_PRs(PRs, solved_PRs, cost_from_start)
 
         # assert
-        self.assertEqual(len(solved_PRs_cal), 105)
+        self.assertEqual(len(solved_PRs_cal), 166)
         self.assertEqual(len(cost_from_start_cal), 569)
         self.assertEqual(cost_from_start_cal[456][556], "no_path")
         self.assertEqual(cost_from_start_cal[556][556], 0.0)
