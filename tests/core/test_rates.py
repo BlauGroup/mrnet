@@ -93,11 +93,13 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         )
         self.assertEqual(
             self.calc.net_enthalpy,
-            (self.enthalpies[2] - (self.enthalpies[0] + self.enthalpies[1])) * 0.0433641,
+            (self.enthalpies[2] - (self.enthalpies[0] + self.enthalpies[1]))
+            * 0.0433641,
         )
         self.assertEqual(
             self.calc.net_entropy,
-            (self.entropies[2] - (self.entropies[0] + self.entropies[1])) * 0.0000433641,
+            (self.entropies[2] - (self.entropies[0] + self.entropies[1]))
+            * 0.0000433641,
         )
 
         gibbs_300 = self.pro.get_free_energy(300) - (
@@ -132,7 +134,9 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         rct_entropies = [r.entropy for r in self.reactants]
 
         self.assertAlmostEqual(
-            self.calc.calculate_act_energy(), (trans_energy - sum(rct_energies)) * 27.2116, 6,
+            self.calc.calculate_act_energy(),
+            (trans_energy - sum(rct_energies)) * 27.2116,
+            6,
         )
         self.assertAlmostEqual(
             self.calc.calculate_act_energy(reverse=True),
@@ -141,7 +145,8 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         )
 
         self.assertEqual(
-            self.calc.calculate_act_enthalpy(), (trans_enthalpy - sum(rct_enthalpies)) * 0.0433641,
+            self.calc.calculate_act_enthalpy(),
+            (trans_enthalpy - sum(rct_enthalpies)) * 0.0433641,
         )
         self.assertEqual(
             self.calc.calculate_act_enthalpy(reverse=True),
@@ -149,7 +154,8 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         )
 
         self.assertEqual(
-            self.calc.calculate_act_entropy(), (trans_entropy - sum(rct_entropies)) * 0.0000433641,
+            self.calc.calculate_act_entropy(),
+            (trans_entropy - sum(rct_entropies)) * 0.0000433641,
         )
         self.assertEqual(
             self.calc.calculate_act_entropy(reverse=True),
@@ -169,7 +175,9 @@ class ReactionRateCalculatorTest(unittest.TestCase):
             - 100 * self.calc.calculate_act_entropy()
         )
         self.assertEqual(self.calc.calculate_act_gibbs(300), gibbs_300)
-        self.assertEqual(self.calc.calculate_act_gibbs(300, reverse=True), gibbs_300_rev)
+        self.assertEqual(
+            self.calc.calculate_act_gibbs(300, reverse=True), gibbs_300_rev
+        )
         self.assertEqual(self.calc.calculate_act_gibbs(100), gibbs_100)
 
         self.assertEqual(
@@ -214,7 +222,8 @@ class ReactionRateCalculatorTest(unittest.TestCase):
 
         # Test effect of kappa
         self.assertEqual(
-            self.calc.calculate_rate_constant(), self.calc.calculate_rate_constant(kappa=0.5) * 2,
+            self.calc.calculate_rate_constant(),
+            self.calc.calculate_rate_constant(kappa=0.5) * 2,
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -229,7 +238,9 @@ class ReactionRateCalculatorTest(unittest.TestCase):
         self.assertAlmostEqual(self.calc.calculate_rate([1, 0.5]), base_rate / 2, 8)
         self.assertAlmostEqual(self.calc.calculate_rate([0.5, 1]), base_rate / 2, 8)
         self.assertAlmostEqual(self.calc.calculate_rate([0.5, 0.5]), base_rate / 4, 8)
-        self.assertAlmostEqual(self.calc.calculate_rate([1], reverse=True), rate_constant_rev, 8)
+        self.assertAlmostEqual(
+            self.calc.calculate_rate([1], reverse=True), rate_constant_rev, 8
+        )
         self.assertAlmostEqual(
             self.calc.calculate_rate([1, 1], temperature=600), rate_constant_600, 8
         )
@@ -270,7 +281,8 @@ class BEPReactionRateCalculatorTest(unittest.TestCase):
     def test_act_properties(self):
         self.assertAlmostEqual(
             self.calc.calculate_act_energy(),
-            self.calc.ea_reference + 0.5 * (self.calc.net_enthalpy - self.calc.delta_h_reference),
+            self.calc.ea_reference
+            + 0.5 * (self.calc.net_enthalpy - self.calc.delta_h_reference),
             6,
         )
         self.assertAlmostEqual(
@@ -291,13 +303,19 @@ class BEPReactionRateCalculatorTest(unittest.TestCase):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_rate_constant(self):
-        rate_constant = np.exp(-self.calc.calculate_act_energy() / (8.617333262 * 10 ** -5 * 300))
+        rate_constant = np.exp(
+            -self.calc.calculate_act_energy() / (8.617333262 * 10 ** -5 * 300)
+        )
         rate_constant_600 = np.exp(
             -self.calc.calculate_act_energy() / (8.617333262 * 10 ** -5 * 600)
         )
 
-        self.assertEqual(self.calc.calculate_rate_constant(temperature=300), rate_constant)
-        self.assertEqual(self.calc.calculate_rate_constant(temperature=600), rate_constant_600)
+        self.assertEqual(
+            self.calc.calculate_rate_constant(temperature=300), rate_constant
+        )
+        self.assertEqual(
+            self.calc.calculate_rate_constant(temperature=600), rate_constant_600
+        )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_rates(self):
@@ -305,12 +323,22 @@ class BEPReactionRateCalculatorTest(unittest.TestCase):
         rate_600 = self.calc.calculate_rate([1, 1], temperature=600)
 
         self.assertAlmostEqual(self.calc.calculate_rate([1, 1]) / base_rate, 1, 6)
-        self.assertAlmostEqual(self.calc.calculate_rate([1, 0.5]) / (base_rate / 2), 1, 6)
-        self.assertAlmostEqual(self.calc.calculate_rate([0.5, 1]) / (base_rate / 2), 1, 6)
-        self.assertAlmostEqual(self.calc.calculate_rate([0.5, 0.5]) / (base_rate / 4), 1, 6)
-        self.assertAlmostEqual(self.calc.calculate_rate([1, 1], kappa=0.5) / (base_rate / 2), 1, 6)
+        self.assertAlmostEqual(
+            self.calc.calculate_rate([1, 0.5]) / (base_rate / 2), 1, 6
+        )
+        self.assertAlmostEqual(
+            self.calc.calculate_rate([0.5, 1]) / (base_rate / 2), 1, 6
+        )
+        self.assertAlmostEqual(
+            self.calc.calculate_rate([0.5, 0.5]) / (base_rate / 4), 1, 6
+        )
+        self.assertAlmostEqual(
+            self.calc.calculate_rate([1, 1], kappa=0.5) / (base_rate / 2), 1, 6
+        )
 
-        self.assertAlmostEqual(self.calc.calculate_rate([1, 1], temperature=600) / rate_600, 1, 6)
+        self.assertAlmostEqual(
+            self.calc.calculate_rate([1, 1], temperature=600) / rate_600, 1, 6
+        )
 
 
 class ExpandedBEPReactionRateCalculatorTest(unittest.TestCase):
@@ -407,7 +435,8 @@ class ExpandedBEPReactionRateCalculatorTest(unittest.TestCase):
 
         # Test effect of kappa
         self.assertEqual(
-            self.calc.calculate_rate_constant(), self.calc.calculate_rate_constant(kappa=0.5) * 2,
+            self.calc.calculate_rate_constant(),
+            self.calc.calculate_rate_constant(kappa=0.5) * 2,
         )
 
 
@@ -426,10 +455,16 @@ class RedoxRateCalculatorTest(unittest.TestCase):
             pro_mol.set_charge_and_spin(charge=0)
 
             self.rct = MoleculeEntry(
-                rct_mol, self.energies[0], enthalpy=self.enthalpies[0], entropy=self.entropies[0],
+                rct_mol,
+                self.energies[0],
+                enthalpy=self.enthalpies[0],
+                entropy=self.entropies[0],
             )
             self.pro = MoleculeEntry(
-                pro_mol, self.energies[1], enthalpy=self.enthalpies[1], entropy=self.entropies[1],
+                pro_mol,
+                self.energies[1],
+                enthalpy=self.enthalpies[1],
+                entropy=self.entropies[1],
             )
 
             self.calc = RedoxRateCalculator(
@@ -450,11 +485,15 @@ class RedoxRateCalculatorTest(unittest.TestCase):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_act_properties(self):
-        self.assertAlmostEqual(self.calc.calculate_act_gibbs(temperature=300), 0.284698735, 9)
+        self.assertAlmostEqual(
+            self.calc.calculate_act_gibbs(temperature=300), 0.284698735, 9
+        )
         self.assertAlmostEqual(
             self.calc.calculate_act_gibbs(temperature=300, reverse=True), 0.284433478, 9
         )
-        self.assertAlmostEqual(self.calc.calculate_act_gibbs(temperature=600), 0.306243023, 9)
+        self.assertAlmostEqual(
+            self.calc.calculate_act_gibbs(temperature=600), 0.306243023, 9
+        )
 
         with self.assertRaises(NotImplementedError):
             self.calc.calculate_act_energy()
@@ -468,15 +507,20 @@ class RedoxRateCalculatorTest(unittest.TestCase):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_rate_constant(self):
         self.assertAlmostEqual(
-            self.calc.calculate_rate_constant(temperature=300) / 255536.74880926133, 1.0, 4,
-        )
-        self.assertAlmostEqual(
-            self.calc.calculate_rate_constant(temperature=300, reverse=True) / 258172.2056825794,
+            self.calc.calculate_rate_constant(temperature=300) / 255536.74880926133,
             1.0,
             4,
         )
         self.assertAlmostEqual(
-            self.calc.calculate_rate_constant(temperature=600) / 82962806.19389883, 1.0, 4,
+            self.calc.calculate_rate_constant(temperature=300, reverse=True)
+            / 258172.2056825794,
+            1.0,
+            4,
+        )
+        self.assertAlmostEqual(
+            self.calc.calculate_rate_constant(temperature=600) / 82962806.19389883,
+            1.0,
+            4,
         )
 
         self.assertAlmostEqual(

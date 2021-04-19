@@ -120,8 +120,12 @@ class SerializedReactionNetwork:
                     species_to_index[species] = index
                     index = index + 1
 
-            reactant_indices = [species_to_index[reactant] for reactant in reaction.reactant_ids]
-            product_indices = [species_to_index[product] for product in reaction.product_ids]
+            reactant_indices = [
+                species_to_index[reactant] for reactant in reaction.reactant_ids
+            ]
+            product_indices = [
+                species_to_index[product] for product in reaction.product_ids
+            ]
 
             forward_free_energy = reaction.free_energy_A
             backward_free_energy = reaction.free_energy_B

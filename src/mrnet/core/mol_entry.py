@@ -134,7 +134,11 @@ class MoleculeEntry(MSONable):
 
     @classmethod
     def from_dataset_entry(
-        cls, doc: Dict, use_thermo: str = "raw", parameters: Optional[Dict] = None, attribute=None,
+        cls,
+        doc: Dict,
+        use_thermo: str = "raw",
+        parameters: Optional[Dict] = None,
+        attribute=None,
     ):
         """
         Initialize a MoleculeEntry from a document in the LIBE (Lithium-Ion
@@ -163,7 +167,8 @@ class MoleculeEntry(MSONable):
 
         if thermo not in ["raw", "rrho_shifted", "qrrho"]:
             raise ValueError(
-                "Only allowed values for use_thermo are 'raw', 'rrho_shifted', " "and 'qrrho'!"
+                "Only allowed values for use_thermo are 'raw', 'rrho_shifted', "
+                "and 'qrrho'!"
             )
         try:
             if isinstance(doc["molecule"], Molecule):
@@ -171,8 +176,13 @@ class MoleculeEntry(MSONable):
             else:
                 molecule = Molecule.from_dict(doc["molecule"])  # type: ignore
 
-            if thermo == "rrho_shifted" and doc["thermo"]["shifted_rrho_eV"] is not None:
-                energy = doc["thermo"]["shifted_rrho_eV"]["electronic_energy"] * 0.0367493
+            if (
+                thermo == "rrho_shifted"
+                and doc["thermo"]["shifted_rrho_eV"] is not None
+            ):
+                energy = (
+                    doc["thermo"]["shifted_rrho_eV"]["electronic_energy"] * 0.0367493
+                )
                 enthalpy = doc["thermo"]["shifted_rrho_eV"]["total_enthalpy"] * 23.061
                 entropy = doc["thermo"]["shifted_rrho_eV"]["total_entropy"] * 23061
             elif thermo == "qrrho" and doc["thermo"]["quasi_rrho_eV"] is not None:

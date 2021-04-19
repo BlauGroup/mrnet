@@ -25,7 +25,9 @@ setup(
     package_data={"mrnet": ["py.typed"]},
     zip_safe=False,
     include_package_data=True,
-    install_requires=["setuptools",],
+    install_requires=[
+        "setuptools",
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",

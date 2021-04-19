@@ -27,7 +27,11 @@ except ImportError:
 
 
 test_dir = os.path.join(
-    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "test_files",
+    "reaction_network_files",
 )
 
 
@@ -44,7 +48,11 @@ def get_entries():
             H = float(entry["output"]["enthalpy"])
             S = float(entry["output"]["entropy"])
             mol_entry = MoleculeEntry(
-                molecule=mol, energy=E, enthalpy=H, entropy=S, entry_id=entry["task_id"],
+                molecule=mol,
+                energy=E,
+                enthalpy=H,
+                entropy=S,
+                entry_id=entry["task_id"],
             )
             if mol_entry.formula == "Li1":
                 if mol_entry.charge == 1:
@@ -215,7 +223,9 @@ class TestRedoxReaction(PymatgenTest):
         )
         self.assertEqual(len(graph.edges), 4)
         self.assertEqual(
-            graph.get_edge_data(EC_0_ind, str(EC_0_ind) + "," + str(EC_1_ind))["softplus"],
+            graph.get_edge_data(EC_0_ind, str(EC_0_ind) + "," + str(EC_1_ind))[
+                "softplus"
+            ],
             5.629805462349386,
         )
 
@@ -297,7 +307,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
         )
         self.assertEqual(len(graph.edges), 4)
         self.assertEqual(
-            graph.get_edge_data(LiEC_ind, str(LiEC_ind) + "," + str(LiEC_RO_ind))["softplus"],
+            graph.get_edge_data(LiEC_ind, str(LiEC_ind) + "," + str(LiEC_RO_ind))[
+                "softplus"
+            ],
             0.15092362164364986,
         )
 
@@ -364,7 +376,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_reaction_type(self):
 
         reaction = IntramolSingleBondChangeReaction(entries["LiEC"], entries["LiEC_RO"])
-        self.assertEqual(reaction.__class__.__name__, "IntramolSingleBondChangeReaction")
+        self.assertEqual(
+            reaction.__class__.__name__, "IntramolSingleBondChangeReaction"
+        )
         self.assertEqual(reaction.rxn_type_A, "Intramolecular single bond formation")
         self.assertEqual(reaction.rxn_type_B, "Intramolecular single bond breakage")
 
@@ -383,7 +397,9 @@ class TestIntermolecularReaction(PymatgenTest):
         C1Li1O3_ind = C1Li1O3_RN_entry.parameters["ind"]
 
         # perform calc
-        reaction = IntermolecularReaction(LiEC_RO_RN_entry, [C2H4_RN_entry, C1Li1O3_RN_entry])
+        reaction = IntermolecularReaction(
+            LiEC_RO_RN_entry, [C2H4_RN_entry, C1Li1O3_RN_entry]
+        )
         graph = reaction.graph_representation()
 
         # assert
@@ -400,13 +416,15 @@ class TestIntermolecularReaction(PymatgenTest):
         self.assertEqual(len(graph.edges), 6)
         self.assertEqual(
             graph.get_edge_data(
-                LiEC_RO_ind, str(LiEC_RO_ind) + "," + str(C1Li1O3_ind) + "+" + str(C2H4_ind),
+                LiEC_RO_ind,
+                str(LiEC_RO_ind) + "," + str(C1Li1O3_ind) + "+" + str(C2H4_ind),
             )["softplus"],
             0.5828092060367285,
         )
         self.assertEqual(
             graph.get_edge_data(
-                LiEC_RO_ind, str(C2H4_ind) + "+" + str(C1Li1O3_ind) + "," + str(LiEC_RO_ind),
+                LiEC_RO_ind,
+                str(C2H4_ind) + "+" + str(C1Li1O3_ind) + "," + str(LiEC_RO_ind),
             ),
             None,
         )
@@ -424,21 +442,28 @@ class TestIntermolecularReaction(PymatgenTest):
                     or r.products[1].entry_id == entries["C2H4"].entry_id
                 ):
                     self.assertTrue(
-                        r.products[0].formula == "C1 Li1 O3" or r.products[1].formula == "C1 Li1 O3"
+                        r.products[0].formula == "C1 Li1 O3"
+                        or r.products[1].formula == "C1 Li1 O3"
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == entries["C1Li1O3"].get_free_energy()
-                        or r.products[1].get_free_energy() == entries["C1Li1O3"].get_free_energy()
+                        r.products[0].get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
+                        or r.products[1].get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == entries["C1Li1O3"].get_free_energy()
-                        or r.products[1].get_free_energy() == entries["C1Li1O3"].get_free_energy()
+                        r.products[0].get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
+                        or r.products[1].get_free_energy()
+                        == entries["C1Li1O3"].get_free_energy()
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_atom_mapping(self):
 
-        ents = bucket_mol_entries([entries["LiEC_RO"], entries["C1Li1O3"], entries["C2H4"]])
+        ents = bucket_mol_entries(
+            [entries["LiEC_RO"], entries["C1Li1O3"], entries["C2H4"]]
+        )
 
         reactions = IntermolecularReaction.generate(ents)
         self.assertEqual(len(reactions), 1)
@@ -459,7 +484,9 @@ class TestIntermolecularReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
 
-        reaction = IntermolecularReaction(entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]])
+        reaction = IntermolecularReaction(
+            entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]]
+        )
         reaction.set_free_energy()
         self.assertEqual(reaction.free_energy_A, 0.37075842588456)
         self.assertEqual(reaction.free_energy_B, -0.37075842588410524)
@@ -467,17 +494,25 @@ class TestIntermolecularReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_energy(self):
 
-        reaction = IntermolecularReaction(entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]])
+        reaction = IntermolecularReaction(
+            entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]]
+        )
         self.assertEqual(reaction.energy_A, 0.035409666514283344)
         self.assertEqual(reaction.energy_B, -0.035409666514283344)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_reaction_type(self):
 
-        reaction = IntermolecularReaction(entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]])
+        reaction = IntermolecularReaction(
+            entries["LiEC_RO"], [entries["C1Li1O3"], entries["C2H4"]]
+        )
         self.assertEqual(reaction.__class__.__name__, "IntermolecularReaction")
-        self.assertEqual(reaction.rxn_type_A, "Molecular decomposition breaking one bond A -> B+C")
-        self.assertEqual(reaction.rxn_type_B, "Molecular formation from one new bond A+B -> C")
+        self.assertEqual(
+            reaction.rxn_type_A, "Molecular decomposition breaking one bond A -> B+C"
+        )
+        self.assertEqual(
+            reaction.rxn_type_B, "Molecular formation from one new bond A+B -> C"
+        )
 
 
 class TestCoordinationBondChangeReaction(PymatgenTest):
@@ -493,7 +528,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
         Li_ind = Li_RN_entry.parameters["ind"]
 
         # perform calc
-        reaction = CoordinationBondChangeReaction(LiEC_RN_entry, [EC_minus_RN_entry, Li_RN_entry])
+        reaction = CoordinationBondChangeReaction(
+            LiEC_RN_entry, [EC_minus_RN_entry, Li_RN_entry]
+        )
         graph = reaction.graph_representation()
 
         # assert
@@ -538,8 +575,10 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                         or r.products[1].entry_id == entries["EC_-1"].entry_id
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == entries["EC_-1"].get_free_energy()
-                        or r.products[1].get_free_energy() == entries["EC_-1"].get_free_energy()
+                        r.products[0].get_free_energy()
+                        == entries["EC_-1"].get_free_energy()
+                        or r.products[1].get_free_energy()
+                        == entries["EC_-1"].get_free_energy()
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -683,8 +722,10 @@ class TestMetalHopReaction(PymatgenTest):
                         or r.products[1].entry_id == entries["LiEC_plus"].entry_id
                     )
                     self.assertTrue(
-                        r.products[0].get_free_energy() == entries["LiEC_plus"].get_free_energy()
-                        or r.products[1].get_free_energy() == entries["LiEC_plus"].get_free_energy()
+                        r.products[0].get_free_energy()
+                        == entries["LiEC_plus"].get_free_energy()
+                        or r.products[1].get_free_energy()
+                        == entries["LiEC_plus"].get_free_energy()
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -719,8 +760,12 @@ class TestMetalHopReaction(PymatgenTest):
             entries["Li"],
         )
         self.assertEqual(reaction.__class__.__name__, "MetalHopReaction")
-        self.assertEqual(reaction.rxn_type_A, "Metal hopping reaction AM + B <-> A + BM")
-        self.assertEqual(reaction.rxn_type_B, "Metal hopping reaction AM + B <-> A + BM")
+        self.assertEqual(
+            reaction.rxn_type_A, "Metal hopping reaction AM + B <-> A + BM"
+        )
+        self.assertEqual(
+            reaction.rxn_type_B, "Metal hopping reaction AM + B <-> A + BM"
+        )
 
 
 @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -768,7 +813,12 @@ def test_atom_mapping():
     """
 
     test_file = os.path.join(
-        os.path.dirname(__file__), "..", "..", "test_files", "reaction_files", "LiF2_to_Li_F2.json",
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "test_files",
+        "reaction_files",
+        "LiF2_to_Li_F2.json",
     )
 
     entries = loadfn(test_file)
