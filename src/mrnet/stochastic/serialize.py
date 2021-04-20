@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, Union, List
+from typing import Tuple, Optional, Union, List, Dict
 import math
 import numpy as np
 import pickle
@@ -159,8 +159,8 @@ class SerializeNetwork:
         self.db_postfix = "/rn.sqlite"
         self.current_shard = -1
         self.number_of_reactions = 0
-        self.insert_statements = {}
-        self.does_exist_statements = {}
+        self.insert_statements: Dict[int, str] = {}
+        self.does_exist_statements: Dict[int, str] = {}
 
         os.mkdir(self.folder)
         self.con = sqlite3.connect(self.folder + self.db_postfix)

@@ -86,7 +86,7 @@ class SimulationAnalyzer:
         for entry in mol_list:
             self.mol_entries[entry.parameters["ind"]] = entry
 
-        self.reaction_data = {}
+        self.reaction_data: Dict[int, dict] = {}
 
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
         self.reaction_histories = list()

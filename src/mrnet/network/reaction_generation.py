@@ -34,7 +34,7 @@ class ReactionGenerator:
     def generate_concerted_reactions(
         self,
         entry: MoleculeEntry,
-    ) -> List[ConcertedReaction]:
+    ) -> List[Tuple[List[int], List[int],float, float]]:
         """
         generate all the concerted reactions with intermediate mol_entry
         """
