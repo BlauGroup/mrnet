@@ -51,7 +51,8 @@ create_metadata_table = """
     CREATE TABLE metadata (
             number_of_species   INTEGER NOT NULL,
             number_of_reactions INTEGER NOT NULL,
-            shard_size          INTEGER NOT NULL
+            shard_size          INTEGER NOT NULL,
+            number_of_shards    INTEGER NOT NULL
     );
 """
 
@@ -94,15 +95,18 @@ insert_metadata = """
   INSERT INTO metadata (
           number_of_species,
           number_of_reactions,
-          shard_size)
-  VALUES (?1, ?2, ?3);
+          shard_size,
+          number_of_shards)
+  VALUES (?1, ?2, ?3, ?4);
 """
 
 
 
 class SerializeNetwork:
     """
-    write the reaction network to a database for ingestion by RNMC
+    write the reaction network to a database for ingestion by RNMC.
+
+    The database is sharded, so each reactions table has shard_size entries.
     """
 
     def __init__(
@@ -146,7 +150,8 @@ class SerializeNetwork:
             insert_metadata,
             (len(self.entries_list),
              self.number_of_reactions,
-             self.shard_size))
+             self.shard_size,
+             self.current_shard + 1))
 
         self.con.commit()
         self.con.close()
