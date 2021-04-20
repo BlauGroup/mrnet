@@ -235,9 +235,6 @@ class SimulationAnalyzer:
                                 break
 
                     negative_species = list(np.where(partial_state < 0)[0])
-                    if reaction_history_num == 3727:
-                        print(negative_species)
-                        print(pathway[0:7])
 
 
 
