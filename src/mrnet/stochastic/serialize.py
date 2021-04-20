@@ -106,7 +106,23 @@ class SerializeNetwork:
     """
     write the reaction network to a database for ingestion by RNMC.
 
-    The database is sharded, so each reactions table has shard_size entries.
+
+    there are some non trivial aspects to the implementation. Firstly,
+    we don't want to insert any duplicate reactions. This would be equivalent
+    to doubling their rate constant.
+
+    For this reason, we have the column reaction string in the reaction tables which
+    has an index, so we can efficiently query the database to look for duplicate reactions.
+
+    On the otherhand, we are going to be serializing reaction networks with hundreds of millions
+    of reactions. Inserting rows into tables of this size which have indexes eventually grinds to a halt:
+    https://stackoverflow.com/questions/15778716/sqlite-insert-speed-slows-as-number-of-records-increases-due-to-an-index
+
+    to overcome this, we shard the reaction table into a bundle of smaller tables with shard_size rows.
+    This creates a performance tradeoff. On the one hand, we want to keep the shard size small,
+    so that insertions don't grind to a halt. But if the shard size is too small, we need to check for duplicates
+    in more tables which also slows down the serialization process. Based on the above link, the optimal shard_size
+    is probably somewhere between 1-3 million, but this is going to be hardware dependent.
     """
 
     def __init__(
