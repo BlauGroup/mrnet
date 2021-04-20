@@ -17,14 +17,19 @@ get_metadata = """
     SELECT * FROM metadata;
 """
 
+
 def get_reaction(n):
-    return """
+    return (
+        """
     SELECT reactant_1,
            reactant_2,
            product_1,
            product_2,
            dG
-    FROM reactions_""" + str(n) + " WHERE reaction_id = ?;"
+    FROM reactions_"""
+        + str(n)
+        + " WHERE reaction_id = ?;"
+    )
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -51,9 +56,7 @@ class SimulationAnalyzer:
     A class to analyze the resutls of a set of MC runs
     """
 
-    def __init__(
-            self, network_folder: str, mol_list: List[MoleculeEntry]
-    ):
+    def __init__(self, network_folder: str, mol_list: List[MoleculeEntry]):
 
         initial_state_postfix = "/initial_state"
         simulation_histories_postfix = "/simulation_histories"
@@ -71,20 +74,17 @@ class SimulationAnalyzer:
         for i in range(self.number_of_shards):
             self.get_reactions_sql[i] = get_reaction(i)
 
-
         self.network_folder = network_folder
         self.histories_folder = network_folder + simulation_histories_postfix
 
-        with open(network_folder + initial_state_postfix, 'r') as f:
+        with open(network_folder + initial_state_postfix, "r") as f:
             initial_state_list = [int(c) for c in f.readlines()]
             self.initial_state = np.array(initial_state_list, dtype=int)
-
 
         self.mol_entries = {}
 
         for entry in mol_list:
-            self.mol_entries[entry.parameters['ind']] = entry
-
+            self.mol_entries[entry.parameters["ind"]] = entry
 
         self.reaction_data = {}
 
@@ -133,14 +133,15 @@ class SimulationAnalyzer:
             print("fetching data for reaction", reaction_index)
             cur = self.connection.cursor()
             # reaction_index is type numpy.int64 which sqlite doesn't like.
-            res = list(cur.execute(self.get_reactions_sql[shard], (int(reaction_index), )))[0]
+            res = list(
+                cur.execute(self.get_reactions_sql[shard], (int(reaction_index),))
+            )[0]
             reaction = {}
-            reaction['reactants'] = [i for i in res[0:2] if i >= 0]
-            reaction['products'] = [i for i in res[2:4] if i >= 0]
-            reaction['dG'] = res[4]
+            reaction["reactants"] = [i for i in res[0:2] if i >= 0]
+            reaction["products"] = [i for i in res[2:4] if i >= 0]
+            reaction["dG"] = res[4]
             self.reaction_data[reaction_index] = reaction
             return reaction
-
 
     def visualize_molecules(self):
         folder = self.network_folder + "/molecule_diagrams"
@@ -203,7 +204,9 @@ class SimulationAnalyzer:
 
         print("extracting pathways to", target_species_index)
         reaction_pathway_list = []
-        for reaction_history_num,reaction_history in enumerate(self.reaction_histories):
+        for reaction_history_num, reaction_history in enumerate(
+            self.reaction_histories
+        ):
             print("scanning history", reaction_history_num, "for pathway")
 
             # -1 if target wasn't produced
@@ -236,15 +239,13 @@ class SimulationAnalyzer:
 
                     negative_species = list(np.where(partial_state < 0)[0])
 
-
-
                 reaction_pathway_list.append(pathway)
 
         reaction_pathway_dict = collect_duplicate_pathways(reaction_pathway_list)
         self.reaction_pathways_dict[target_species_index] = reaction_pathway_dict
 
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
-        target_species_index = mol_entry.parameters['ind']
+        target_species_index = mol_entry.parameters["ind"]
         folder = (
             self.network_folder + "/consumption_report_" + str(target_species_index)
         )
@@ -306,7 +307,7 @@ class SimulationAnalyzer:
             f.write("\\end{document}")
 
     def generate_pathway_report(self, mol_entry: MoleculeEntry, min_frequency: int):
-        target_species_index = mol_entry.parameters['ind']
+        target_species_index = mol_entry.parameters["ind"]
         folder = self.network_folder + "/pathway_report_" + str(target_species_index)
         os.mkdir(folder)
 
@@ -422,8 +423,6 @@ class SimulationAnalyzer:
                 f.write("\n\n\n")
                 self.latex_emit_reaction(f, reaction_index)
             f.write("\\end{document}")
-
-
 
     def generate_reaction_tally_report(self):
         observed_reactions = {}
@@ -597,5 +596,3 @@ class SimulationAnalyzer:
         )
 
         return sorted_reaction_analysis
-
-

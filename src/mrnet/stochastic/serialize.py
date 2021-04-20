@@ -16,8 +16,6 @@ from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.constants import ROOM_TEMP, PLANCK, KB
 
 
-
-
 def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
     """
     given a file 'molecule.xyz', find the mol_entry corresponding to the
@@ -46,7 +44,6 @@ def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
         return None
 
 
-
 create_metadata_table = """
     CREATE TABLE metadata (
             number_of_species   INTEGER NOT NULL,
@@ -56,8 +53,12 @@ create_metadata_table = """
     );
 """
 
+
 def create_reactions_table(n):
-    return "CREATE TABLE reactions_" + str(n) + """ (
+    return (
+        "CREATE TABLE reactions_"
+        + str(n)
+        + """ (
                 reaction_id         INTEGER NOT NULL PRIMARY KEY,
                 reaction_string     TEXT UNIQUE NOT NULL,
                 number_of_reactants INTEGER NOT NULL,
@@ -70,11 +71,19 @@ def create_reactions_table(n):
                 dG                  REAL NOT NULL
         );
 
-CREATE UNIQUE INDEX reaction_""" + str(n) + "_string_idx ON reactions_" + str(n) + " (reaction_string);"
+CREATE UNIQUE INDEX reaction_"""
+        + str(n)
+        + "_string_idx ON reactions_"
+        + str(n)
+        + " (reaction_string);"
+    )
 
 
 def insert_reaction(n):
-    return "INSERT INTO reactions_" + str(n) + """ (
+    return (
+        "INSERT INTO reactions_"
+        + str(n)
+        + """ (
         reaction_id,
         reaction_string,
         number_of_reactants,
@@ -87,9 +96,12 @@ def insert_reaction(n):
         dG)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
 """
+    )
+
 
 def does_reaction_exist(n):
-    return "SELECT COUNT(*) FROM reactions_" + str(n) +" WHERE reaction_string = ?"
+    return "SELECT COUNT(*) FROM reactions_" + str(n) + " WHERE reaction_string = ?"
+
 
 insert_metadata = """
   INSERT INTO metadata (
@@ -99,7 +111,6 @@ insert_metadata = """
           number_of_shards)
   VALUES (?1, ?2, ?3, ?4);
 """
-
 
 
 class SerializeNetwork:
@@ -126,13 +137,13 @@ class SerializeNetwork:
     """
 
     def __init__(
-            self,
-            folder: str,
-            reaction_generator: ReactionGenerator,
-            shard_size: int = 1000000,
-            commit_barrier: int = 10000,
-            temperature=ROOM_TEMP,
-            constant_barrier=None
+        self,
+        folder: str,
+        reaction_generator: ReactionGenerator,
+        shard_size: int = 1000000,
+        commit_barrier: int = 10000,
+        temperature=ROOM_TEMP,
+        constant_barrier=None,
     ):
 
         if shard_size < 0 or shard_size % 2 != 0:
@@ -151,7 +162,6 @@ class SerializeNetwork:
         self.insert_statements = {}
         self.does_exist_statements = {}
 
-
         os.mkdir(self.folder)
         self.con = sqlite3.connect(self.folder + self.db_postfix)
 
@@ -161,30 +171,33 @@ class SerializeNetwork:
         self.new_shard()
         self.serialize()
 
-
         cur.execute(
             insert_metadata,
-            (len(self.entries_list),
-             self.number_of_reactions,
-             self.shard_size,
-             self.current_shard + 1))
+            (
+                len(self.entries_list),
+                self.number_of_reactions,
+                self.shard_size,
+                self.current_shard + 1,
+            ),
+        )
 
         self.con.commit()
         self.con.close()
-
 
     def new_shard(self):
         cur = self.con.cursor()
         self.current_shard += 1
         cur.executescript(create_reactions_table(self.current_shard))
         self.insert_statements[self.current_shard] = insert_reaction(self.current_shard)
-        self.does_exist_statements[self.current_shard] = does_reaction_exist(self.current_shard)
+        self.does_exist_statements[self.current_shard] = does_reaction_exist(
+            self.current_shard
+        )
         self.con.commit()
 
-    def does_reaction_exist(self,reaction_string: str):
+    def does_reaction_exist(self, reaction_string: str):
         cur = self.con.cursor()
         for i in range(self.current_shard + 1):
-            cur.execute(self.does_exist_statements[i],(reaction_string,))
+            cur.execute(self.does_exist_statements[i], (reaction_string,))
             count = cur.fetchone()
             if count[0] != 0:
                 return True
@@ -192,19 +205,19 @@ class SerializeNetwork:
         return False
 
     def insert_reaction(
-            self,
-            reaction_string,
-            number_of_reactants,
-            number_of_products,
-            reactant_1,
-            reactant_2,
-            product_1,
-            product_2,
-            rate,
-            free_energy):
+        self,
+        reaction_string,
+        number_of_reactants,
+        number_of_products,
+        reactant_1,
+        reactant_2,
+        product_1,
+        product_2,
+        rate,
+        free_energy,
+    ):
 
         cur = self.con.cursor()
-
 
         shard = self.number_of_reactions // self.shard_size
         if shard > self.current_shard:
@@ -212,65 +225,70 @@ class SerializeNetwork:
 
         cur.execute(
             self.insert_statements[self.current_shard],
-            ( self.number_of_reactions,
-              reaction_string,
-              number_of_reactants,
-              number_of_products,
-              reactant_1,
-              reactant_2,
-              product_1,
-              product_2,
-              rate,
-              free_energy))
+            (
+                self.number_of_reactions,
+                reaction_string,
+                number_of_reactants,
+                number_of_products,
+                reactant_1,
+                reactant_2,
+                product_1,
+                product_2,
+                rate,
+                free_energy,
+            ),
+        )
 
         self.number_of_reactions += 1
-
 
         if self.number_of_reactions % self.commit_barrier == 0:
             self.con.commit()
 
-
-
-
     def serialize(self):
 
+        for (
+            reactants,
+            products,
+            forward_free_energy,
+            backward_free_energy,
+        ) in self.reaction_generator:
 
-        for (reactants,
-             products,
-             forward_free_energy,
-             backward_free_energy) in self.reaction_generator:
-
-            forward_reaction_string = ''.join([
-                '+'.join([str(i) for i in reactants]),
-                '->',
-                '+'.join([str(i) for i in products])])
+            forward_reaction_string = "".join(
+                [
+                    "+".join([str(i) for i in reactants]),
+                    "->",
+                    "+".join([str(i) for i in products]),
+                ]
+            )
 
             if not self.does_reaction_exist(forward_reaction_string):
 
-                reverse_reaction_string = ''.join([
-                    '+'.join([str(i) for i in products]),
-                    '->',
-                    '+'.join([str(i) for i in reactants])])
-
+                reverse_reaction_string = "".join(
+                    [
+                        "+".join([str(i) for i in products]),
+                        "->",
+                        "+".join([str(i) for i in reactants]),
+                    ]
+                )
 
                 try:
                     reactant_1_index = int(reactants[0])
-                except:
+                except IndexError:
                     reactant_1_index = -1
 
                 try:
                     reactant_2_index = int(reactants[1])
-                except:
+                except IndexError:
                     reactant_2_index = -1
 
                 try:
                     product_1_index = int(products[0])
-                except:
+                except IndexError:
                     product_1_index = -1
 
                 try:
                     product_2_index = int(products[1])
-                except:
+                except IndexError:
                     product_2_index = -1
 
                 forward_rate = self.rate(forward_free_energy)
@@ -285,7 +303,8 @@ class SerializeNetwork:
                     product_1_index,
                     product_2_index,
                     forward_rate,
-                    forward_free_energy)
+                    forward_free_energy,
+                )
 
                 self.insert_reaction(
                     reverse_reaction_string,
@@ -296,10 +315,10 @@ class SerializeNetwork:
                     reactant_1_index,
                     reactant_2_index,
                     backward_rate,
-                    backward_free_energy)
+                    backward_free_energy,
+                )
 
-
-    def rate(self,dG):
+    def rate(self, dG):
         kT = KB * self.temperature
         max_rate = kT / PLANCK
 
@@ -321,9 +340,8 @@ class SerializeNetwork:
         return rate
 
 
-
 def serialize_initial_state(
-    folder:str,
+    folder: str,
     entries_list,
     initial_state_data: List[Tuple[MoleculeEntry, int]],
     factor_zero: float = 1.0,
@@ -336,7 +354,6 @@ def serialize_initial_state(
     factor_duplicate_postfix = "/factor_duplicate"
     initial_state_postfix = "/initial_state"
 
-
     with open(folder + factor_two_postfix, "w") as f:
         f.write(("%e" % factor_two) + "\n")
 
@@ -348,13 +365,12 @@ def serialize_initial_state(
 
     initial_state = np.zeros(len(entries_list))
     for (mol_entry, count) in initial_state_data:
-        index = mol_entry.parameters['ind']
+        index = mol_entry.parameters["ind"]
         initial_state[index] = count
 
     with open(folder + initial_state_postfix, "w") as f:
         for i in range(len(initial_state)):
             f.write(str(int(initial_state[i])) + "\n")
-
 
 
 def serialize_simulation_parameters(
@@ -404,13 +420,12 @@ def run_simulator(network_folder, param_folder, path=None):
     else:
         os.system("RNMC " + network_folder + " " + param_folder)
 
+
 def clone_database(network_folder_1, network_folder_2):
     """
     serializing a network takes a long time, so instead of serializing twice
     we symlink the db from the first network folder into the second
     """
-    db_postfix = '/rn.sqlite '
+    db_postfix = "/rn.sqlite "
     os.system("mkdir " + network_folder_2)
     os.system("ln -s " + network_folder_1 + db_postfix + network_folder_2 + db_postfix)
-
-

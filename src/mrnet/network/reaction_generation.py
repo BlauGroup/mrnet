@@ -69,10 +69,13 @@ class ReactionGenerator:
 
             if cs:
                 return_list.append(
-                    (list(cs.reactant_indices),
-                     list(cs.product_indices),
-                     cs.free_energy_A,
-                     cs.free_energy_B))
+                    (
+                        list(cs.reactant_indices),
+                        list(cs.product_indices),
+                        cs.free_energy_A,
+                        cs.free_energy_B,
+                    )
+                )
             else:
                 print("concerted reaction not created:")
                 print("reactants:", reactants)
@@ -86,7 +89,6 @@ class ReactionGenerator:
         while not next_chunk:
             self.intermediate_index += 1
 
-
             if self.intermediate_index == len(self.rn.entries_list):
                 raise StopIteration()
 
@@ -94,11 +96,12 @@ class ReactionGenerator:
                 self.rn.entries_list[self.intermediate_index]
             )
 
-            print("concerted chunk for intermediate",
-                  self.intermediate_index,
-                  ">",
-                  len(next_chunk))
-
+            print(
+                "concerted chunk for intermediate",
+                self.intermediate_index,
+                ">",
+                len(next_chunk),
+            )
 
         self.chunk_index = 0
 
@@ -132,11 +135,13 @@ class ReactionGenerator:
         first_chunk = []
         for reaction in self.rn.reactions:
             first_chunk.append(
-                (list(reaction.reactant_indices),
-                 list(reaction.product_indices),
-                 reaction.free_energy_A,
-                 reaction.free_energy_B))
-
+                (
+                    list(reaction.reactant_indices),
+                    list(reaction.product_indices),
+                    reaction.free_energy_A,
+                    reaction.free_energy_B,
+                )
+            )
 
         self.current_chunk = first_chunk
         self.chunk_index = 0

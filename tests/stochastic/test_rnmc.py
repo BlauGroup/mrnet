@@ -17,7 +17,7 @@ from mrnet.stochastic.serialize import (
     find_mol_entry_from_xyz_and_charge,
     run_simulator,
     clone_database,
-    serialize_initial_state
+    serialize_initial_state,
 )
 from mrnet.stochastic.analyze import SimulationAnalyzer
 
@@ -68,14 +68,18 @@ class RNMC(PymatgenTest):
         reaction_generator = ReactionGenerator(molecule_entries)
 
         # for large networks, you want to use shard_size=2000000
-        SerializeNetwork(network_folder_1,reaction_generator, shard_size=100)
+        SerializeNetwork(network_folder_1, reaction_generator, shard_size=100)
 
         # serializing is expensive, so we only want to do it once
         # instead, for reaction_network_2 we symlink the database into the folder
         clone_database(network_folder_1, network_folder_2)
 
-        serialize_initial_state(network_folder_1, molecule_entries, initial_state_data_1)
-        serialize_initial_state(network_folder_2, molecule_entries, initial_state_data_2)
+        serialize_initial_state(
+            network_folder_1, molecule_entries, initial_state_data_1
+        )
+        serialize_initial_state(
+            network_folder_2, molecule_entries, initial_state_data_2
+        )
         serialize_simulation_parameters(param_folder, number_of_threads=4)
 
         run_simulator(network_folder_1, param_folder)
