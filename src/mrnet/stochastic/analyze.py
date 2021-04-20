@@ -199,11 +199,12 @@ class SimulationAnalyzer:
         state array. Missing reactants have negative values in the
         partial state array. Now loop through the reaction history
         to resolve the missing reactants.
-
-
         """
+
+        print("extracting pathways to", target_species_index)
         reaction_pathway_list = []
-        for reaction_history in self.reaction_histories:
+        for reaction_history_num,reaction_history in enumerate(self.reaction_histories):
+            print("scanning history", reaction_history_num, "for pathway")
 
             # -1 if target wasn't produced
             # index of reaction if target was produced
@@ -234,6 +235,11 @@ class SimulationAnalyzer:
                                 break
 
                     negative_species = list(np.where(partial_state < 0)[0])
+                    if reaction_history_num == 3727:
+                        print(negative_species)
+                        print(pathway[0:7])
+
+
 
                 reaction_pathway_list.append(pathway)
 
@@ -400,6 +406,27 @@ class SimulationAnalyzer:
 
         f.write("$$")
         f.write("\n\n\n")
+
+    def generate_simulation_history_report(self, history_num):
+        folder = self.network_folder + "/simulation_history_report_" + str(history_num)
+        os.mkdir(folder)
+        with open(folder + "/simulation_history_report.tex", "w") as f:
+            f.write("\\documentclass{article}\n")
+            f.write("\\usepackage{graphicx}\n")
+            f.write("\\usepackage[margin=1cm]{geometry}\n")
+            f.write("\\usepackage{amsmath}\n")
+            f.write("\\pagenumbering{gobble}\n")
+            f.write("\\begin{document}\n")
+
+            f.write("simulation " + str(history_num))
+            f.write("\n\n\n")
+            for reaction_index in self.reaction_histories[history_num]:
+                f.write(str(reaction_index))
+                f.write("\n\n\n")
+                self.latex_emit_reaction(f, reaction_index)
+            f.write("\\end{document}")
+
+
 
     def generate_reaction_tally_report(self):
         observed_reactions = {}
