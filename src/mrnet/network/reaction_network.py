@@ -42,12 +42,7 @@ RN_type = TypeVar("RN_type", bound="ReactionNetwork")
 
 
 test_dir = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "..",
-    "test_files",
-    "reaction_network_files",
+    os.path.dirname(__file__), "..", "..", "..", "test_files", "reaction_network_files",
 )
 
 
@@ -145,11 +140,7 @@ class ReactionPath(MSONable):
 
     @classmethod
     def characterize_path(
-        cls,
-        path: List[Union[str, int]],
-        weight: str,
-        graph: nx.DiGraph,
-        old_solved_PRs=[],
+        cls, path: List[Union[str, int]], weight: str, graph: nx.DiGraph, old_solved_PRs=[],
     ):  # -> ReactionPath
         """
          A method to define ReactionPath attributes based on the inputs
@@ -300,16 +291,12 @@ class ReactionPath(MSONable):
                             graph.nodes[step]["free_energy"]
                         )
 
-                    class_instance.overall_free_energy_change += graph.nodes[step][
-                        "free_energy"
-                    ]
+                    class_instance.overall_free_energy_change += graph.nodes[step]["free_energy"]
 
                     if class_instance.description == "":
                         class_instance.description += graph.nodes[step]["rxn_type"]
                     else:
-                        class_instance.description += (
-                            ", " + graph.nodes[step]["rxn_type"]
-                        )
+                        class_instance.description += ", " + graph.nodes[step]["rxn_type"]
 
                     if class_instance.hardest_step is None:
                         class_instance.hardest_step = step
@@ -324,9 +311,9 @@ class ReactionPath(MSONable):
             if class_instance.hardest_step is None:
                 class_instance.hardest_step_deltaG = None
             else:
-                class_instance.hardest_step_deltaG = graph.nodes[
-                    class_instance.hardest_step
-                ]["free_energy"]
+                class_instance.hardest_step_deltaG = graph.nodes[class_instance.hardest_step][
+                    "free_energy"
+                ]
 
         class_instance.path_dict = {
             "byproducts": class_instance.byproducts,
@@ -623,14 +610,7 @@ class ReactionNetwork(MSONable):
             self.add_reaction(r.graph_representation())  # add graph element here
 
         print(
-            "redox: ",
-            redox_c,
-            "inter: ",
-            inter_c,
-            "intra: ",
-            intra_c,
-            "coord: ",
-            coord_c,
+            "redox: ", redox_c, "inter: ", inter_c, "intra: ", intra_c, "coord: ", coord_c,
         )
         self.PR_record = self.build_PR_record()  # begin creating PR list
         self.Reactant_record = self.build_reactant_record()  # begin creating rct list
@@ -705,11 +685,7 @@ class ReactionNetwork(MSONable):
         return Reactant_record
 
     def solve_prerequisites(
-        self,
-        starts: List[int],
-        weight: str,
-        max_iter=25,
-        generate_test_files=False,
+        self, starts: List[int], weight: str, max_iter=25, generate_test_files=False,
     ):  # -> Tuple[Union[Dict[Union[int, Any], dict], Any], Any]:
         """
             A method to solve all of the prerequisites found in
@@ -746,9 +722,7 @@ class ReactionNetwork(MSONable):
         if self.PR_record is None:
             self.PR_record = self.build_PR_record()  # get a dict of PRs
         if self.Reactant_record is None:
-            self.Reactant_record = (
-                self.build_reactant_record()
-            )  # get a dict of non-PR reactants
+            self.Reactant_record = self.build_reactant_record()  # get a dict of non-PR reactants
         orig_graph = copy.deepcopy(self.graph)
 
         for start in starts:  # all the molecular nodes
@@ -756,9 +730,7 @@ class ReactionNetwork(MSONable):
         for PR in PRs:  # iter over each PR (eq to molecular nodes) [keys]
             for start in starts:  # iter over molecular nodes
                 if start == PR:
-                    PRs[PR][start] = ReactionPath.characterize_path(
-                        [start], weight, self.graph
-                    )
+                    PRs[PR][start] = ReactionPath.characterize_path([start], weight, self.graph)
                 else:
                     PRs[PR][start] = ReactionPath(None)  # PRs[mol][other_mol]
                     # NO PATH
@@ -790,80 +762,54 @@ class ReactionNetwork(MSONable):
                         cost_from_start[PR][start] = PRs[PR][start].cost
                         if PRs[PR][start].cost < min_cost[PR]:
                             min_cost[PR] = PRs[PR][start].cost
-                            self.PR_byproducts[PR]["byproducts"] = PRs[PR][
-                                start
-                            ].byproducts
+                            self.PR_byproducts[PR]["byproducts"] = PRs[PR][start].byproducts
                             self.PR_byproducts[PR]["start"] = start
                 for start in starts:
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
             if ii == 4 and generate_test_files:
                 pickle_in = open(
-                    os.path.join(
-                        test_dir, "unittest_RN_pr_ii_4_before_find_path_cost.pkl"
-                    ),
-                    "wb",
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_find_path_cost.pkl"), "wb",
                 )
                 pickle.dump(self, pickle_in)
                 pickle_in = open(
-                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"),
-                    "wb",
+                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
                 )
                 pickle.dump(PRs, pickle_in)
                 dumpfn(
                     cost_from_start,
-                    os.path.join(
-                        test_dir, "unittest_find_path_cost_cost_from_start_IN.json"
-                    ),
+                    os.path.join(test_dir, "unittest_find_path_cost_cost_from_start_IN.json"),
                 )
                 dumpfn(
                     old_solved_PRs,
-                    os.path.join(
-                        test_dir, "unittest_find_path_cost_old_solved_prs_IN.json"
-                    ),
+                    os.path.join(test_dir, "unittest_find_path_cost_old_solved_prs_IN.json"),
                 )
                 dumpfn(
-                    min_cost,
-                    os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN.json"),
+                    min_cost, os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN.json"),
                 )
 
             PRs, cost_from_start, min_cost = self.find_path_cost(
-                starts,
-                weight,
-                old_solved_PRs,
-                cost_from_start,
-                min_cost,
-                PRs,
-                generate=True,
+                starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs, generate=True,
             )
 
             solved_PRs = copy.deepcopy(old_solved_PRs)
             if ii == 4 and generate_test_files:
                 pickle_in = open(
-                    os.path.join(
-                        test_dir,
-                        "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl",
-                    ),
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl",),
                     "wb",
                 )
                 pickle.dump(self, pickle_in)
                 with open(
-                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"),
-                    "wb",
+                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
                 ) as handle:
                     pickle.dump(PRs, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 dumpfn(
                     cost_from_start,
-                    os.path.join(
-                        test_dir,
-                        "unittest_identify_solved_PRs_cost_from_start_IN.json",
-                    ),
+                    os.path.join(test_dir, "unittest_identify_solved_PRs_cost_from_start_IN.json",),
                 )
                 dumpfn(
                     solved_PRs,
-                    os.path.join(
-                        test_dir, "unittest_identify_solved_PRs_solved_PRs_IN.json"
-                    ),
+                    os.path.join(test_dir, "unittest_identify_solved_PRs_solved_PRs_IN.json"),
                 )
             solved_PRs, new_solved_PRs, cost_from_start = self.identify_solved_PRs(
                 PRs, solved_PRs, cost_from_start
@@ -872,25 +818,17 @@ class ReactionNetwork(MSONable):
             # print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
             if ii == 4 and generate_test_files:
                 pickle_in = open(
-                    os.path.join(
-                        test_dir,
-                        "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",
-                    ),
+                    os.path.join(test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",),
                     "wb",
                 )
                 pickle.dump(self, pickle_in)
                 pickle_in = open(
-                    os.path.join(
-                        test_dir, "unittest_update_edge_weights_orig_graph_IN.pkl"
-                    ),
-                    "wb",
+                    os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN.pkl"), "wb",
                 )
                 pickle.dump(self.graph, pickle_in)
                 dumpfn(
                     min_cost,
-                    os.path.join(
-                        test_dir, "unittest_update_edge_weights_min_cost_IN.json"
-                    ),
+                    os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN.json"),
                 )
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
@@ -928,17 +866,17 @@ class ReactionNetwork(MSONable):
         for step in path:
             if isinstance(step, int):
                 nodes.append(step)
-            elif "PR_" in step:  # flag
-                if step.count("+") == 1:
-                    nodes = nodes + [step.split("+")[0]]
-                    Reactants.append(int(step.split("+")[0]))
-                    PR.append(int(step.split("+")[1].split("PR_")[1].split(",")[0]))
-                    nodes = nodes + step.split("+")[1].split("PR_")[1].split(",")
-                elif step.count("+") == 2:
-                    nodes = nodes + [step.split(",")[0].split("+PR_")[0]]
-                    Reactants.append(step.split(",")[0].split("+PR_")[0])
-                    PR.append(step.split(",")[0].split("+PR_")[1])
-                    nodes = nodes + step.split(",")[1].split("+")
+            elif "+" in step.split(",")[0]:  # PR
+                source = nodes[:-1]
+                sides = step.split(",")
+                if step.count("+") == 1 or step.count("+") == 2:  # A+B -> C OR A+B+C -> D
+                    rct = str(source)
+                    nodes = nodes + [rct]
+                    Reactants.append(int(rct))
+                    pr = [int(el) for el in sides[0].split("+") if el != rct]
+                    PR.append(pr)
+                    nodes.append()
+                    nodes = nodes + [sides[1]]
                 else:
                     print("parse_path something is wrong", path, step)
             else:
@@ -950,14 +888,7 @@ class ReactionNetwork(MSONable):
         return nodes, PR, Reactants
 
     def find_path_cost(
-        self,
-        starts,
-        weight,
-        old_solved_PRs,
-        cost_from_start,
-        min_cost,
-        PRs,
-        generate=False,
+        self, starts, weight, old_solved_PRs, cost_from_start, min_cost, PRs, generate=False,
     ):
         """
             A method to characterize the path to all the PRs. Characterize by
@@ -1024,9 +955,7 @@ class ReactionNetwork(MSONable):
                                 nodes = nodes + [step.split("+")[0]]
                                 # Reactants.append(int(step.split("+")[0]))
                                 # PR.append(int(step.split("+")[1].split("PR_")[1].split(",")[0]))
-                                Reactants.append(
-                                    int(paths[node][ii - 1])
-                                )  # source reactant
+                                Reactants.append(int(paths[node][ii - 1]))  # source reactant
                                 # "pr" reactant identification
                                 source = str(paths[node][ii - 1])
                                 rct_indices = list(step.split(",")[0].split("+"))
@@ -1041,12 +970,8 @@ class ReactionNetwork(MSONable):
                                 nodes = nodes + [step.split(",")[0].split("+")[0]]
                                 # Reactants.append(step.split(",")[0].split("+PR_")[0])
                                 rcts = step.split(",")[0].split("+")
-                                Reactants.append(
-                                    int(paths[node][ii - 1])
-                                )  # source reactant
-                                rcts.remove(
-                                    paths[node][ii - 1]
-                                )  # remove "reactant" reactant
+                                Reactants.append(int(paths[node][ii - 1]))  # source reactant
+                                rcts.remove(paths[node][ii - 1])  # remove "reactant" reactant
                                 assert len(rcts) == 1
                                 PR.append(int(rcts[0]))
                                 if node in PR:
@@ -1083,10 +1008,7 @@ class ReactionNetwork(MSONable):
             for node in wrong_paths[start]:
                 fixed_paths[start][node] = {}
                 try:
-                    (
-                        length,
-                        dij_path,
-                    ) = nx.algorithms.simple_paths._bidirectional_dijkstra(
+                    (length, dij_path,) = nx.algorithms.simple_paths._bidirectional_dijkstra(
                         self.graph,
                         source=hash(start),
                         target=hash(node),
@@ -1110,15 +1032,9 @@ class ReactionNetwork(MSONable):
                     self.unsolvable_PRs_per_start[start].append(node)
                     pass
                 else:
-                    dist_and_path[start][node]["cost"] = fixed_paths[start][node][
-                        "cost"
-                    ]
-                    dist_and_path[start][node]["path"] = fixed_paths[start][node][
-                        "path"
-                    ]
-                    nodes, PR, reactant = self.parse_path(
-                        dist_and_path[start][node]["path"]
-                    )
+                    dist_and_path[start][node]["cost"] = fixed_paths[start][node]["cost"]
+                    dist_and_path[start][node]["path"] = fixed_paths[start][node]["path"]
+                    nodes, PR, reactant = self.parse_path(dist_and_path[start][node]["path"])
                     dist_and_path[start][node]["all_nodes"] = nodes
                     dist_and_path[start][node]["PRs"] = PR
                     dist_and_path[start][node]["reactant"] = reactant
@@ -1139,10 +1055,7 @@ class ReactionNetwork(MSONable):
                         PRs[node][start] = ReactionPath(None)
                     else:
                         path_class = ReactionPath.characterize_path(
-                            dist_and_path[start][node]["path"],
-                            weight,
-                            self.graph,
-                            old_solved_PRs,
+                            dist_and_path[start][node]["path"], weight, self.graph, old_solved_PRs,
                         )
                         if (
                             start == 456
@@ -1152,35 +1065,25 @@ class ReactionNetwork(MSONable):
                         ):
                             print("HERE")
                             pickle_in = open(
-                                os.path.join(
-                                    test_dir,
-                                    "unittest_RN_before_characterize_path.pkl",
-                                ),
+                                os.path.join(test_dir, "unittest_RN_before_characterize_path.pkl",),
                                 "wb",
                             )
                             pickle.dump(self, pickle_in)
                             pickle_in = open(
-                                os.path.join(
-                                    test_dir, "unittest_characterize_path_PRs_IN.pkl"
-                                ),
+                                os.path.join(test_dir, "unittest_characterize_path_PRs_IN.pkl"),
                                 "wb",
                             )
                             pickle.dump(old_solved_PRs, pickle_in)
                             dumpfn(
                                 dist_and_path[start][node]["path"],
-                                os.path.join(
-                                    test_dir,
-                                    "unittest_characterize_path_path_IN.json",
-                                ),
+                                os.path.join(test_dir, "unittest_characterize_path_path_IN.json",),
                             )
                         cost_from_start[node][start] = path_class.cost
                         if len(path_class.unsolved_prereqs) == 0:
                             PRs[node][start] = path_class
                         if path_class.cost < min_cost[node]:
                             min_cost[node] = path_class.cost
-                            self.PR_byproducts[node][
-                                "byproducts"
-                            ] = path_class.byproducts
+                            self.PR_byproducts[node]["byproducts"] = path_class.byproducts
                             self.PR_byproducts[node]["start"] = start
 
         return PRs, cost_from_start, min_cost
@@ -1234,9 +1137,7 @@ class ReactionNetwork(MSONable):
         return solved_PRs, new_solved_PRs, cost_from_start
 
     def update_edge_weights(
-        self,
-        min_cost: Dict[int, float],
-        orig_graph: nx.DiGraph,
+        self, min_cost: Dict[int, float], orig_graph: nx.DiGraph,
     ) -> Dict[Tuple[int, str], Dict[str, float]]:
         """
             A method to update the ReactionNetwork.graph edge weights based on
@@ -1263,9 +1164,7 @@ class ReactionNetwork(MSONable):
                 # u = split[0]
                 # v = split[1]
                 attrs[weighted_edge] = {
-                    self.weight: orig_graph[weighted_edge[0]][weighted_edge[1]][
-                        self.weight
-                    ]
+                    self.weight: orig_graph[weighted_edge[0]][weighted_edge[1]][self.weight]
                     + min_cost[PR_ind]
                 }
         nx.set_edge_attributes(self.graph, attrs)
@@ -1297,10 +1196,7 @@ class ReactionNetwork(MSONable):
                             self.PR_byproducts,
                         )
                         PRs[PR][start] = path_dict_class
-                        if (
-                            abs(path_dict_class.cost - path_dict_class.pure_cost)
-                            > 0.0001
-                        ):
+                        if abs(path_dict_class.cost - path_dict_class.pure_cost) > 0.0001:
                             print(
                                 "WARNING: cost mismatch for PR",
                                 PR,
@@ -1330,18 +1226,20 @@ class ReactionNetwork(MSONable):
             for node in nodes:
                 if self.graph.nodes[node]["bipartite"] == 1:
                     reactants = node.split(",")[0].split("+")
-                    reactants = [reac.replace("PR_", "") for reac in reactants]  # flag
                     products = node.split(",")[1].split("+")
                     if str(n) in products:
                         if len(reactants) == 2:
-                            self.PR_record[int(reactants[1])].remove(node)
+                            other_reac = [int(r) for r in reactants if r != node]
+                            assert len(other_reac) == 1
+                            self.PR_record[other_reac[0]].remove(node)
                             self.graph.remove_node(node)
                             self.PR_record.pop(node, None)
                     elif str(n) in reactants:
                         if len(reactants) == 2:
-                            self.PR_record[int(reactants[1])].remove(node)
+                            other_reac = [int(r) for r in reactants if r != node]
+                            assert len(other_reac) == 1
+                            self.PR_record[other_reac[0]].remove(node)
                         self.Reactant_record.pop(node, None)
-
                         self.graph.remove_node(node)
             self.PR_record.pop(n, None)
             self.Product_record.pop(n, None)
@@ -1394,9 +1292,7 @@ class ReactionNetwork(MSONable):
         valid_graph = self.find_or_remove_bad_nodes([target], remove_nodes=True)
         valid_graph.remove_nodes_from(PRs)  # type: ignore
 
-        return nx.shortest_simple_paths(
-            valid_graph, hash(start), hash(target), weight=self.weight
-        )
+        return nx.shortest_simple_paths(valid_graph, hash(start), hash(target), weight=self.weight)
 
     def find_paths(self, starts, target, weight, num_paths=10, ignorenode=[]):  # -> ??
         """
@@ -1450,9 +1346,7 @@ class ReactionNetwork(MSONable):
                             self.PRs,
                             self.PR_byproducts,
                         )
-                        heapq.heappush(
-                            my_heapq, (path_dict_class2.cost, next(c), path_dict_class2)
-                        )
+                        heapq.heappush(my_heapq, (path_dict_class2.cost, next(c), path_dict_class2))
         except Exception:
             print("no path from this start to the target", start)
         top_path_list = []
@@ -1490,19 +1384,11 @@ class ReactionNetwork(MSONable):
 
         pruned_PRs = {}
         for PR_node in RN_pr_solved.PR_byproducts:
-            if (
-                RN_pr_solved.PRs[PR_node] != {}
-                and RN_pr_solved.PR_byproducts[PR_node] != {}
-            ):
+            if RN_pr_solved.PRs[PR_node] != {} and RN_pr_solved.PR_byproducts[PR_node] != {}:
                 min_start = RN_pr_solved.PR_byproducts[PR_node]["start"]
-                if (
-                    RN_pr_solved.PRs[PR_node][min_start].overall_free_energy_change
-                    <= cutoff
-                ):
+                if RN_pr_solved.PRs[PR_node][min_start].overall_free_energy_change <= cutoff:
                     pruned_PRs[PR_node] = {}
-                    pruned_PRs[PR_node][min_start] = RN_pr_solved.PRs[PR_node][
-                        min_start
-                    ]
+                    pruned_PRs[PR_node][min_start] = RN_pr_solved.PRs[PR_node][min_start]
 
         nodes_to_keep = []
         for PR_node in pruned_PRs:
@@ -1625,13 +1511,8 @@ class ReactionNetwork(MSONable):
         r = None
         r_node = None
         unique_reactions = []
-        (
-            in_reactants,
-            in_products,
-        ) = ReactionNetwork.parse_reaction_node(in_reaction_node)
-        (out_reactants, out_products) = ReactionNetwork.parse_reaction_node(
-            out_reaction_node
-        )
+        (in_reactants, in_products,) = ReactionNetwork.parse_reaction_node(in_reaction_node)
+        (out_reactants, out_products) = ReactionNetwork.parse_reaction_node(out_reaction_node)
         combined_reactants = in_reactants + out_reactants
         combined_products = in_products + out_products
         combined_reactants.sort()
@@ -1720,10 +1601,7 @@ class ReactionNetwork(MSONable):
         reactions = []
         unique_reactions = []
         for entry in RN.entries_list:
-            (
-                unique_rxns,
-                rxns_with_nodes,
-            ) = RN.identify_concerted_rxns_for_specific_intermediate(
+            (unique_rxns, rxns_with_nodes,) = RN.identify_concerted_rxns_for_specific_intermediate(
                 entry, RN, mols_to_keep, single_elem_interm_ignore, update_matrix
             )
             unique_reactions.append(unique_rxns)
@@ -1731,10 +1609,7 @@ class ReactionNetwork(MSONable):
 
         all_unique_reactions = reduce(operator.concat, unique_reactions)
         all_unique_reactions = list(
-            map(
-                lambda y: literal_eval(y),
-                set(map(lambda x: repr(x), all_unique_reactions)),
-            )
+            map(lambda y: literal_eval(y), set(map(lambda x: repr(x), all_unique_reactions)),)
         )
 
         print("total number of unqiue concerted reactions:", len(all_unique_reactions))
@@ -1813,10 +1688,7 @@ class ReactionNetwork(MSONable):
             mols_to_keep = list(range(0, len(RN.entries_list)))
         not_wanted_formula = single_elem_interm_ignore
 
-        if (
-            entry.formula not in not_wanted_formula
-            and entry.parameters["ind"] in mols_to_keep
-        ):
+        if entry.formula not in not_wanted_formula and entry.parameters["ind"] in mols_to_keep:
 
             if RN.matrix is None:
                 RN.build_matrix()
@@ -1834,10 +1706,7 @@ class ReactionNetwork(MSONable):
                                 incoming_reaction_dG = e2[1]
                                 total_dG = s2[1] + e2[1]
                                 if incoming_reaction_dG > 0 and total_dG < 0:
-                                    (
-                                        rxn1,
-                                        rxn1_nodes,
-                                    ) = ReactionNetwork.concerted_reaction_filter(
+                                    (rxn1, rxn1_nodes,) = ReactionNetwork.concerted_reaction_filter(
                                         e2[0], s2[0]
                                     )
                                     if rxn1 is not None:
