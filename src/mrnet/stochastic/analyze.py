@@ -303,12 +303,12 @@ class SimulationAnalyzer:
 
     def generate_pathway_report(self, mol_entry: MoleculeEntry, min_frequency: int):
         target_species_index = mol_entry.parameters["ind"]
-        folder = self.network_folder + "/pathway_report_" + str(target_species_index)
-        os.mkdir(folder)
 
-        with open(folder + "/pathway_report.tex", "w") as f:
-            if target_species_index not in self.reaction_pathways_dict:
-                self.extract_reaction_pathways(target_species_index)
+        if target_species_index not in self.reaction_pathways_dict:
+            self.extract_reaction_pathways(target_species_index)
+
+
+        with open(self.reports_folder + "/pathway_report_" + str(target_species_index) + ".tex", "w") as f:
 
             pathways = self.reaction_pathways_dict[target_species_index]
 
@@ -344,6 +344,7 @@ class SimulationAnalyzer:
             if num > 0:
                 f.write(str(num) + " of ")
                 latex_emit_molecule(f, species_index)
+                f.write("\n\n")
 
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
@@ -374,16 +375,13 @@ class SimulationAnalyzer:
         f.write("\n\n\n")
 
     def generate_simulation_history_report(self, history_num):
-        folder = self.network_folder + "/simulation_history_report_" + str(history_num)
-        os.mkdir(folder)
-        with open(folder + "/simulation_history_report.tex", "w") as f:
+        with open(self.reports_folder + "/simulation_history_report_" + str(history_num) + ".tex", "w") as f:
 
             generate_latex_header(f)
 
             f.write("simulation " + str(history_num))
             f.write("\n\n\n")
             for reaction_index in self.reaction_histories[history_num]:
-                f.write(str(reaction_index))
                 f.write("\n\n\n")
                 self.latex_emit_reaction(f, reaction_index)
 
@@ -398,9 +396,7 @@ class SimulationAnalyzer:
                 else:
                     observed_reactions[reaction_index] = 1
 
-        folder = self.network_folder + "/reaction_tally_report"
-        os.mkdir(folder)
-        with open(folder + "/reaction_tally_report.tex", "w") as f:
+        with open(self.reports_folder + "/reaction_tally_report.tex", "w") as f:
 
             generate_latex_header(f)
 
