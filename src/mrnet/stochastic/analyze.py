@@ -18,7 +18,6 @@ get_metadata = """
 """
 
 
-
 def get_reaction(n):
     return (
         """
@@ -255,28 +254,42 @@ class SimulationAnalyzer:
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
         target_species_index = mol_entry.parameters["ind"]
 
+        (
+            producing_reactions,
+            consuming_reactions,
+            final_counts,
+        ) = self.extract_species_consumption_info(target_species_index)
 
-        (producing_reactions,
-         consuming_reactions,
-         final_counts) = self.extract_species_consumption_info(target_species_index)
-
-        histogram_file = self.reports_folder + "/final_count_histogram_" + str(target_species_index) + ".pdf"
+        histogram_file = (
+            self.reports_folder
+            + "/final_count_histogram_"
+            + str(target_species_index)
+            + ".pdf"
+        )
 
         visualize_molecule_count_histogram(final_counts, histogram_file)
 
-        with open(self.reports_folder + "/consumption_report_" + str(target_species_index) + ".tex", "w") as f:
+        with open(
+            self.reports_folder
+            + "/consumption_report_"
+            + str(target_species_index)
+            + ".tex",
+            "w",
+        ) as f:
 
             generate_latex_header(f)
 
             f.write("consumption report for")
             latex_emit_molecule(f, target_species_index)
-            f.write('\n\n')
+            f.write("\n\n")
 
             f.write("molecule frequency at end of simulations")
             f.write(
                 "\\raisebox{-.5\\height}{"
                 + "\\includegraphics[scale=0.5]{"
-                + "./final_count_histogram_" + str(target_species_index) + ".pdf"
+                + "./final_count_histogram_"
+                + str(target_species_index)
+                + ".pdf"
                 + "}}\n\n"
             )
 
@@ -307,8 +320,13 @@ class SimulationAnalyzer:
         if target_species_index not in self.reaction_pathways_dict:
             self.extract_reaction_pathways(target_species_index)
 
-
-        with open(self.reports_folder + "/pathway_report_" + str(target_species_index) + ".tex", "w") as f:
+        with open(
+            self.reports_folder
+            + "/pathway_report_"
+            + str(target_species_index)
+            + ".tex",
+            "w",
+        ) as f:
 
             pathways = self.reaction_pathways_dict[target_species_index]
 
@@ -346,7 +364,6 @@ class SimulationAnalyzer:
                 latex_emit_molecule(f, species_index)
                 f.write("\n\n")
 
-
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
         f.write("$$\n")
         reaction = self.index_to_reaction(reaction_index)
@@ -358,7 +375,6 @@ class SimulationAnalyzer:
                 f.write("+\n")
 
             latex_emit_molecule(f, reactant_index)
-
 
         f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
 
@@ -375,7 +391,13 @@ class SimulationAnalyzer:
         f.write("\n\n\n")
 
     def generate_simulation_history_report(self, history_num):
-        with open(self.reports_folder + "/simulation_history_report_" + str(history_num) + ".tex", "w") as f:
+        with open(
+            self.reports_folder
+            + "/simulation_history_report_"
+            + str(history_num)
+            + ".tex",
+            "w",
+        ) as f:
 
             generate_latex_header(f)
 
@@ -556,7 +578,6 @@ class SimulationAnalyzer:
         return sorted_reaction_analysis
 
 
-
 def generate_latex_header(f: TextIO):
     f.write("\\documentclass{article}\n")
     f.write("\\usepackage{graphicx}\n")
@@ -569,6 +590,7 @@ def generate_latex_header(f: TextIO):
 def generate_latex_footer(f: TextIO):
     f.write("\\end{document}")
 
+
 def latex_emit_molecule(f: TextIO, species_index: int):
     f.write(
         "\\raisebox{-.5\\height}{"
@@ -576,4 +598,3 @@ def latex_emit_molecule(f: TextIO, species_index: int):
         + str(species_index)
         + ".pdf}}\n"
     )
-
