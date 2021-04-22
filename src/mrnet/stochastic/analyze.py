@@ -18,6 +18,7 @@ get_metadata = """
 """
 
 
+
 def get_reaction(n):
     return (
         """
@@ -61,6 +62,7 @@ class SimulationAnalyzer:
         initial_state_postfix = "/initial_state"
         simulation_histories_postfix = "/simulation_histories"
         database_postfix = "/rn.sqlite"
+        reports_postfix = "/reports"
 
         self.connection = sqlite3.connect(network_folder + database_postfix)
         cur = self.connection.cursor()
@@ -76,6 +78,12 @@ class SimulationAnalyzer:
 
         self.network_folder = network_folder
         self.histories_folder = network_folder + simulation_histories_postfix
+        self.reports_folder = network_folder + reports_postfix
+
+        try:
+            os.mkdir(self.reports_folder)
+        except FileExistsError:
+            pass
 
         with open(network_folder + initial_state_postfix, "r") as f:
             initial_state_list = [int(c) for c in f.readlines()]
@@ -246,41 +254,29 @@ class SimulationAnalyzer:
 
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
         target_species_index = mol_entry.parameters["ind"]
-        folder = (
-            self.network_folder + "/consumption_report_" + str(target_species_index)
-        )
-        os.mkdir(folder)
 
-        (
-            producing_reactions,
-            consuming_reactions,
-            final_counts,
-        ) = self.extract_species_consumption_info(target_species_index)
 
-        visualize_molecule_count_histogram(
-            final_counts, folder + "/final_count_histogram.pdf"
-        )
+        (producing_reactions,
+         consuming_reactions,
+         final_counts) = self.extract_species_consumption_info(target_species_index)
 
-        with open(folder + "/consumption_report.tex", "w") as f:
-            f.write("\\documentclass{article}\n")
-            f.write("\\usepackage{graphicx}\n")
-            f.write("\\usepackage[margin=1cm]{geometry}\n")
-            f.write("\\usepackage{amsmath}\n")
-            f.write("\\pagenumbering{gobble}\n")
-            f.write("\\begin{document}\n")
+        histogram_file = self.reports_folder + "/final_count_histogram_" + str(target_species_index) + ".pdf"
+
+        visualize_molecule_count_histogram(final_counts, histogram_file)
+
+        with open(self.reports_folder + "/consumption_report_" + str(target_species_index) + ".tex", "w") as f:
+
+            generate_latex_header(f)
 
             f.write("consumption report for")
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(target_species_index)
-                + ".pdf}}\n\n"
-            )
+            latex_emit_molecule(f, target_species_index)
+            f.write('\n\n')
 
             f.write("molecule frequency at end of simulations")
             f.write(
                 "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.5]{./final_count_histogram.pdf"
+                + "\\includegraphics[scale=0.5]{"
+                + "./final_count_histogram_" + str(target_species_index) + ".pdf"
                 + "}}\n\n"
             )
 
@@ -301,10 +297,9 @@ class SimulationAnalyzer:
             ):
 
                 f.write(str(frequency) + " occurrences:\n")
-
                 self.latex_emit_reaction(f, reaction_index)
 
-            f.write("\\end{document}")
+            generate_latex_footer(f)
 
     def generate_pathway_report(self, mol_entry: MoleculeEntry, min_frequency: int):
         target_species_index = mol_entry.parameters["ind"]
@@ -317,20 +312,10 @@ class SimulationAnalyzer:
 
             pathways = self.reaction_pathways_dict[target_species_index]
 
-            f.write("\\documentclass{article}\n")
-            f.write("\\usepackage{graphicx}\n")
-            f.write("\\usepackage[margin=1cm]{geometry}\n")
-            f.write("\\usepackage{amsmath}\n")
-            f.write("\\pagenumbering{gobble}\n")
-            f.write("\\begin{document}\n")
+            generate_latex_header(f)
 
             f.write("pathway report for")
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(target_species_index)
-                + ".pdf}}\n\n"
-            )
+            latex_emit_molecule(f, target_species_index)
             self.latex_emit_initial_state(f)
 
             f.write("\\newpage\n\n\n")
@@ -350,7 +335,7 @@ class SimulationAnalyzer:
                 else:
                     break
 
-            f.write("\\end{document}")
+            generate_latex_footer(f)
 
     def latex_emit_initial_state(self, f: TextIO):
         f.write("initial state:\n\n\n")
@@ -358,12 +343,8 @@ class SimulationAnalyzer:
             num = self.initial_state[species_index]
             if num > 0:
                 f.write(str(num) + " of ")
-                f.write(
-                    "\\raisebox{-.5\\height}{"
-                    + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                    + str(species_index)
-                    + ".pdf}}\n\n\n"
-                )
+                latex_emit_molecule(f, species_index)
+
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
         f.write("$$\n")
@@ -375,14 +356,8 @@ class SimulationAnalyzer:
             else:
                 f.write("+\n")
 
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(reactant_index)
-                + ".pdf}}\n"
-            )
+            latex_emit_molecule(f, reactant_index)
 
-            f.write(str(reactant_index) + "\n")
 
         f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
 
@@ -393,14 +368,7 @@ class SimulationAnalyzer:
             else:
                 f.write("+\n")
 
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(product_index)
-                + ".pdf}}\n"
-            )
-
-            f.write(str(product_index) + "\n")
+            latex_emit_molecule(f, product_index)
 
         f.write("$$")
         f.write("\n\n\n")
@@ -409,12 +377,8 @@ class SimulationAnalyzer:
         folder = self.network_folder + "/simulation_history_report_" + str(history_num)
         os.mkdir(folder)
         with open(folder + "/simulation_history_report.tex", "w") as f:
-            f.write("\\documentclass{article}\n")
-            f.write("\\usepackage{graphicx}\n")
-            f.write("\\usepackage[margin=1cm]{geometry}\n")
-            f.write("\\usepackage{amsmath}\n")
-            f.write("\\pagenumbering{gobble}\n")
-            f.write("\\begin{document}\n")
+
+            generate_latex_header(f)
 
             f.write("simulation " + str(history_num))
             f.write("\n\n\n")
@@ -422,7 +386,8 @@ class SimulationAnalyzer:
                 f.write(str(reaction_index))
                 f.write("\n\n\n")
                 self.latex_emit_reaction(f, reaction_index)
-            f.write("\\end{document}")
+
+            generate_latex_footer(f)
 
     def generate_reaction_tally_report(self):
         observed_reactions = {}
@@ -436,12 +401,8 @@ class SimulationAnalyzer:
         folder = self.network_folder + "/reaction_tally_report"
         os.mkdir(folder)
         with open(folder + "/reaction_tally_report.tex", "w") as f:
-            f.write("\\documentclass{article}\n")
-            f.write("\\usepackage{graphicx}\n")
-            f.write("\\usepackage[margin=1cm]{geometry}\n")
-            f.write("\\usepackage{amsmath}\n")
-            f.write("\\pagenumbering{gobble}\n")
-            f.write("\\begin{document}\n")
+
+            generate_latex_header(f)
 
             f.write("reaction tally report")
             f.write("\n\n\n")
@@ -450,7 +411,8 @@ class SimulationAnalyzer:
             ):
                 f.write(str(number) + " occourances of:")
                 self.latex_emit_reaction(f, reaction_index)
-            f.write("\\end{document}")
+
+            generate_latex_footer(f)
 
     def generate_time_dep_profiles(self, frequency: int = 1):
         """
@@ -596,3 +558,26 @@ class SimulationAnalyzer:
         )
 
         return sorted_reaction_analysis
+
+
+
+def generate_latex_header(f: TextIO):
+    f.write("\\documentclass{article}\n")
+    f.write("\\usepackage{graphicx}\n")
+    f.write("\\usepackage[margin=1cm]{geometry}\n")
+    f.write("\\usepackage{amsmath}\n")
+    f.write("\\pagenumbering{gobble}\n")
+    f.write("\\begin{document}\n")
+
+
+def generate_latex_footer(f: TextIO):
+    f.write("\\end{document}")
+
+def latex_emit_molecule(f: TextIO, species_index: int):
+    f.write(
+        "\\raisebox{-.5\\height}{"
+        + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
+        + str(species_index)
+        + ".pdf}}\n"
+    )
+
