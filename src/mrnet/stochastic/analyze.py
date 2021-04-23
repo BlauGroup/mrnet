@@ -599,7 +599,7 @@ def generate_latex_footer(f: TextIO):
 
 
 def latex_emit_molecule(f: TextIO, species_index: int):
-    f.write(str(species_index) + '\n')
+    f.write(str(species_index) + "\n")
     f.write(
         "\\raisebox{-.5\\height}{"
         + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
