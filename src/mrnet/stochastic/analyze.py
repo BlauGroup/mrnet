@@ -214,6 +214,9 @@ class SimulationAnalyzer:
         for reaction_history_num, reaction_history in enumerate(
             self.reaction_histories
         ):
+            # current approach is a hack. Sometimes it can fall into an inifite loop
+            # if pathway gets too long, we assume that this has happened.
+            infinite_loop = False
             print("scanning history", reaction_history_num, "for pathway")
 
             # -1 if target wasn't produced
@@ -236,6 +239,9 @@ class SimulationAnalyzer:
                 negative_species = list(np.where(partial_state < 0)[0])
 
                 while len(negative_species) != 0:
+                    if len(pathway) > 1000:
+                        infinite_loop = True
+                        break
                     for species_index in negative_species:
                         for reaction_index in reaction_history:
                             reaction = self.index_to_reaction(reaction_index)
@@ -246,7 +252,8 @@ class SimulationAnalyzer:
 
                     negative_species = list(np.where(partial_state < 0)[0])
 
-                reaction_pathway_list.append(pathway)
+                if not infinite_loop:
+                    reaction_pathway_list.append(pathway)
 
         reaction_pathway_dict = collect_duplicate_pathways(reaction_pathway_list)
         self.reaction_pathways_dict[target_species_index] = reaction_pathway_dict
