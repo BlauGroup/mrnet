@@ -2361,6 +2361,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     """
     assert len(reaction.reactant_ids) <= 3
     assert len(reaction.product_ids) <= 3
+
     # Create the graph object, and define/call appropriate data
     graph = nx.DiGraph()
     rxn_type_A = reaction.rxn_type_A
@@ -2384,6 +2385,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
         [index] + [i for i in rct_sorted_indices if i != index]
         for index in range(len(reaction.reactant_indices))
     ]
+
     # Here, create the 'base' names/ids for products and reactants (sorted by index)
     base_pro_name = "+".join(
         [str(reaction.product_indices[i]) for i in pro_sorted_indices]
@@ -2394,31 +2396,31 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     )
     base_rct_ids = "+".join([str(reaction.reactant_ids[i]) for i in rct_sorted_indices])
 
-    reactant_node_name = base_rct_name + "," + base_pro_name
-    reactant_node_ids = base_rct_ids + "," + base_pro_ids
-    product_node_name = base_pro_name + "," + base_rct_name
-    product_node_ids = base_pro_ids + "," + base_rct_ids
+    fwd_node_name = base_rct_name + "," + base_pro_name
+    fwd_node_ids = base_rct_ids + "," + base_pro_ids
+    rev_node_name = base_pro_name + "," + base_rct_name
+    rev_node_ids = base_pro_ids + "," + base_rct_ids
 
     # Create fwd reaction node
-    if reactant_node_name in graph:
+    if fwd_node_name in graph:
         return
     graph.add_node(
-        reactant_node_name,
+        fwd_node_name,
         rxn_type=rxn_type_A,
         bipartite=1,
         energy=energy_A,
         free_energy=free_energy_A,
-        entry_ids=reactant_node_ids,
+        entry_ids=fwd_node_ids,
     )
 
     # Create rev reaction node
     graph.add_node(
-        product_node_name,
+        rev_node_name,
         rxn_type=rxn_type_B,
         bipartite=1,
         energy=energy_B,
         free_energy=free_energy_B,
-        entry_ids=product_node_ids,
+        entry_ids=rev_node_ids,
     )
     duplicate_rct = any(
         [
@@ -2427,16 +2429,13 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             if count > 1
         ]
     )
-    duplicate_prod = any(
-        [item for item, count in Counter(reaction.product_indices).items() if count > 1]
-    )
     # Create edges w/ reactant molecule nodes
     for reactant in reaction.reactant_indices:
         # Edge from reactant molecule to fwd reaction node
-        if not duplicate_rct:
+        if not duplicate_rct or not graph.has_edge(int(reactant), reactant_node_name):
             graph.add_edge(
                 int(reactant),
-                reactant_node_name,
+                fwd_node_name,
                 softplus=softplus(free_energy_A),
                 exponent=exponent(free_energy_A),
                 rexp=rexp(free_energy_A),
@@ -2447,24 +2446,9 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
                     if (r != reactant or (reaction.reactant_indices == r).sum() > 1)
                 ],
             )
-        elif not graph.has_edge(int(reactant), reactant_node_name):
-            graph.add_edge(
-                int(reactant),
-                reactant_node_name,
-                softplus=softplus(free_energy_A),
-                exponent=exponent(free_energy_A),
-                rexp=rexp(free_energy_A),
-                weight=1.0,
-                PRs=[
-                    int(r)
-                    for r in reaction.reactant_indices
-                    if (r != reactant or (reaction.reactant_indices == r).sum() > 1)
-                ],
-            )
-
         # Edge from rev reaction node to reactant molecule
         graph.add_edge(
-            product_node_name,
+            rev_node_name,
             int(reactant),
             softplus=0.0,
             exponent=0.0,
@@ -2472,10 +2456,14 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             weight=1.0,
         )
 
+    duplicate_prod = any(
+        [item for item, count in Counter(reaction.product_indices).items() if count > 1]
+    )
+
     # Create edges w/product molecule nodes
     for product in reaction.product_indices:
         # Edge from product molecule to rev reaction node
-        if not duplicate_prod:
+        if not duplicate_prod or not graph.has_edge(int(product), product_node_name):
             graph.add_edge(
                 int(product),
                 product_node_name,
@@ -2489,21 +2477,6 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
                     if (p != product or (reaction.product_indices == p).sum() > 1)
                 ],
             )
-        elif not graph.has_edge(int(product), product_node_name):
-            graph.add_edge(
-                int(product),
-                product_node_name,
-                softplus=softplus(free_energy_B),
-                exponent=exponent(free_energy_B),
-                rexp=rexp(free_energy_B),
-                weight=1.0,
-                PRs=[
-                    int(p)
-                    for p in reaction.product_indices
-                    if (p != product or (reaction.product_indices == p).sum() > 1)
-                ],
-            )
-
         # Edge from fwd reaction node to product molecule
         graph.add_edge(
             reactant_node_name,
