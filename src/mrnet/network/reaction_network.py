@@ -875,7 +875,6 @@ class ReactionNetwork(MSONable):
                     Reactants.append(int(rct))
                     pr = [int(el) for el in sides[0].split("+") if el != rct]
                     PR.append(pr)
-                    nodes.append()
                     nodes = nodes + [sides[1]]
                 else:
                     print("parse_path something is wrong", path, step)
