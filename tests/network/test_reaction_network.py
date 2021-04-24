@@ -5,6 +5,7 @@ import sys
 import unittest
 import copy
 import pickle
+from more_itertools import distinct_permutations
 from ast import literal_eval
 
 from monty.serialization import dumpfn, loadfn
@@ -809,7 +810,7 @@ class TestReactionNetwork(PymatgenTest):
 
     def test_parse_reaction_node(self):  # FLAG (concerted)
 
-        nodes = ["19+PR_32,673", "41,992", "1+PR_652,53+40", "4,6+5"]
+        nodes = ["19+32,673", "41,992", "1+652,53+40", "4,6+5"]
         node_prod_react = []
 
         for node in nodes:
@@ -835,12 +836,12 @@ class TestReactionNetwork(PymatgenTest):
             node_str = ReactionNetwork.generate_node_string(rxn[0], rxn[1])
             node_strings.append(node_str)
 
-        self.assertListEqual(node_strings, ["19+PR_32,673", "41,992", "1+PR_652,40+53", "4,5+6"])
+        self.assertListEqual(node_strings, ["19+32,673", "41,992", "1+652,40+53", "4,5+6"])
 
     def test_build_matrix(self):  # FLAG (concerted)
 
         with open(
-            os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
+            os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"), "rb",
         ) as input:
             RN_loaded = pickle.load(input)
 
@@ -852,15 +853,41 @@ class TestReactionNetwork(PymatgenTest):
 
         RN_loaded.build_matrix()
 
-        self.assertEqual(RN_loaded.matrix, loaded_matrix)
+        def matrix_assert(computed, loaded):
+            for r in loaded:  # iterate over reactants (rows)
+                for p in loaded[r]:  # iterate over products (cols)
+                    try:
+                        for k in range(
+                            len(loaded[r][p])
+                        ):  # iterate over reactions (element, list form)
+                            pr_free = loaded[r][p][k][0].replace("PR_", "")  # node name
+                            assert computed[r][p][k][1] == loaded[r][p][k][1]  # weight
+                            assert (
+                                computed[r][p][k][2] == loaded[r][p][k][2]
+                            )  # rxn type (elem/concert)
+                            try:
+                                assert computed[r][p][k][0] == pr_free
+                            except AssertionError:
+                                match = False
+                                for perm in distinct_permutations(pr_free.split(",")[0].split("+")):
+                                    permuted_rxn = "+".join(perm) + "," + pr_free.split(",")[1]
+                                    match = permuted_rxn == computed[r][p][k][0]
+                                    if match:
+                                        break
+                                assert match
+                    except KeyError:
+                        print(loaded[i])
 
-        self.assertEqual(RN_loaded.matrix_inverse, loaded_inverse_matrix)
+            return loaded
+
+        matrix_assert(RN_loaded.matrix, loaded_matrix)
+        matrix_assert(RN_loaded.matrix_inverse, loaded_inverse_matrix)
 
     def test_concerted_reaction_filter(self):  # FLAG (concerted)
-        r, r_node = ReactionNetwork.concerted_reaction_filter("6,2+7", "2+PR_1,3")
+        r, r_node = ReactionNetwork.concerted_reaction_filter("6,2+7", "2+1,3")
         self.assertEqual([[1, 6], [3, 7]], r)
-        self.assertEqual([[1, 6], [3, 7], ["6,2+7", "2+PR_1,3"]], r_node)
-        r, r_node = ReactionNetwork.concerted_reaction_filter("2+PR_1,3+10", "6,2+7")
+        self.assertEqual([[1, 6], [3, 7], ["6,2+7", "2+1,3"]], r_node)
+        r, r_node = ReactionNetwork.concerted_reaction_filter("2+1,3+10", "6,2+7")
         self.assertEqual(r, None)
         self.assertEqual(r_node, None)
 
@@ -956,7 +983,7 @@ class TestReactionNetwork(PymatgenTest):
     def test_identify_concerted_rxns_for_specific_intermediate(self):  # FLAG
 
         with open(
-            os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
+            os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"), "rb",
         ) as input:
             RN_loaded = pickle.load(input)
         RN_loaded.matrix = None
@@ -971,7 +998,7 @@ class TestReactionNetwork(PymatgenTest):
 
     def test_add_concerted_rxns(self):  # FLAG (concerted)
         with open(
-            os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"), "rb",
+            os.path.join(test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"), "rb",
         ) as input:
             RN_loaded = pickle.load(input)
 

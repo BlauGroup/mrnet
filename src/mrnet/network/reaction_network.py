@@ -1427,7 +1427,9 @@ class ReactionNetwork(MSONable):
         react_list = node.split(",")[0].split("+")
         prod_list = node.split(",")[1].split("+")
         prod_list.sort()
-        return react_list, prod_list
+        react_list = list(map(int, react_list))
+        prod_list = list(map(int, prod_list))
+        return (react_list, prod_list)
 
     @staticmethod
     def generate_node_string(combined_reactants, combined_products):
@@ -1437,7 +1439,11 @@ class ReactionNetwork(MSONable):
         :param combined_products: list of product node indices, ex [3,4]
         :return: node_str: string of reaction as it would be for a reaction node, ex  "1+PR_2,3+4"
         """
-        node_str = "+".join(combined_reactants) + "," + "+".join(combined_products)
+        node_str = (
+            "+".join(list(map(str, combined_reactants)))
+            + ","
+            + "+".join(list(map(str, combined_products)))
+        )
         return node_str
 
     @staticmethod
@@ -1491,8 +1497,8 @@ class ReactionNetwork(MSONable):
                     out_nodes = list(self.graph.successors(node))
                     edges = []
                     for u in in_node:
-                        for v in out_node:
-                            edges.append([(u, v)])
+                        for v in out_nodes:
+                            edges.append((u, v))
                     for e in edges:
                         if e[1] not in self.matrix[e[0]].keys():
                             self.matrix[e[0]][e[1]] = [
@@ -1502,7 +1508,6 @@ class ReactionNetwork(MSONable):
                             self.matrix[e[0]][e[1]].append(
                                 (node, self.graph.nodes[node]["free_energy"], "e")
                             )
-
         self.matrix_inverse = {}
         for i in range(len(self.matrix)):
             self.matrix_inverse[i] = {}
