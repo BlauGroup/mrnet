@@ -867,7 +867,7 @@ class ReactionNetwork(MSONable):
             if isinstance(step, int):
                 nodes.append(step)
             elif "+" in step.split(",")[0]:  # PR
-                source = nodes[:-1]
+                source = nodes[-1]
                 sides = step.split(",")
                 if step.count("+") == 1 or step.count("+") == 2:  # A+B -> C OR A+B+C -> D
                     rct = str(source)
