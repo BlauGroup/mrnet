@@ -147,6 +147,8 @@ def get_local_global_atom_index_mapping(
     """
     Map the local and global indices of atoms in a sequence of mols.
 
+    This is a utility function for `get_reaction_atom_mapping()`.
+
     Think of this as combining a sequence of molecules into a single molecule and then
     relabelling the atom index in each mol to form a consecutive global index in the
     combined molecule.
@@ -162,7 +164,6 @@ def get_local_global_atom_index_mapping(
 
     Args:
         molecules: A sequence of molecule entry.
-
 
     Returns:
         global_species: species of atoms in the combined molecule.
@@ -211,6 +212,8 @@ def solve_integer_programing(
     """
     Solve an integer programming problem to get atom mapping between reactants and
     products.
+
+    This is a utility function for `get_reaction_atom_mapping()`.
 
     Args:
         reactant_species: species string of reactant atoms
@@ -283,11 +286,11 @@ def solve_integer_programing(
     )
     objective = obj1 + obj2
 
-    # solve problem
+    # solve the problem
     try:
         model.setObjective(objective)
         model.solve()
-    except:
+    except Exception:
         raise ReactionMappingError("Failed solving integer programming.")
 
     objective = pulp.value(model.objective)
