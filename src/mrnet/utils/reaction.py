@@ -190,7 +190,7 @@ def get_local_global_atom_index_mapping(
         global_species.extend(m.species)
 
         bonds = np.asarray(m.bonds) + n
-        global_bonds.extend(bonds.tolist())
+        global_bonds.extend([tuple(b) for b in bonds.tolist()])
 
         mp = [j + n for j in range(m.num_atoms)]
         local_to_global.append(mp)
@@ -228,7 +228,7 @@ def solve_integer_programing(
             giving 3 means that reactant atom 0 maps to product atom 3. A value of
             `None` means a mapping cannot be found for the atom.
         p2r_mapping: mapping of product atom to reactant atom. See `r2p_mapping` for an
-            exmaple.
+            example.
 
     Reference:
         `Stereochemically Consistent Reaction Mapping and Identification of Multiple
