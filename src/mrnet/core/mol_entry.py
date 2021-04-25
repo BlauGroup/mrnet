@@ -46,8 +46,8 @@ class MoleculeEntry(MSONable):
     def __init__(
         self,
         molecule: Molecule,
-        energy: float,
-        correction: float = 0.0,
+        energy: Optional[float] = None,
+        correction: Optional[float] = 0.0,
         enthalpy: Optional[float] = None,
         entropy: Optional[float] = None,
         parameters: Optional[Dict] = None,
@@ -375,19 +375,31 @@ class MoleculeEntry(MSONable):
             return None
 
     def __repr__(self):
+
         output = [
-            "MoleculeEntry {} - {} - E{} - C{}".format(
-                self.entry_id, self.formula, self.num_bonds, self.charge
-            ),
-            "Energy = {:.4f} Hartree".format(self.uncorrected_energy),
-            "Correction = {:.4f} Hartree".format(self.correction),
-            "Enthalpy = {:.4f} kcal/mol".format(self.enthalpy),
-            "Entropy = {:.4f} cal/mol.K".format(self.entropy),
-            "Free Energy (298.15 K) = {:.4f} eV".format(self.get_free_energy()),
-            "Parameters:",
+            f"MoleculeEntry {self.entry_id} - {self.formula}",
+            f"Number of bonds = {self.num_bonds}",
+            f"Total charge = {self.charge}",
         ]
-        for k, v in self.parameters.items():
-            output.append("{} = {}".format(k, v))
+
+        energies = [
+            ("Energy", "Hartree", self.uncorrected_energy),
+            ("Correction", "Hartree", self.correction),
+            ("Enthalpy", "kcal/mol", self.enthalpy),
+            ("Entropy", "cal/mol.K", self.entropy),
+            ("Free Energy (298.15 K)", "eV", self.get_free_energy()),
+        ]
+        for name, unit, value in energies:
+            if value is None:
+                output.append(f"{name} = {value} {unit}")
+            else:
+                output.append(f"{name} = {value:.4f} {unit}")
+
+        if self.parameters:
+            output.append("Parameters:")
+            for k, v in self.parameters.items():
+                output.append("{} = {}".format(k, v))
+
         return "\n".join(output)
 
     def __str__(self):
