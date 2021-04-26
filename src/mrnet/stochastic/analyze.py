@@ -341,7 +341,6 @@ class SimulationAnalyzer:
 
             f.write("pathway report for\n\n")
             latex_emit_molecule(f, target_species_index)
-            f.write("\n\n")
             self.latex_emit_initial_state(f)
 
             f.write("\\newpage\n\n\n")
@@ -364,11 +363,11 @@ class SimulationAnalyzer:
             generate_latex_footer(f)
 
     def latex_emit_initial_state(self, f: TextIO):
-        f.write("initial state:\n\n\n")
+        f.write("\n\n initial state:\n\n\n")
         for species_index in range(self.number_of_species):
             num = self.initial_state[species_index]
             if num > 0:
-                f.write(str(num) + " of ")
+                f.write(str(num) + " molecules of ")
                 latex_emit_molecule(f, species_index)
                 f.write("\n\n")
 
