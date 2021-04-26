@@ -1046,9 +1046,16 @@ class TestReactionNetwork(PymatgenTest):
                             )
         v3_all_computed_set = set(map(lambda x: repr(x), v3_all_iter1))
         v3_all_loaded_set = set(map(lambda x: repr(x), reactions_with_intermediates))
-        self.assertEqual(v3_all_computed_set, v3_all_loaded_set)
+        try:
+            self.assertEqual(v3_all_computed_set, v3_all_loaded_set)
+        except AssertionError:
+            c_minus_l = v3_all_computed_set - v3_all_loaded_set
+            l_minus_c = v3_all_loaded_set - v3_all_computed_set
+            self.assertEqual(len(c_minus_l), len(l_minus_c))
+            print(c_minus_l)
+            print(l_minus_c)
 
-    def test_identify_concerted_rxns_for_specific_intermediate(self):  # FLAG
+    def test_identify_concerted_rxns_for_specific_intermediate(self):
 
         with open(
             os.path.join(

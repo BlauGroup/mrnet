@@ -171,6 +171,7 @@ class ReactionPath(MSONable):
                         if "+" in reactants:  # prs for this reaction
                             prod = []  # type: List[Union[str, int]]
                             a = path[ii - 1]  # source reactant (non-pr)
+                            rct_indices = list(reactants.split("+"))
                             rct_indices.remove(str(a))
                             a = int(a)
                             pr = int(rct_indices[0])
@@ -1051,8 +1052,8 @@ class ReactionNetwork(MSONable):
                             and path_class.unsolved_prereqs == []
                             and generate
                         ):
-                            generate_characterize_path_files(
-                                self, old_solved_PRs, dist_and_path[start][node]["path"]
+                            self.generate_characterize_path_files(
+                                old_solved_PRs, dist_and_path[start][node]["path"]
                             )
                         cost_from_start[node][start] = path_class.cost
                         if len(path_class.unsolved_prereqs) == 0:
@@ -1860,7 +1861,21 @@ class ReactionNetwork(MSONable):
             os.path.join(test_dir, "unittest_identify_solved_PRs_solved_PRs_IN.json"),
         )
 
-    def generate_pre_update_eweights(self, min_cost):
+    def generate_characterize_path_files(self, old_solved_PRs, dist_and_path):
+        pickle_in = open(
+            os.path.join(test_dir, "unittest_RN_before_characterize_path.pkl",), "wb",
+        )
+        pickle.dump(self, pickle_in)
+        pickle_in = open(
+            os.path.join(test_dir, "unittest_characterize_path_PRs_IN.pkl"), "wb",
+        )
+        pickle.dump(old_solved_PRs, pickle_in)
+        dumpfn(
+            dist_and_path,
+            os.path.join(test_dir, "unittest_characterize_path_path_IN.json",),
+        )
+
+    def generate_pre_update_eweights_files(self, min_cost):
         pickle_in = open(
             os.path.join(
                 test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",
@@ -1876,18 +1891,4 @@ class ReactionNetwork(MSONable):
         dumpfn(
             min_cost,
             os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN.json"),
-        )
-
-    def generate_characterize_path_files(self, old_solved_PRs, dist_and_path):
-        pickle_in = open(
-            os.path.join(test_dir, "unittest_RN_before_characterize_path.pkl",), "wb",
-        )
-        pickle.dump(self, pickle_in)
-        pickle_in = open(
-            os.path.join(test_dir, "unittest_characterize_path_PRs_IN.pkl"), "wb",
-        )
-        pickle.dump(old_solved_PRs, pickle_in)
-        dumpfn(
-            dist_and_path,
-            os.path.join(test_dir, "unittest_characterize_path_path_IN.json",),
         )
