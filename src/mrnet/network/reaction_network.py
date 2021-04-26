@@ -10,7 +10,6 @@ import time as time
 from functools import reduce
 from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set, TypeVar
 from ast import literal_eval
-
 import networkx as nx
 from monty.json import MSONable
 from monty.serialization import dumpfn, loadfn
@@ -166,19 +165,15 @@ class ReactionPath(MSONable):
             for ii, step in enumerate(path):
                 if ii != len(path) - 1:
                     class_instance.cost += graph[step][path[ii + 1]][weight]
-                    # print(step)
                     if isinstance(step, str):  # REACTION NODE
                         reactants = step.split(",")[0]
                         products = step.split(",")[1]
                         if "+" in reactants:  # prs for this reaction
                             prod = []  # type: List[Union[str, int]]
-                            # a = int(step.split(",")[0].split("+PR_")[0])
                             a = path[ii - 1]  # source reactant (non-pr)
-                            rct_indices = list(reactants.split("+"))
                             rct_indices.remove(str(a))
                             a = int(a)
                             pr = int(rct_indices[0])
-                            # pr = int(step.split(",")[0].split("+PR_")[1])
                             if "+" in step.split(",")[1]:
                                 c = int(step.split(",")[1].split("+")[0])
                                 d = int(step.split(",")[1].split("+")[1])
@@ -505,9 +500,6 @@ class ReactionNetwork(MSONable):
         # Add entry indices
         if replace_ind:
             for ii, entry in enumerate(entries_list):
-                # if "ind" in entry.parameters.keys():
-                #     pass
-                # else:
                 entry.parameters["ind"] = ii
 
         entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
@@ -653,7 +645,7 @@ class ReactionNetwork(MSONable):
         PR in the ReactionNetwork.graph
 
         :return: a dict of the form {int(node1): [all the reaction nodes with
-        PR of node1, ex "2+PR_node1, 3"]}
+        PR of node1, ex "2+node1, 3"]}
         """
         PR_record = {
             int(specie): [] for specie in self.graph.nodes if isinstance(specie, int)
@@ -667,8 +659,6 @@ class ReactionNetwork(MSONable):
                 else:
                     PR_record[pr] = [edge]
         PR_record = {key: list(set(PR_record[key])) for key in PR_record}
-        # list_cp = list(PR_record.keys())
-        # [PR_record.pop(k) for k in list_cp if PR_record[k] == []]
         self.PR_record = PR_record
         return PR_record
 
@@ -678,19 +668,11 @@ class ReactionNetwork(MSONable):
         PR reactant node in the ReactionNetwork.graph
 
         :return: a dict of the form {int(node1): [all the reaction nodes with
-        non PR reactant of node1, ex "node1+PR_2, 3"]}
+        non PR reactant of node1, ex "node1+2, 3"]}
         """
         Reactant_record = {
             int(specie): [] for specie in self.graph.nodes if isinstance(specie, int)
         }  # type: Mapping_Record_Dict
-
-        def add_to_dict(edge):
-            print(type(edge[0]))
-            reac = edge[0]
-            if reac in Reactant_record.keys():
-                Reactant_record[reac].append(edge)
-            else:
-                Reactant_record[reac] = [edge]
 
         # filter to just get weighted edges, then add u of (u,v) to reactant record
         for edge in filter(lambda e: not isinstance(e[1], int), self.graph.edges()):
@@ -788,33 +770,10 @@ class ReactionNetwork(MSONable):
                 for start in starts:
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
+
             if ii == 4 and generate_test_files:
-                pickle_in = open(
-                    os.path.join(
-                        test_dir, "unittest_RN_pr_ii_4_before_find_path_cost.pkl"
-                    ),
-                    "wb",
-                )
-                pickle.dump(self, pickle_in)
-                pickle_in = open(
-                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
-                )
-                pickle.dump(PRs, pickle_in)
-                dumpfn(
-                    cost_from_start,
-                    os.path.join(
-                        test_dir, "unittest_find_path_cost_cost_from_start_IN.json"
-                    ),
-                )
-                dumpfn(
-                    old_solved_PRs,
-                    os.path.join(
-                        test_dir, "unittest_find_path_cost_old_solved_prs_IN.json"
-                    ),
-                )
-                dumpfn(
-                    min_cost,
-                    os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN.json"),
+                self.generate_pre_find_path_files(
+                    PRs, cost_from_start, old_solved_PRs, min_cost
                 )
 
             PRs, cost_from_start, min_cost = self.find_path_cost(
@@ -828,57 +787,17 @@ class ReactionNetwork(MSONable):
             )
 
             solved_PRs = copy.deepcopy(old_solved_PRs)
+
             if ii == 4 and generate_test_files:
-                pickle_in = open(
-                    os.path.join(
-                        test_dir, "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl",
-                    ),
-                    "wb",
-                )
-                pickle.dump(self, pickle_in)
-                with open(
-                    os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
-                ) as handle:
-                    pickle.dump(PRs, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                dumpfn(
-                    cost_from_start,
-                    os.path.join(
-                        test_dir,
-                        "unittest_identify_solved_PRs_cost_from_start_IN.json",
-                    ),
-                )
-                dumpfn(
-                    solved_PRs,
-                    os.path.join(
-                        test_dir, "unittest_identify_solved_PRs_solved_PRs_IN.json"
-                    ),
-                )
+                self.generate_pre_id_solved_PRs_files(PRs, cost_from_start, solved_PRs)
+
             solved_PRs, new_solved_PRs, cost_from_start = self.identify_solved_PRs(
                 PRs, solved_PRs, cost_from_start
             )
 
             # print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
             if ii == 4 and generate_test_files:
-                pickle_in = open(
-                    os.path.join(
-                        test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",
-                    ),
-                    "wb",
-                )
-                pickle.dump(self, pickle_in)
-                pickle_in = open(
-                    os.path.join(
-                        test_dir, "unittest_update_edge_weights_orig_graph_IN.pkl"
-                    ),
-                    "wb",
-                )
-                pickle.dump(self.graph, pickle_in)
-                dumpfn(
-                    min_cost,
-                    os.path.join(
-                        test_dir, "unittest_update_edge_weights_min_cost_IN.json"
-                    ),
-                )
+                self.generate_pre_update_eweights_files(min_cost)
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
             self.min_cost = copy.deepcopy(min_cost)
@@ -895,16 +814,16 @@ class ReactionNetwork(MSONable):
         PRs = self.final_PR_check(PRs)
         self.PRs = PRs
 
-        # print(
-        #    "total input molecules:",
-        #    len(self.entries_list),
-        #    "solvable PRs:",
-        #    len(old_solved_PRs),
-        #    "unsolvable PRs:",
-        #    len(self.unsolvable_PRs),
-        #    "not reachable mols:",
-        #    len(self.not_reachable_nodes),
-        # )
+        print(
+            "total input molecules:",
+            len(self.entries_list),
+            "solvable PRs:",
+            len(old_solved_PRs),
+            "unsolvable PRs:",
+            len(self.unsolvable_PRs),
+            "not reachable mols:",
+            len(self.not_reachable_nodes),
+        )
         print("end solve_prerequisities", time.time())
         return PRs, old_solved_PRs
 
@@ -1002,23 +921,18 @@ class ReactionNetwork(MSONable):
                     nodes = []
                     PR = []
                     Reactants = []
-                    # print(paths[node])
                     for ii, step in enumerate(paths[node]):
-                        # print(step)
                         if isinstance(step, int):
                             nodes.append(step)
                         elif "+" in step.split(",")[0]:  # Has PRs
                             if step.count("+") == 1:
                                 nodes = nodes + [step.split("+")[0]]
-                                # Reactants.append(int(step.split("+")[0]))
-                                # PR.append(int(step.split("+")[1].split("PR_")[1].split(",")[0]))
                                 Reactants.append(
                                     int(paths[node][ii - 1])
                                 )  # source reactant
                                 # "pr" reactant identification
                                 source = str(paths[node][ii - 1])
                                 rct_indices = list(step.split(",")[0].split("+"))
-                                # print(source, rct_indices)
                                 rct_indices.remove(source)
                                 PR.append(int(rct_indices[0]))
                                 if node in PR:
@@ -1027,7 +941,6 @@ class ReactionNetwork(MSONable):
                                 nodes = nodes + step.split("+")[1].split(",")
                             elif step.count("+") == 2:  # A + PR_B -> C + D
                                 nodes = nodes + [step.split(",")[0].split("+")[0]]
-                                # Reactants.append(step.split(",")[0].split("+PR_")[0])
                                 rcts = step.split(",")[0].split("+")
                                 Reactants.append(
                                     int(paths[node][ii - 1])
@@ -1138,27 +1051,8 @@ class ReactionNetwork(MSONable):
                             and path_class.unsolved_prereqs == []
                             and generate
                         ):
-                            print("HERE")
-                            pickle_in = open(
-                                os.path.join(
-                                    test_dir,
-                                    "unittest_RN_before_characterize_path.pkl",
-                                ),
-                                "wb",
-                            )
-                            pickle.dump(self, pickle_in)
-                            pickle_in = open(
-                                os.path.join(
-                                    test_dir, "unittest_characterize_path_PRs_IN.pkl"
-                                ),
-                                "wb",
-                            )
-                            pickle.dump(old_solved_PRs, pickle_in)
-                            dumpfn(
-                                dist_and_path[start][node]["path"],
-                                os.path.join(
-                                    test_dir, "unittest_characterize_path_path_IN.json",
-                                ),
+                            generate_characterize_path_files(
+                                self, old_solved_PRs, dist_and_path[start][node]["path"]
                             )
                         cost_from_start[node][start] = path_class.cost
                         if len(path_class.unsolved_prereqs) == 0:
@@ -1521,7 +1415,7 @@ class ReactionNetwork(MSONable):
     def parse_reaction_node(node: str):
         """
         A method to identify reactants, PR, and prodcuts from a given reaction node string.
-        :param node: string, ex. "1+PR_2,3+4"
+        :param node: string, ex. "1+2,3+4"
         :return: react_list: reactant list, ex [1,2]
         :return: prod_list: product list, ex [3,4]
         """
@@ -1538,7 +1432,7 @@ class ReactionNetwork(MSONable):
         A method to genrate a reaction node string from given reactants and products.
         :param combined_reactants: list of reactant node indices, ex [1,2]
         :param combined_products: list of product node indices, ex [3,4]
-        :return: node_str: string of reaction as it would be for a reaction node, ex  "1+PR_2,3+4"
+        :return: node_str: string of reaction as it would be for a reaction node, ex  "1+2,3+4"
         """
         combined_reactants = list(map(str, combined_reactants))
         node_str = (
@@ -1553,9 +1447,9 @@ class ReactionNetwork(MSONable):
         """
         A method to identify a valid concerted reaction based on stiochomtery of maximum of 2 reactants and products
         :param in_reaction_node: incoming reaction node "6,2+7"
-        :param out_reaction_node: outgoing reaction node "2+PR_1,3"
+        :param out_reaction_node: outgoing reaction node "2+1,3"
         :return: r: combined reaction's reactant and product [[1,6],[3,7]], r_node: combined reaction's reactant and
-        product as well as the two reaction nodes - ex [[1,6],[3,7], "6,2+7","2+PR_1,3"]
+        product as well as the two reaction nodes - ex [[1,6],[3,7], "6,2+7","2+1,3"]
         """
         r = None
         r_node = None
@@ -1916,4 +1810,84 @@ class ReactionNetwork(MSONable):
             d.get("PRs", dict()),
             d.get("min_cost", dict()),
             d["num_starts"],
+        )
+
+    def generate_pre_find_path_files(
+        self, PRs, cost_from_start, old_solved_PRs, min_cost
+    ):
+        pickle_in = open(
+            os.path.join(test_dir, "unittest_RN_pr_ii_4_before_find_path_cost.pkl"),
+            "wb",
+        )
+        pickle.dump(self, pickle_in)
+        pickle_in = open(
+            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
+        )
+        pickle.dump(PRs, pickle_in)
+        dumpfn(
+            cost_from_start,
+            os.path.join(test_dir, "unittest_find_path_cost_cost_from_start_IN.json"),
+        )
+        dumpfn(
+            old_solved_PRs,
+            os.path.join(test_dir, "unittest_find_path_cost_old_solved_prs_IN.json"),
+        )
+        dumpfn(
+            min_cost,
+            os.path.join(test_dir, "unittest_find_path_cost_min_cost_IN.json"),
+        )
+
+    def generate_pre_id_solved_PRs_files(self, PRs, cost_from_start, solved_PRs):
+        pickle_in = open(
+            os.path.join(
+                test_dir, "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl",
+            ),
+            "wb",
+        )
+        pickle.dump(self, pickle_in)
+        with open(
+            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
+        ) as handle:
+            pickle.dump(PRs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        dumpfn(
+            cost_from_start,
+            os.path.join(
+                test_dir, "unittest_identify_solved_PRs_cost_from_start_IN.json",
+            ),
+        )
+        dumpfn(
+            solved_PRs,
+            os.path.join(test_dir, "unittest_identify_solved_PRs_solved_PRs_IN.json"),
+        )
+
+    def generate_pre_update_eweights(self, min_cost):
+        pickle_in = open(
+            os.path.join(
+                test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",
+            ),
+            "wb",
+        )
+        pickle.dump(self, pickle_in)
+        pickle_in = open(
+            os.path.join(test_dir, "unittest_update_edge_weights_orig_graph_IN.pkl"),
+            "wb",
+        )
+        pickle.dump(self.graph, pickle_in)
+        dumpfn(
+            min_cost,
+            os.path.join(test_dir, "unittest_update_edge_weights_min_cost_IN.json"),
+        )
+
+    def generate_characterize_path_files(self, old_solved_PRs, dist_and_path):
+        pickle_in = open(
+            os.path.join(test_dir, "unittest_RN_before_characterize_path.pkl",), "wb",
+        )
+        pickle.dump(self, pickle_in)
+        pickle_in = open(
+            os.path.join(test_dir, "unittest_characterize_path_PRs_IN.pkl"), "wb",
+        )
+        pickle.dump(old_solved_PRs, pickle_in)
+        dumpfn(
+            dist_and_path,
+            os.path.join(test_dir, "unittest_characterize_path_path_IN.json",),
         )
