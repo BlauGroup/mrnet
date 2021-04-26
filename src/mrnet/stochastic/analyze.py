@@ -18,7 +18,7 @@ get_metadata = """
 """
 
 
-def get_reaction(n):
+def get_reaction(n: int):
     return (
         """
     SELECT reactant_1,
@@ -30,6 +30,47 @@ def get_reaction(n):
         + str(n)
         + " WHERE reaction_id = ?;"
     )
+
+def update_rate(shard: int):
+    return (
+        "UPDATE reactions_" + str(shard) +
+        """
+        SET rate = ?
+        WHERE reaction_id = ?;
+        """
+        )
+
+
+
+
+class NetworkUpdater:
+    """
+    class to manage the state required for updating a sharded database
+    """
+    def __init__(self, network_folder: str):
+        database_postfix = "/rn.sqlite"
+        self.connection = sqlite3.connect(network_folder + database_postfix)
+        cur = self.connection.cursor()
+        md = list(cur.execute(get_metadata))[0]
+        self.number_of_species = md[0]
+        self.number_of_reactions = md[1]
+        self.shard_size = md[2]
+        self.number_of_shards = md[3]
+        self.update_statements = {}
+
+        for i in range(self.number_of_shards):
+            self.update_statements[i] = update_rate(i)
+
+
+    def update_rates(self, pairs: List[Tuple[int, float]]):
+        cur = self.connection.cursor()
+        for (index, rate) in pairs:
+            shard = index // self.shard_size
+            cur.execute(self.update_statements[shard], (rate, index))
+
+        self.connection.commit()
+
+
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -49,6 +90,8 @@ def update_state(state, reaction):
 
     for species_index in reaction["products"]:
         state[species_index] += 1
+
+
 
 
 class SimulationAnalyzer:
