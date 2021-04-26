@@ -98,9 +98,14 @@ def get_reaction_atom_mapping(
     ) = get_local_global_atom_index_mapping(products)
 
     # solve integer programming problem to get atom mapping
-    num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
-        reactant_species, product_species, reactant_bonds, product_bonds
-    )
+    if len(reactant_bonds) == 0 or len(product_bonds) == 0:
+        num_bond_change, r2p_mapping, p2r_mapping = get_atom_mapping_no_bonds(
+            reactant_species, product_species, reactant_bonds, product_bonds
+        )
+    else:
+        num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
+            reactant_species, product_species, reactant_bonds, product_bonds
+        )
 
     # final check
     if num_bond_change > max_bond_change:
@@ -304,6 +309,45 @@ def solve_integer_programing(
         if pulp.value(v) == 1:
             r2p_mapping[i] = k
             p2r_mapping[k] = i
+
+    return objective, r2p_mapping, p2r_mapping
+
+
+def get_atom_mapping_no_bonds(
+    reactant_species: List[str],
+    product_species: List[str],
+    reactant_bonds: List[Bond],
+    product_bonds: List[Bond],
+) -> Tuple[int, List[Union[int, None]], List[Union[int, None]]]:
+    """
+    Get the atom mapping for reaction where there is no bonds in either the reactants
+    or products. For example, a reaction C-O -> C + O.
+
+
+    This is a complement function to `solve_integer_programing()`, which cannot deal
+    with the case where there is no bonds in the reactants or products.
+
+    See `solve_integer_programing()` for the arguments and returns.
+    """
+
+    if len(reactant_bonds) != 0 and len(product_bonds) != 0:
+        raise ReactionMappingError(
+            "Expect either reactants or products has 0 bonds, but reactants has "
+            f"{len(reactant_bonds)} and products has {len(product_bonds)}."
+        )
+
+    # the only thing we need to do is to match species
+    product_species_to_index = defaultdict(list)
+    for i, s in enumerate(product_species):
+        product_species_to_index[s].append(i)
+
+    r2p_mapping = []
+    for s in reactant_species:
+        r2p_mapping.append(product_species_to_index[s].pop())
+    p2r_mapping = [r2p_mapping.index(i) for i in range(len(product_species))]
+
+    # objective, i.e. number of bond change
+    objective = abs(len(reactant_bonds) - len(product_bonds))
 
     return objective, r2p_mapping, p2r_mapping
 

@@ -4,6 +4,7 @@ from monty.serialization import loadfn
 
 from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.reaction import (
+    get_atom_mapping_no_bonds,
     get_local_global_atom_index_mapping,
     get_reaction_atom_mapping,
     solve_integer_programing,
@@ -12,6 +13,21 @@ from mrnet.utils.reaction import (
 test_dir = Path(__file__).parent.parent.parent.joinpath(
     "test_files", "utils_reaction_files"
 )
+
+
+def test_get_atom_mapping_no_bonds():
+    reactant_species = ["C", "H", "O", "H"]
+    product_species = ["H", "H", "C", "O"]
+    reactant_bonds = [(0, 1), (0, 2), (0, 3)]
+    product_bonds = []
+
+    num_change_bond, r2p_mapping, p2r_mapping = get_atom_mapping_no_bonds(
+        reactant_species, product_species, reactant_bonds, product_bonds
+    )
+
+    assert num_change_bond == 3
+    assert r2p_mapping == [2, 1, 3, 0]
+    assert p2r_mapping == [3, 1, 0, 2]
 
 
 def test_get_local_global_atom_index_mapping():
