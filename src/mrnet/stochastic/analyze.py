@@ -45,7 +45,9 @@ def update_rate(shard: int):
 
 class NetworkUpdater:
     """
-    class to manage the state required for updating a sharded database
+    class to manage the state required for updating a sharded database.
+    This could easily be a single function, but i anticipate that we will
+    be adding more methods in the future.
     """
     def __init__(self, network_folder: str):
         database_postfix = "/rn.sqlite"
