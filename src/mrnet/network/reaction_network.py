@@ -1544,6 +1544,7 @@ class ReactionNetwork(MSONable):
         react_list = node.split(",")[0].split("+")
         prod_list = node.split(",")[1].split("+")
         prod_list.sort()
+        print(type(react_list[0]))
         react_list = [int(r) for r in react_list]
         prod_list = [int(p) for p in prod_list]
         return (react_list, prod_list)

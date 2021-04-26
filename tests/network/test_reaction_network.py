@@ -996,79 +996,27 @@ class TestReactionNetwork(PymatgenTest):
         self.assertEqual(r_node, None)
 
     def test_identify_concerted_rxns_via_intermediates(self):  # FLAG (concerted)
-
-        # v1 and v2 comparison
-        # load reactions from v1 of concerted reactions
-        v1 = loadfn(
-            os.path.join(test_dir, "identify_concerted_intermediate_list_v1.json")
-        )
         # load RN
         with open(
             os.path.join(
-                test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"
+                test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"
             ),
             "rb",
         ) as input:
             RN_loaded = pickle.load(input)
 
-        # process reaction list from v1 of concerted reaction such that Nones are removed,
-        # A+B>B+A and repeated reactions are removed
-        v1_processed = []
-        for r_old in v1:
-            a = r_old[0]
-            b = r_old[1]
-            if None in b:
-                b.remove(None)
-            if len(a) == 2 and len(b) == 2:
-                inter = 0
-                inter = set(a).intersection(set(b))
-                for i in inter:
-                    a.remove(i)
-                    b.remove(i)
-            a.sort()
-            b.sort()
-            c = [a, b]
-            v1_processed.append(c)
-
-        with open(
-            os.path.join(test_dir, "identify_concerted_intermediate_list_v2_iter1.pkl"),
-            "rb",
-        ) as handle:
-            v2_unique = pickle.load(handle)
-
-        v1_set = set(map(lambda x: repr(x), v1_processed))
-        v2_set = set(map(lambda x: repr(x), v2_unique))
-        inter = list(v1_set.intersection(v2_set))
-        v1_v2 = list(map(lambda y: literal_eval(y), v1_set - v2_set))
-        v2_v1 = list(map(lambda y: literal_eval(y), v2_set - v1_set))
-
-        # check if v2 missed any reactions found by v1
-        missed_by_v2 = []
-        for r in v1_v2:
-            node_str = ReactionNetwork.generate_node_string(r[0], r[1])
-            if node_str not in RN_loaded.graph.nodes:
-                missed_by_v2.append(r)
-        # checks number of same reactions in v1 and v2, number of reactions missed by v2,
-        # and number of new reactions found by v2
-        self.assertEqual(len(missed_by_v2), 0)
-        self.assertEqual(len(v1_v2), 11)
-        self.assertEqual(len(v2_v1), 0)
-        self.assertEqual(len(inter), 29214)
-        self.assertEqual(len(v2_unique), 29214)
-
-        with open(
-            os.path.join(test_dir, "identify_concerted_intermediate_list_v2_iter2.pkl"),
-            "rb",
-        ) as handle:
-            v2_unique_iter2 = pickle.load(handle)
-
-        v2_set_iter2 = set(map(lambda x: repr(x), v2_unique_iter2))
-        inter_iter2 = list(v1_set.intersection(v2_set_iter2))
-        self.assertEqual(len(inter_iter2), 0)
-        self.assertEqual(len(v2_unique_iter2), 2100)
-
-        # v2 and v3 comparison
-
+        unique_reactions = loadfn(
+            os.path.join(
+                test_dir,
+                "identify_concerted_rxns_via_intermediates_v3_all_unique_reactions.json",
+            )
+        )
+        reactions_with_intermediates = loadfn(
+            os.path.join(
+                test_dir,
+                "identify_concerted_rxns_via_intermediates_v3_reactions_w_intermediate_nodes.json",
+            )
+        )
         RN_loaded.matrix = None
         (
             v3_unique_iter1,
@@ -1076,23 +1024,8 @@ class TestReactionNetwork(PymatgenTest):
         ) = RN_loaded.identify_concerted_rxns_via_intermediates(
             RN_loaded, single_elem_interm_ignore=[], update_matrix=True
         )
-
-        v3_set = set(map(lambda x: repr(x), v3_unique_iter1))
-
-        inter_v2_v3 = list(v2_set.intersection(v3_set))
-        v2_v3 = list(map(lambda y: literal_eval(y), v2_set - v3_set))
-        v3_v2 = list(map(lambda y: literal_eval(y), v3_set - v2_set))
-        self.assertEqual(len(v3_unique_iter1), 29225)
-        self.assertEqual(len(v2_v3), 0)
-        self.assertEqual(len(v3_v2), 11)
-        self.assertEqual(len(inter_v2_v3), 29214)
-        new_by_v3 = []
-        for r in v3_v2:
-            node_str = ReactionNetwork.generate_node_string(r[0], r[1])
-            if node_str not in RN_loaded.graph.nodes:
-                new_by_v3.append(r)
-
-        self.assertEqual(len(new_by_v3), 0)
+        self.assertEqual(len(v3_unique_iter1), len(unique_reactions))
+        self.assertEqual(len(v3_all_iter1), len(reactions_with_intermediates))
 
     def test_identify_concerted_rxns_for_specific_intermediate(self):  # FLAG
 
