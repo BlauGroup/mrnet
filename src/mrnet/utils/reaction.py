@@ -1,3 +1,7 @@
+# coding: utf-8
+# Copyright (c) Pymatgen Development Team.
+# Distributed under the terms of the MIT License.
+
 from collections import defaultdict
 from typing import Dict, List, Tuple, Union
 
@@ -7,7 +11,16 @@ from pulp import LpBinary, LpMinimize, LpProblem, LpVariable, lpSum
 
 from mrnet.core.mol_entry import MoleculeEntry
 
+__author__ = "Mingjian Wen"
+__maintainer__ = "Mingjian Wen"
+__email__ = "mjwen@lbl.gov"
+__version__ = "0.1"
+__status__ = "Alpha"
+__date__ = "April, 2021"
+
+
 # typing
+
 Bond = Tuple[int, int]
 AtomMappingDict = Dict[int, int]
 
@@ -356,3 +369,30 @@ class ReactionMappingError(Exception):
     def __init__(self, msg=None):
         super().__init__(msg)
         self.msg = msg
+
+
+def generate_atom_mapping_1_1(
+    node_mapping: Dict[int, int]
+) -> Tuple[AtomMappingDict, AtomMappingDict]:
+    """
+    Generate rdkit style atom mapping for reactions with one reactant and one product.
+
+    For example, given `node_mapping = {0:2, 1:0, 2:1}`, which means atoms 0, 1,
+    and 2 in the reactant maps to atoms 2, 0, and 1 in the product, respectively,
+    the atom mapping number for reactant atoms are simply set to their index,
+    and the atom mapping number for product atoms are determined accordingly.
+    As a result, this function gives: `({0:0, 1:1, 2:2}, {0:1 1:2 2:0})` as the output.
+    Atoms in the reactant and product with the same atom mapping number
+    (keys in the dicts) are corresponding to each other.
+
+    Args:
+        node_mapping: node mapping from reactant to product
+
+    Returns:
+        reactant_atom_mapping: rdkit style atom mapping for the reactant
+        product_atom_mapping: rdkit style atom mapping for the product
+    """
+    reactant_atom_mapping = {k: k for k in node_mapping}
+    product_atom_mapping = {v: k for k, v in node_mapping.items()}
+
+    return reactant_atom_mapping, product_atom_mapping

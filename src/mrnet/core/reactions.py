@@ -20,7 +20,12 @@ from mrnet.core.rates import (
 )
 from mrnet.utils.constants import KB, PLANCK, ROOM_TEMP
 from mrnet.utils.mols import mol_free_energy
-from mrnet.utils.reaction import ReactionMappingError, get_reaction_atom_mapping
+from mrnet.utils.reaction import (
+    ReactionMappingError,
+    get_reaction_atom_mapping,
+    generate_atom_mapping_1_1,
+)
+
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -2554,33 +2559,7 @@ def is_isomorphic(
         return False, None
 
 
-def generate_atom_mapping_1_1(
-    node_mapping: Dict[int, int]
-) -> Tuple[Atom_Mapping_Dict, Atom_Mapping_Dict]:
-    """
-    Generate rdkit style atom mapping for reactions with one reactant and one product.
-
-    For example, given `node_mapping = {0:2, 1:0, 2:1}`, which means atoms 0, 1,
-    and 2 in the reactant maps to atoms 2, 0, and 1 in the product, respectively,
-    the atom mapping number for reactant atoms are simply set to their index,
-    and the atom mapping number for product atoms are determined accordingly.
-    As a result, this function gives: `({0:0, 1:1, 2:2}, {0:1 1:2 2:0})` as the output.
-    Atoms in the reactant and product with the same atom mapping number
-    (keys in the dicts) are corresponding to each other.
-
-    Args:
-        node_mapping: node mapping from reactant to product
-
-    Returns:
-        reactant_atom_mapping: rdkit style atom mapping for the reactant
-        product_atom_mapping: rdkit style atom mapping for the product
-    """
-    reactant_atom_mapping = {k: k for k in node_mapping}
-    product_atom_mapping = {v: k for k, v in node_mapping.items()}
-
-    return reactant_atom_mapping, product_atom_mapping
-
-
+# TODO `bucket_mol_entries` and `unbucket_mol_entries` can be moved to mol_entry.py
 def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] = None):
     """
     Bucket molecules into nested dictionaries according to molecule properties
