@@ -1,7 +1,6 @@
 import copy
 import itertools
 from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -19,9 +18,9 @@ from mrnet.core.rates import (
     ReactionRateCalculator,
     RedoxRateCalculator,
 )
+from mrnet.utils.constants import KB, PLANCK, ROOM_TEMP
 from mrnet.utils.mols import mol_free_energy
 from mrnet.utils.reaction import ReactionMappingError, get_reaction_atom_mapping
-from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -29,6 +28,7 @@ __maintainer__ = "Sam Blau"
 __status__ = "Alpha"
 
 
+# typing
 MappingDict = Dict[str, Dict[int, Dict[int, List[MoleculeEntry]]]]
 Mapping_Record_Dict = Dict[str, List[str]]
 Atom_Mapping_Dict = Dict[int, int]
