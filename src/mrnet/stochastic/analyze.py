@@ -31,16 +31,16 @@ def get_reaction(n: int):
         + " WHERE reaction_id = ?;"
     )
 
+
 def update_rate(shard: int):
     return (
-        "UPDATE reactions_" + str(shard) +
-        """
+        "UPDATE reactions_"
+        + str(shard)
+        + """
         SET rate = ?
         WHERE reaction_id = ?;
         """
-        )
-
-
+    )
 
 
 class NetworkUpdater:
@@ -49,6 +49,7 @@ class NetworkUpdater:
     This could easily be a single function, but i anticipate that we will
     be adding more methods in the future.
     """
+
     def __init__(self, network_folder: str):
         database_postfix = "/rn.sqlite"
         self.connection = sqlite3.connect(network_folder + database_postfix)
@@ -63,7 +64,6 @@ class NetworkUpdater:
         for i in range(self.number_of_shards):
             self.update_statements[i] = update_rate(i)
 
-
     def update_rates(self, pairs: List[Tuple[int, float]]):
         cur = self.connection.cursor()
         for (index, rate) in pairs:
@@ -71,8 +71,6 @@ class NetworkUpdater:
             cur.execute(self.update_statements[shard], (rate, index))
 
         self.connection.commit()
-
-
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -92,8 +90,6 @@ def update_state(state, reaction):
 
     for species_index in reaction["products"]:
         state[species_index] += 1
-
-
 
 
 class SimulationAnalyzer:

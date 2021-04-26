@@ -19,9 +19,7 @@ from mrnet.stochastic.serialize import (
     clone_database,
     serialize_initial_state,
 )
-from mrnet.stochastic.analyze import (
-    SimulationAnalyzer,
-    NetworkUpdater)
+from mrnet.stochastic.analyze import SimulationAnalyzer, NetworkUpdater
 
 try:
     from openbabel import openbabel as ob
@@ -106,8 +104,6 @@ class RNMC(PymatgenTest):
         # update rates from a list
         network_updater = NetworkUpdater(network_folder_1)
         network_updater.update_rates([(113, 2.0), (215, 3.0)])
-
-
 
         os.system("rm -r " + network_folder_1)
         os.system("rm -r " + network_folder_2)
