@@ -379,16 +379,20 @@ class TestReactionNetwork(PymatgenTest):
                         PRs_calc[node][start].unsolved_prereqs,
                         PR_paths[node][start].unsolved_prereqs,
                     )
+                    # below code (similar to many other functions, is responsible for tweaking old strings to match current representation)
                     for i in range(
                         len(PR_paths[node][start].full_path)
                         if PR_paths[node][start].full_path != None
                         else 0
-                    ):
+                    ):  # iterate over all nodes in the path
                         path = PR_paths[node][start].full_path[i]
-                        if isinstance(path, str):
+                        if isinstance(
+                            path, str
+                        ):  # for string nodes, remove PR from the node name
                             trimmed_pr = path.replace("PR_", "")
                         else:
                             trimmed_pr = path
+                        # order of reactants no longer enforced by PR, so just make sure all reactants are present in the reaction rather than worrying about exact order
                         try:
                             self.assertEqual(
                                 trimmed_pr, PRs_calc[node][start].full_path[i]
@@ -420,10 +424,6 @@ class TestReactionNetwork(PymatgenTest):
                                 PRs_calc[node][start].path[i].split(",")[0].split("+")
                             )
                             self.assertCountEqual(rct_path, rct_calc)
-                    # self.assertEqual(
-                    #    PRs_calc[node][start].full_path, PR_paths[node][start].full_path
-                    # )
-                    # self.assertEqual(PRs_calc[node][start].path, PR_paths[node][start].path)
 
                     if PRs_calc[node][start].cost != PR_paths[node][start].cost:
                         self.assertAlmostEqual(
