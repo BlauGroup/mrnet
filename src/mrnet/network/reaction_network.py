@@ -1674,7 +1674,6 @@ class ReactionNetwork(MSONable):
             )
             unique_reactions.append(unique_rxns)
             reactions.append(rxns_with_nodes)
-
         all_unique_reactions = reduce(operator.concat, unique_reactions)
         all_unique_reactions = list(
             map(
@@ -1683,7 +1682,7 @@ class ReactionNetwork(MSONable):
             )
         )
 
-        print("total number of unqiue concerted reactions:", len(all_unique_reactions))
+        print("total number of unique concerted reactions:", len(all_unique_reactions))
         print("identify_concerted_rxns_via_intermediates end", time.time())
         return all_unique_reactions, reactions
 

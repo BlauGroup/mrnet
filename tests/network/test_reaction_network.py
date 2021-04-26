@@ -1005,18 +1005,6 @@ class TestReactionNetwork(PymatgenTest):
         ) as input:
             RN_loaded = pickle.load(input)
 
-        unique_reactions = loadfn(
-            os.path.join(
-                test_dir,
-                "identify_concerted_rxns_via_intermediates_v3_all_unique_reactions.json",
-            )
-        )
-        reactions_with_intermediates = loadfn(
-            os.path.join(
-                test_dir,
-                "identify_concerted_rxns_via_intermediates_v3_reactions_w_intermediate_nodes.json",
-            )
-        )
         RN_loaded.matrix = None
         (
             v3_unique_iter1,
@@ -1024,8 +1012,20 @@ class TestReactionNetwork(PymatgenTest):
         ) = RN_loaded.identify_concerted_rxns_via_intermediates(
             RN_loaded, single_elem_interm_ignore=[], update_matrix=True
         )
+        unique_reactions = loadfn(
+            os.path.join(
+                test_dir,
+                "identify_concerted_rxns_via_intermediates_v3_all_unique_reactions.json",
+            )
+        )
         self.assertEqual(len(v3_unique_iter1), len(unique_reactions))
-        self.assertEqual(len(v3_all_iter1), len(reactions_with_intermediates))
+        reactions_with_intermediates = loadfn(
+            os.path.join(
+                test_dir,
+                "identify_concerted_rxns_via_intermediates_v3_reactions_w_intermediate_nodes.json",
+            )
+        )
+        self.assertEqual(len(v3_all_iter1), len(unique_reactions))
 
     def test_identify_concerted_rxns_for_specific_intermediate(self):  # FLAG
 
