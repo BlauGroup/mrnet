@@ -375,6 +375,7 @@ class SimulationAnalyzer:
         f.write("$$\n")
         reaction = self.index_to_reaction(reaction_index)
         first = True
+        f.write(str(reaction_index) + ":\n")
         for reactant_index in reaction["reactants"]:
             if first:
                 first = False
