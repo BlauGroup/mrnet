@@ -11,7 +11,6 @@ import numpy as np
 from monty.json import MSONable
 from monty.serialization import loadfn
 from pymatgen.analysis.graphs import MolGraphSplitError
-from scipy.constants import R, h, k
 
 from mrnet.core.extract_reactions import FindConcertedReactions
 from mrnet.core.mol_entry import MoleculeEntry
@@ -22,6 +21,7 @@ from mrnet.core.rates import (
 )
 from mrnet.utils.mols import mol_free_energy
 from mrnet.utils.reaction import ReactionMappingError, get_reaction_atom_mapping
+from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -156,7 +156,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def set_free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=ROOM_TEMP):
         pass
 
     @abstractmethod
@@ -335,6 +335,8 @@ class RedoxReaction(Reaction):
         # Initialized to none, generally overwritten by self.set_free_energy()
         self.base_free_energy_A = None
         self.base_free_energy_B = None
+        self.k_A = None
+        self.k_B = None
         if self.electron_free_energy is not None:
             self.set_free_energy()
             self.set_rate_constant()
@@ -439,7 +441,7 @@ class RedoxReaction(Reaction):
 
         return reactions
 
-    def set_free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=ROOM_TEMP):
         """
         A method to determine the free energy of the redox reaction. Note to
         set RedoxReaction.electron_free_energy a value.
@@ -454,7 +456,7 @@ class RedoxReaction(Reaction):
             None
         """
         set_base = False
-        if temperature is None or temperature == 298.15:
+        if temperature is None or temperature == ROOM_TEMP:
             if (
                 self.base_free_energy_A is not None
                 and self.base_free_energy_B is not None
@@ -497,7 +499,7 @@ class RedoxReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def set_rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=ROOM_TEMP):
         if isinstance(self.rate_calculator, RedoxRateCalculator):
             self.k_A = self.rate_calculator.calculate_rate_constant(
                 temperature=temperature
@@ -521,25 +523,25 @@ class RedoxReaction(Reaction):
                 delta_g_b = lam_reorg / 4 * (1 + self.free_energy_B / lam_reorg) ** 2
 
             if self.inner_reorganization_energy is None and self.free_energy_A < 0:
-                self.k_A = kappa * k * temperature / h
+                self.k_A = kappa * KB * temperature / PLANCK
             else:
                 self.k_A = (
                     kappa
-                    * k
+                    * KB
                     * temperature
-                    / h
-                    * np.exp(-96487 * delta_g_a / (R * temperature))
+                    / PLANCK
+                    * np.exp(-1 * delta_g_a / (KB * temperature))
                 )
 
             if self.inner_reorganization_energy is None and self.free_energy_B < 0:
-                self.k_B = kappa * k * temperature / h
+                self.k_B = kappa * KB * temperature / PLANCK
             else:
                 self.k_B = (
                     kappa
-                    * k
+                    * KB
                     * temperature
-                    / h
-                    * np.exp(-96487 * delta_g_b / (R * temperature))
+                    / PLANCK
+                    * np.exp(-1 * delta_g_b / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -764,7 +766,7 @@ class IntramolSingleBondChangeReaction(Reaction):
 
         return reactions
 
-    def set_free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=ROOM_TEMP):
         """
         A method to determine the free energy of the intramolecular single bond change
         reaction. Sets free_energy_A and free_energy_B
@@ -780,7 +782,7 @@ class IntramolSingleBondChangeReaction(Reaction):
         """
 
         set_base = False
-        if temperature is None or temperature == 298.15:
+        if temperature is None or temperature == ROOM_TEMP:
             if (
                 self.base_free_energy_A is not None
                 and self.base_free_energy_B is not None
@@ -816,7 +818,7 @@ class IntramolSingleBondChangeReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def set_rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=ROOM_TEMP):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -833,17 +835,17 @@ class IntramolSingleBondChangeReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB * temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -1101,7 +1103,7 @@ class IntermolecularReaction(Reaction):
 
         return reactions
 
-    def set_free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=ROOM_TEMP):
         """
         A method to determine the free energy of the intermolecular reaction.
         Sets free_energy_A and free_energy_B
@@ -1117,7 +1119,7 @@ class IntermolecularReaction(Reaction):
         """
 
         set_base = False
-        if temperature is None or temperature == 298.15:
+        if temperature is None or temperature == ROOM_TEMP:
             if (
                 self.base_free_energy_A is not None
                 and self.base_free_energy_B is not None
@@ -1157,7 +1159,7 @@ class IntermolecularReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def set_rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=ROOM_TEMP):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -1174,17 +1176,17 @@ class IntermolecularReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB * temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -1487,7 +1489,7 @@ class CoordinationBondChangeReaction(Reaction):
 
         return reactions
 
-    def set_free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=ROOM_TEMP):
         """
         A method to determine the free energy of the coordination bond change reaction
         Sets free_energy_A and free_energy_B
@@ -1500,7 +1502,7 @@ class CoordinationBondChangeReaction(Reaction):
         """
 
         set_base = False
-        if temperature is None or temperature == 298.15:
+        if temperature is None or temperature == ROOM_TEMP:
             if (
                 self.base_free_energy_A is not None
                 and self.base_free_energy_B is not None
@@ -1540,7 +1542,7 @@ class CoordinationBondChangeReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def set_rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=ROOM_TEMP):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -1559,17 +1561,17 @@ class CoordinationBondChangeReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB * temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -1827,7 +1829,7 @@ class ConcertedReaction(Reaction):
 
         return reactions
 
-    def set_free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=ROOM_TEMP):
         """
         A method to determine the free energy of the concerted reaction
         Sets free_energy_A and free_energy_B,
@@ -1841,7 +1843,7 @@ class ConcertedReaction(Reaction):
         """
 
         set_base = False
-        if temperature is None or temperature == 298.15:
+        if temperature is None or temperature == ROOM_TEMP:
             if (
                 self.base_free_energy_A is not None
                 and self.base_free_energy_B is not None
@@ -1903,7 +1905,7 @@ class ConcertedReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def set_rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=ROOM_TEMP):
         if isinstance(self.rate_calculator, ReactionRateCalculator) or isinstance(
             self.rate_calculator, ExpandedBEPRateCalculator
         ):
@@ -1920,17 +1922,17 @@ class ConcertedReaction(Reaction):
             gb = self.free_energy_B
 
             if ga < 0:
-                self.k_A = k * temperature / h
+                self.k_A = KB * temperature / PLANCK
             else:
                 self.k_A = (
-                    k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
                 )
 
             if gb < 0:
-                self.k_B = k * temperature / h
+                self.k_B = KB * temperature / PLANCK
             else:
                 self.k_B = (
-                    k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+                    KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
                 )
 
     def as_dict(self) -> dict:
@@ -2219,7 +2221,7 @@ class MetalHopReaction(Reaction):
 
         return pairs
 
-    def set_free_energy(self, temperature=298.15):
+    def set_free_energy(self, temperature=ROOM_TEMP):
         """
         A method to determine the free energy of the coordination bond change reaction
         Sets free_energy_A and free_energy_B
@@ -2232,7 +2234,7 @@ class MetalHopReaction(Reaction):
         """
 
         set_base = False
-        if temperature is None or temperature == 298.15:
+        if temperature is None or temperature == ROOM_TEMP:
             if (
                 self.base_free_energy_A is not None
                 and self.base_free_energy_B is not None
@@ -2290,7 +2292,7 @@ class MetalHopReaction(Reaction):
             self.base_free_energy_B = self.free_energy_B
         return
 
-    def set_rate_constant(self, temperature=298.15):
+    def set_rate_constant(self, temperature=ROOM_TEMP):
 
         ga = self.free_energy_A
         gb = self.free_energy_B
@@ -2310,17 +2312,17 @@ class MetalHopReaction(Reaction):
 
         if ga < barrier_a:
             self.k_A = (
-                k * temperature / h * np.exp(-1 * barrier_a * 96487 / (R * temperature))
+                KB * temperature / PLANCK * np.exp(-1 * barrier_a / (KB * temperature))
             )
         else:
-            self.k_A = k * temperature / h * np.exp(-1 * ga * 96487 / (R * temperature))
+            self.k_A = KB * temperature / PLANCK * np.exp(-1 * ga / (KB * temperature))
 
         if gb < barrier_b:
             self.k_B = (
-                k * temperature / h * np.exp(-1 * barrier_b * 96487 / (R * temperature))
+                KB * temperature / PLANCK * np.exp(-1 * barrier_b / (KB * temperature))
             )
         else:
-            self.k_B = k * temperature / h * np.exp(-1 * gb * 96487 / (R * temperature))
+            self.k_B = KB * temperature / PLANCK * np.exp(-1 * gb / (KB * temperature))
 
     def as_dict(self) -> dict:
 

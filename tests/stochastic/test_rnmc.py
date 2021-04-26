@@ -7,15 +7,19 @@ import os
 
 import numpy as np
 from scipy.constants import N_A
-from monty.serialization import loadfn
+from monty.serialization import loadfn, dumpfn
 from pymatgen.util.testing import PymatgenTest
 
 from mrnet.network.reaction_generation import ReactionGenerator
-from mrnet.stochastic.rnmc import (
-    SerializedReactionNetwork,
+from mrnet.stochastic.serialize import (
+    SerializeNetwork,
+    serialize_simulation_parameters,
     find_mol_entry_from_xyz_and_charge,
-    run,
+    run_simulator,
+    clone_database,
+    serialize_initial_state,
 )
+from mrnet.stochastic.analyze import SimulationAnalyzer
 
 try:
     from openbabel import openbabel as ob
@@ -34,52 +38,69 @@ test_dir = os.path.join(
 
 
 class RNMC(PymatgenTest):
-    def test_reaction_network_serialization(self):
-
+    def test_rnmc(self):
         molecule_entries = loadfn(os.path.join(test_dir, "ronalds_MoleculeEntry.json"))
+
+        li_plus_mol_entry = find_mol_entry_from_xyz_and_charge(
+            molecule_entries, (os.path.join(test_dir, "Li.xyz")), 1
+        )
+
+        ec_mol_entry = find_mol_entry_from_xyz_and_charge(
+            molecule_entries, (os.path.join(test_dir, "EC.xyz")), 0
+        )
+
+        ledc_mol_entry = find_mol_entry_from_xyz_and_charge(
+            molecule_entries, (os.path.join(test_dir, "EC.xyz")), 0
+        )
+
+        # make test idempotent after failure
+        network_folder_1 = "/tmp/RNMC_network_1"
+        network_folder_2 = "/tmp/RNMC_network_2"
+        param_folder = "/tmp/RNMC_params"
+
+        os.system("rm -r " + network_folder_1)
+        os.system("rm -r " + network_folder_2)
+        os.system("rm -r " + param_folder)
+
+        initial_state_data_1 = [(li_plus_mol_entry, 300), (ec_mol_entry, 30)]
+        initial_state_data_2 = [(li_plus_mol_entry, 30), (ec_mol_entry, 300)]
+
         reaction_generator = ReactionGenerator(molecule_entries)
 
-        li_plus_mol_entry = find_mol_entry_from_xyz_and_charge(
-            molecule_entries, (os.path.join(test_dir, "Li.xyz")), 1
+        # for large networks, you want to use shard_size=2000000
+        SerializeNetwork(network_folder_1, reaction_generator, shard_size=100)
+
+        # serializing is expensive, so we only want to do it once
+        # instead, for reaction_network_2 we symlink the database into the folder
+        clone_database(network_folder_1, network_folder_2)
+
+        serialize_initial_state(
+            network_folder_1, molecule_entries, initial_state_data_1
         )
-
-        ec_mol_entry = find_mol_entry_from_xyz_and_charge(
-            molecule_entries, (os.path.join(test_dir, "EC.xyz")), 0
+        serialize_initial_state(
+            network_folder_2, molecule_entries, initial_state_data_2
         )
+        serialize_simulation_parameters(param_folder, number_of_threads=4)
 
-        network_folder = "./RNMC_network"
-        param_folder = "./RNMC_params"
+        run_simulator(network_folder_1, param_folder)
+        run_simulator(network_folder_2, param_folder)
 
-        initial_state_data = [(li_plus_mol_entry, 30), (ec_mol_entry, 30)]
+        sa_1 = SimulationAnalyzer(network_folder_1, molecule_entries)
+        sa_1.generate_pathway_report(ledc_mol_entry, 10)
+        sa_1.generate_consumption_report(ledc_mol_entry)
+        sa_1.generate_reaction_tally_report()
+        profiles_1 = sa_1.generate_time_dep_profiles()
+        states_1 = sa_1.final_state_analysis(profiles_1["final_states"])
+        rxn_counts_1 = sa_1.rank_reaction_counts()
 
-        rnsd = ReactionNetworkSerializationData(
-            reaction_generator,
-            initial_state_data,
-            network_folder,
-            param_folder,
-            logging=False,
-        )
+        sa_2 = SimulationAnalyzer(network_folder_2, molecule_entries)
+        sa_2.generate_pathway_report(ledc_mol_entry, 10)
+        sa_2.generate_consumption_report(ledc_mol_entry)
+        sa_2.generate_reaction_tally_report()
+        profiles_2 = sa_2.generate_time_dep_profiles()
+        states_2 = sa_2.final_state_analysis(profiles_2["final_states"])
+        rxn_counts_2 = sa_2.rank_reaction_counts()
 
-        self.assertEqual(rnsd.number_of_reactions, 212)
-
-    def test_reaction_network_serialization(self):
-
-        molecule_entries = loadfn(os.path.join(test_dir, "ronalds_MoleculeEntry.json"))
-
-        li_plus_mol_entry = find_mol_entry_from_xyz_and_charge(
-            molecule_entries, (os.path.join(test_dir, "Li.xyz")), 1
-        )
-
-        ec_mol_entry = find_mol_entry_from_xyz_and_charge(
-            molecule_entries, (os.path.join(test_dir, "EC.xyz")), 0
-        )
-
-        network_folder = "./RNMC_network"
-        param_folder = "./RNMC_params"
-
-        initial_state_data = [(li_plus_mol_entry, 30), (ec_mol_entry, 30)]
-
-        run(molecule_entries, initial_state_data, network_folder, param_folder)
-
-        os.system("rm -r " + network_folder)
+        os.system("rm -r " + network_folder_1)
+        os.system("rm -r " + network_folder_2)
         os.system("rm -r " + param_folder)
