@@ -339,8 +339,9 @@ class SimulationAnalyzer:
 
             generate_latex_header(f)
 
-            f.write("pathway report for")
+            f.write("pathway report for\n\n")
             latex_emit_molecule(f, target_species_index)
+            f.write("\n\n")
             self.latex_emit_initial_state(f)
 
             f.write("\\newpage\n\n\n")
