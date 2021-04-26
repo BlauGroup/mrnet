@@ -2,15 +2,34 @@ from typing import Tuple, List, Dict, TextIO
 import pickle
 import os
 import copy
+import sqlite3
 
 import numpy as np
 
-from mrnet.stochastic.serialize import SerializedReactionNetwork
 from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.visualization import (
     visualize_molecule_entry,
     visualize_molecule_count_histogram,
 )
+
+
+get_metadata = """
+    SELECT * FROM metadata;
+"""
+
+
+def get_reaction(n):
+    return (
+        """
+    SELECT reactant_1,
+           reactant_2,
+           product_1,
+           product_2,
+           dG
+    FROM reactions_"""
+        + str(n)
+        + " WHERE reaction_id = ?;"
+    )
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -37,19 +56,45 @@ class SimulationAnalyzer:
     A class to analyze the resutls of a set of MC runs
     """
 
-    def __init__(
-        self, rnsd: SerializedReactionNetwork, initial_state, network_folder: str
-    ):
-        """
-        Params:
-            rnsd (SerializedReactionNetwork):
-            network_folder (Path):
-        """
+    def __init__(self, network_folder: str, mol_list: List[MoleculeEntry]):
+
+        initial_state_postfix = "/initial_state"
+        simulation_histories_postfix = "/simulation_histories"
+        database_postfix = "/rn.sqlite"
+        reports_postfix = "/reports"
+
+        self.connection = sqlite3.connect(network_folder + database_postfix)
+        cur = self.connection.cursor()
+        md = list(cur.execute(get_metadata))[0]
+        self.number_of_species = md[0]
+        self.number_of_reactions = md[1]
+        self.shard_size = md[2]
+        self.number_of_shards = md[3]
+        self.get_reactions_sql = {}
+
+        for i in range(self.number_of_shards):
+            self.get_reactions_sql[i] = get_reaction(i)
 
         self.network_folder = network_folder
-        self.histories_folder = network_folder + "/simulation_histories"
-        self.rnsd = rnsd
-        self.initial_state = initial_state
+        self.histories_folder = network_folder + simulation_histories_postfix
+        self.reports_folder = network_folder + reports_postfix
+
+        try:
+            os.mkdir(self.reports_folder)
+        except FileExistsError:
+            pass
+
+        with open(network_folder + initial_state_postfix, "r") as f:
+            initial_state_list = [int(c) for c in f.readlines()]
+            self.initial_state = np.array(initial_state_list, dtype=int)
+
+        self.mol_entries = {}
+
+        for entry in mol_list:
+            self.mol_entries[entry.parameters["ind"]] = entry
+
+        self.reaction_data: Dict[int, dict] = {}
+
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
         self.reaction_histories = list()
         self.time_histories = list()
@@ -87,14 +132,32 @@ class SimulationAnalyzer:
         self.number_simulations = len(self.reaction_histories)
         self.visualize_molecules()
 
+    def index_to_reaction(self, reaction_index):
+        shard = reaction_index // self.shard_size
+        if reaction_index in self.reaction_data:
+            return self.reaction_data[reaction_index]
+        else:
+            print("fetching data for reaction", reaction_index)
+            cur = self.connection.cursor()
+            # reaction_index is type numpy.int64 which sqlite doesn't like.
+            res = list(
+                cur.execute(self.get_reactions_sql[shard], (int(reaction_index),))
+            )[0]
+            reaction = {}
+            reaction["reactants"] = [i for i in res[0:2] if i >= 0]
+            reaction["products"] = [i for i in res[2:4] if i >= 0]
+            reaction["dG"] = res[4]
+            self.reaction_data[reaction_index] = reaction
+            return reaction
+
     def visualize_molecules(self):
         folder = self.network_folder + "/molecule_diagrams"
         if os.path.isdir(folder):
             return
 
         os.mkdir(folder)
-        for index in range(self.rnsd.number_of_species):
-            molecule_entry = self.rnsd.species_data[index]
+        for index in range(self.number_of_species):
+            molecule_entry = self.mol_entries[index]
             visualize_molecule_entry(molecule_entry, folder + "/" + str(index) + ".pdf")
 
     def extract_species_consumption_info(
@@ -114,7 +177,7 @@ class SimulationAnalyzer:
             running_count = self.initial_state[target_species_index]
 
             for reaction_index in reaction_history:
-                reaction = self.rnsd.index_to_reaction[reaction_index]
+                reaction = self.index_to_reaction(reaction_index)
 
                 for reactant_index in reaction["reactants"]:
                     if target_species_index == reactant_index:
@@ -144,17 +207,23 @@ class SimulationAnalyzer:
         state array. Missing reactants have negative values in the
         partial state array. Now loop through the reaction history
         to resolve the missing reactants.
-
-
         """
+
+        print("extracting pathways to", target_species_index)
         reaction_pathway_list = []
-        for reaction_history in self.reaction_histories:
+        for reaction_history_num, reaction_history in enumerate(
+            self.reaction_histories
+        ):
+            # current approach is a hack. Sometimes it can fall into an inifite loop
+            # if pathway gets too long, we assume that this has happened.
+            infinite_loop = False
+            print("scanning history", reaction_history_num, "for pathway")
 
             # -1 if target wasn't produced
             # index of reaction if target was produced
             reaction_producing_target_index = -1
             for reaction_index in reaction_history:
-                reaction = self.rnsd.index_to_reaction[reaction_index]
+                reaction = self.index_to_reaction(reaction_index)
                 if target_species_index in reaction["products"]:
                     reaction_producing_target_index = reaction_index
                     break
@@ -164,15 +233,18 @@ class SimulationAnalyzer:
             else:
                 pathway = [reaction_producing_target_index]
                 partial_state = np.copy(self.initial_state)
-                final_reaction = self.rnsd.index_to_reaction[pathway[0]]
+                final_reaction = self.index_to_reaction(pathway[0])
                 update_state(partial_state, final_reaction)
 
                 negative_species = list(np.where(partial_state < 0)[0])
 
                 while len(negative_species) != 0:
+                    if len(pathway) > 1000:
+                        infinite_loop = True
+                        break
                     for species_index in negative_species:
                         for reaction_index in reaction_history:
-                            reaction = self.rnsd.index_to_reaction[reaction_index]
+                            reaction = self.index_to_reaction(reaction_index)
                             if species_index in reaction["products"]:
                                 update_state(partial_state, reaction)
                                 pathway.insert(0, reaction_index)
@@ -180,17 +252,14 @@ class SimulationAnalyzer:
 
                     negative_species = list(np.where(partial_state < 0)[0])
 
-                reaction_pathway_list.append(pathway)
+                if not infinite_loop:
+                    reaction_pathway_list.append(pathway)
 
         reaction_pathway_dict = collect_duplicate_pathways(reaction_pathway_list)
         self.reaction_pathways_dict[target_species_index] = reaction_pathway_dict
 
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
-        target_species_index = self.rnsd.mol_entry_to_internal_index(mol_entry)
-        folder = (
-            self.network_folder + "/consumption_report_" + str(target_species_index)
-        )
-        os.mkdir(folder)
+        target_species_index = mol_entry.parameters["ind"]
 
         (
             producing_reactions,
@@ -198,30 +267,36 @@ class SimulationAnalyzer:
             final_counts,
         ) = self.extract_species_consumption_info(target_species_index)
 
-        visualize_molecule_count_histogram(
-            final_counts, folder + "/final_count_histogram.pdf"
+        histogram_file = (
+            self.reports_folder
+            + "/final_count_histogram_"
+            + str(target_species_index)
+            + ".pdf"
         )
 
-        with open(folder + "/consumption_report.tex", "w") as f:
-            f.write("\\documentclass{article}\n")
-            f.write("\\usepackage{graphicx}\n")
-            f.write("\\usepackage[margin=1cm]{geometry}\n")
-            f.write("\\usepackage{amsmath}\n")
-            f.write("\\pagenumbering{gobble}\n")
-            f.write("\\begin{document}\n")
+        visualize_molecule_count_histogram(final_counts, histogram_file)
+
+        with open(
+            self.reports_folder
+            + "/consumption_report_"
+            + str(target_species_index)
+            + ".tex",
+            "w",
+        ) as f:
+
+            generate_latex_header(f)
 
             f.write("consumption report for")
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(target_species_index)
-                + ".pdf}}\n\n"
-            )
+            latex_emit_molecule(f, target_species_index)
+            f.write("\n\n")
 
             f.write("molecule frequency at end of simulations")
             f.write(
                 "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.5]{./final_count_histogram.pdf"
+                + "\\includegraphics[scale=0.5]{"
+                + "./final_count_histogram_"
+                + str(target_species_index)
+                + ".pdf"
                 + "}}\n\n"
             )
 
@@ -242,36 +317,30 @@ class SimulationAnalyzer:
             ):
 
                 f.write(str(frequency) + " occurrences:\n")
-
                 self.latex_emit_reaction(f, reaction_index)
 
-            f.write("\\end{document}")
+            generate_latex_footer(f)
 
     def generate_pathway_report(self, mol_entry: MoleculeEntry, min_frequency: int):
-        target_species_index = self.rnsd.mol_entry_to_internal_index(mol_entry)
-        folder = self.network_folder + "/pathway_report_" + str(target_species_index)
-        os.mkdir(folder)
+        target_species_index = mol_entry.parameters["ind"]
 
-        with open(folder + "/pathway_report.tex", "w") as f:
-            if target_species_index not in self.reaction_pathways_dict:
-                self.extract_reaction_pathways(target_species_index)
+        if target_species_index not in self.reaction_pathways_dict:
+            self.extract_reaction_pathways(target_species_index)
+
+        with open(
+            self.reports_folder
+            + "/pathway_report_"
+            + str(target_species_index)
+            + ".tex",
+            "w",
+        ) as f:
 
             pathways = self.reaction_pathways_dict[target_species_index]
 
-            f.write("\\documentclass{article}\n")
-            f.write("\\usepackage{graphicx}\n")
-            f.write("\\usepackage[margin=1cm]{geometry}\n")
-            f.write("\\usepackage{amsmath}\n")
-            f.write("\\pagenumbering{gobble}\n")
-            f.write("\\begin{document}\n")
+            generate_latex_header(f)
 
             f.write("pathway report for")
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(target_species_index)
-                + ".pdf}}\n\n"
-            )
+            latex_emit_molecule(f, target_species_index)
             self.latex_emit_initial_state(f)
 
             f.write("\\newpage\n\n\n")
@@ -291,24 +360,20 @@ class SimulationAnalyzer:
                 else:
                     break
 
-            f.write("\\end{document}")
+            generate_latex_footer(f)
 
     def latex_emit_initial_state(self, f: TextIO):
         f.write("initial state:\n\n\n")
-        for species_index in range(self.rnsd.number_of_species):
+        for species_index in range(self.number_of_species):
             num = self.initial_state[species_index]
             if num > 0:
                 f.write(str(num) + " of ")
-                f.write(
-                    "\\raisebox{-.5\\height}{"
-                    + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                    + str(species_index)
-                    + ".pdf}}\n\n\n"
-                )
+                latex_emit_molecule(f, species_index)
+                f.write("\n\n")
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
         f.write("$$\n")
-        reaction = self.rnsd.index_to_reaction[reaction_index]
+        reaction = self.index_to_reaction(reaction_index)
         first = True
         for reactant_index in reaction["reactants"]:
             if first:
@@ -316,19 +381,9 @@ class SimulationAnalyzer:
             else:
                 f.write("+\n")
 
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(reactant_index)
-                + ".pdf}}\n"
-            )
+            latex_emit_molecule(f, reactant_index)
 
-            # these are mrnet indices, which differ from the internal
-            # MC indices
-            mrnet_index = self.rnsd.internal_to_mrnet_index(reactant_index)
-            f.write(str(mrnet_index) + "\n")
-
-        f.write("\\xrightarrow{" + ("%.2f" % reaction["free_energy"]) + "}\n")
+        f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
 
         first = True
         for product_index in reaction["products"]:
@@ -337,20 +392,29 @@ class SimulationAnalyzer:
             else:
                 f.write("+\n")
 
-            f.write(
-                "\\raisebox{-.5\\height}{"
-                + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-                + str(product_index)
-                + ".pdf}}\n"
-            )
-
-            # these are mrnet indices, which differ from the internal
-            # MC indices
-            mrnet_index = self.rnsd.internal_to_mrnet_index(product_index)
-            f.write(str(mrnet_index) + "\n")
+            latex_emit_molecule(f, product_index)
 
         f.write("$$")
         f.write("\n\n\n")
+
+    def generate_simulation_history_report(self, history_num):
+        with open(
+            self.reports_folder
+            + "/simulation_history_report_"
+            + str(history_num)
+            + ".tex",
+            "w",
+        ) as f:
+
+            generate_latex_header(f)
+
+            f.write("simulation " + str(history_num))
+            f.write("\n\n\n")
+            for reaction_index in self.reaction_histories[history_num]:
+                f.write("\n\n\n")
+                self.latex_emit_reaction(f, reaction_index)
+
+            generate_latex_footer(f)
 
     def generate_reaction_tally_report(self):
         observed_reactions = {}
@@ -361,15 +425,9 @@ class SimulationAnalyzer:
                 else:
                     observed_reactions[reaction_index] = 1
 
-        folder = self.network_folder + "/reaction_tally_report"
-        os.mkdir(folder)
-        with open(folder + "/reaction_tally_report.tex", "w") as f:
-            f.write("\\documentclass{article}\n")
-            f.write("\\usepackage{graphicx}\n")
-            f.write("\\usepackage[margin=1cm]{geometry}\n")
-            f.write("\\usepackage{amsmath}\n")
-            f.write("\\pagenumbering{gobble}\n")
-            f.write("\\begin{document}\n")
+        with open(self.reports_folder + "/reaction_tally_report.tex", "w") as f:
+
+            generate_latex_header(f)
 
             f.write("reaction tally report")
             f.write("\n\n\n")
@@ -378,7 +436,8 @@ class SimulationAnalyzer:
             ):
                 f.write(str(number) + " occourances of:")
                 self.latex_emit_reaction(f, reaction_index)
-            f.write("\\end{document}")
+
+            generate_latex_footer(f)
 
     def generate_time_dep_profiles(self, frequency: int = 1):
         """
@@ -410,7 +469,7 @@ class SimulationAnalyzer:
             sim_rxn_profile = dict()
             for ii, mol_ind in enumerate(state):
                 sim_species_profile[ii] = [self.initial_state[ii]]
-            for index in range(len(self.rnsd.index_to_reaction)):
+            for index in range(self.number_of_reactions):
                 sim_rxn_profile[index] = [0]
                 rxn_counts[index] = 0
             total_iterations = len(sim_rxn_history)
@@ -420,7 +479,7 @@ class SimulationAnalyzer:
                 t = sim_time_history[iter]
                 rxn_counts[rxn_ind] += 1
 
-                update_state(state, self.rnsd.index_to_reaction[rxn_ind])
+                update_state(state, self.index_to_reaction(rxn_ind))
                 for i, v in enumerate(state):
                     if v < 0:
                         raise ValueError(
@@ -526,18 +585,24 @@ class SimulationAnalyzer:
         return sorted_reaction_analysis
 
 
-def load_analysis(network_folder: str) -> SimulationAnalyzer:
-    """
-    as part of serialization, the SerializedReactionNetwork is stored as a
-    pickle in the network folder. This allows for analysis to be picked up in a
-    new python session.
-    """
-    with open(network_folder + "/rnsd.pickle", "rb") as f:
-        rnsd = pickle.load(f)
+def generate_latex_header(f: TextIO):
+    f.write("\\documentclass{article}\n")
+    f.write("\\usepackage{graphicx}\n")
+    f.write("\\usepackage[margin=1cm]{geometry}\n")
+    f.write("\\usepackage{amsmath}\n")
+    f.write("\\pagenumbering{gobble}\n")
+    f.write("\\begin{document}\n")
 
-    with open(network_folder + "/initial_state", "r") as s:
-        initial_state = np.array([int(x) for x in s.readlines()], dtype=int)
 
-    sa = SimulationAnalyzer(rnsd, initial_state, network_folder)
+def generate_latex_footer(f: TextIO):
+    f.write("\\end{document}")
 
-    return sa
+
+def latex_emit_molecule(f: TextIO, species_index: int):
+    f.write(str(species_index) + "\n")
+    f.write(
+        "\\raisebox{-.5\\height}{"
+        + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
+        + str(species_index)
+        + ".pdf}}\n"
+    )

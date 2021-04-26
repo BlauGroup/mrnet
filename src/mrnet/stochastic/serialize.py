@@ -1,8 +1,9 @@
-from typing import Tuple, Optional, Union, List
+from typing import Tuple, Optional, Union, List, Dict
 import math
 import numpy as np
 import pickle
 import os
+import sqlite3
 
 from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
@@ -43,237 +44,333 @@ def find_mol_entry_from_xyz_and_charge(mol_entries, xyz_file_path, charge):
         return None
 
 
-class SerializedReactionNetwork:
+create_metadata_table = """
+    CREATE TABLE metadata (
+            number_of_species   INTEGER NOT NULL,
+            number_of_reactions INTEGER NOT NULL,
+            shard_size          INTEGER NOT NULL,
+            number_of_shards    INTEGER NOT NULL
+    );
+"""
+
+
+def create_reactions_table(n):
+    return (
+        "CREATE TABLE reactions_"
+        + str(n)
+        + """ (
+                reaction_id         INTEGER NOT NULL PRIMARY KEY,
+                reaction_string     TEXT UNIQUE NOT NULL,
+                number_of_reactants INTEGER NOT NULL,
+                number_of_products  INTEGER NOT NULL,
+                reactant_1          INTEGER NOT NULL,
+                reactant_2          INTEGER NOT NULL,
+                product_1           INTEGER NOT NULL,
+                product_2           INTEGER NOT NULL,
+                rate                REAL NOT NULL,
+                dG                  REAL NOT NULL
+        );
+
+CREATE UNIQUE INDEX reaction_"""
+        + str(n)
+        + "_string_idx ON reactions_"
+        + str(n)
+        + " (reaction_string);"
+    )
+
+
+def insert_reaction(n):
+    return (
+        "INSERT INTO reactions_"
+        + str(n)
+        + """ (
+        reaction_id,
+        reaction_string,
+        number_of_reactants,
+        number_of_products,
+        reactant_1,
+        reactant_2,
+        product_1,
+        product_2,
+        rate,
+        dG)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
+"""
+    )
+
+
+def does_reaction_exist(n):
+    return "SELECT COUNT(*) FROM reactions_" + str(n) + " WHERE reaction_string = ?"
+
+
+insert_metadata = """
+  INSERT INTO metadata (
+          number_of_species,
+          number_of_reactions,
+          shard_size,
+          number_of_shards)
+  VALUES (?1, ?2, ?3, ?4);
+"""
+
+
+class SerializeNetwork:
     """
-    An object designed to store data from a ReactionNetwork suitable for use with
-    the C RNMC code.
+    write the reaction network to a database for ingestion by RNMC.
+
+
+    there are some non trivial aspects to the implementation. Firstly,
+    we don't want to insert any duplicate reactions. This would be equivalent
+    to doubling their rate constant.
+
+    For this reason, we have the column reaction string in the reaction tables which
+    has an index, so we can efficiently query the database to look for duplicate reactions.
+
+    On the otherhand, we are going to be serializing reaction networks with hundreds of millions
+    of reactions. Inserting rows into tables of this size which have indexes eventually grinds to a halt:
+    https://stackoverflow.com/questions/15778716/sqlite-insert-speed-slows-as-number-of-records-increases-due-to-an-index
+
+    to overcome this, we shard the reaction table into a bundle of smaller tables with shard_size rows.
+    This creates a performance tradeoff. On the one hand, we want to keep the shard size small,
+    so that insertions don't grind to a halt. But if the shard size is too small, we need to check for duplicates
+    in more tables which also slows down the serialization process. Based on the above link, the optimal shard_size
+    is probably somewhere between 1-3 million, but this is going to be hardware dependent.
     """
 
     def __init__(
         self,
-        reaction_network: Union[ReactionNetwork, ReactionGenerator],
-        logging: bool = False,
+        folder: str,
+        reaction_generator: ReactionGenerator,
+        shard_size: int = 1000000,
+        commit_barrier: int = 10000,
         temperature=ROOM_TEMP,
         constant_barrier=None,
-        use_thermo_cost=True,
     ):
 
-        if isinstance(reaction_network, ReactionGenerator):
-            reactions = reaction_network
-            entries_list = reaction_network.rn.entries_list
+        if shard_size < 0 or shard_size % 2 != 0:
+            raise ValueError("shard_size must be positive and even")
 
-        else:
-            reactions = reaction_network.reactions
-            entries_list = reaction_network.entries_list
-
-        self.logging = logging
+        self.folder = folder
+        self.reaction_generator = reaction_generator
+        self.shard_size = shard_size
+        self.commit_barrier = commit_barrier
         self.temperature = temperature
         self.constant_barrier = constant_barrier
+        self.entries_list = self.reaction_generator.rn.entries_list
+        self.db_postfix = "/rn.sqlite"
+        self.current_shard = -1
+        self.number_of_reactions = 0
+        self.insert_statements: Dict[int, str] = {}
+        self.does_exist_statements: Dict[int, str] = {}
 
-        self.__extract_index_mappings(reactions, use_thermo_cost=use_thermo_cost)
-        if logging:
-            print("extracted index mappings")
+        os.mkdir(self.folder)
+        self.con = sqlite3.connect(self.folder + self.db_postfix)
 
-        self.__extract_species_data(entries_list)
-        if logging:
-            print("extracted species data")
+        cur = self.con.cursor()
+        cur.executescript(create_metadata_table)
 
-        if logging:
-            print("set initial state")
+        self.new_shard()
+        self.serialize()
 
-        if logging:
-            print("finished building serialization data")
+        cur.execute(
+            insert_metadata,
+            (
+                len(self.entries_list),
+                self.number_of_reactions,
+                self.shard_size,
+                self.current_shard + 1,
+            ),
+        )
 
-    def internal_to_mrnet_index(self, internal_index):
-        mol_entry = self.species_data[internal_index]
-        return mol_entry.parameters["ind"]
+        self.con.commit()
+        self.con.close()
 
-    # if you are going to use this function heavily, probably best to
-    # precompute a lookup dict here rather than looping through each time
-    def mrnet_to_internal_index(self, mrnet_index):
-        for internal_index, mol_entry in self.species_data.items():
-            if mol_entry.parameters["ind"] == mrnet_index:
-                return internal_index
+    def new_shard(self):
+        cur = self.con.cursor()
+        self.current_shard += 1
+        cur.executescript(create_reactions_table(self.current_shard))
+        self.insert_statements[self.current_shard] = insert_reaction(self.current_shard)
+        self.does_exist_statements[self.current_shard] = does_reaction_exist(
+            self.current_shard
+        )
+        self.con.commit()
 
-    def mol_entry_to_internal_index(self, mol_entry):
-        return self.species_to_index[mol_entry.entry_id]
+    def does_reaction_exist(self, reaction_string: str):
+        cur = self.con.cursor()
+        for i in range(self.current_shard + 1):
+            cur.execute(self.does_exist_statements[i], (reaction_string,))
+            count = cur.fetchone()
+            if count[0] != 0:
+                return True
 
-    def __extract_index_mappings(self, reactions, use_thermo_cost=True):
-        """
-        assign each species an index and construct
-        forward and backward mappings between indicies and species.
+        return False
 
-        assign each reaction an index and construct
-        a mapping from reaction indices to reaction data
-        """
-        species_to_index = {}
-        index_to_reaction = []
-        index = 0
-        reaction_count = 0
-
-        for reaction in reactions:
-            reaction_count += 1
-            entry_ids = {e.entry_id for e in reaction.reactants + reaction.products}
-            for entry_id in entry_ids:
-                species = entry_id
-                if species not in species_to_index:
-                    species_to_index[species] = index
-                    index = index + 1
-
-            reactant_indices = [
-                species_to_index[reactant] for reactant in reaction.reactant_ids
-            ]
-            product_indices = [
-                species_to_index[product] for product in reaction.product_ids
-            ]
-
-            forward_free_energy = reaction.free_energy_A
-            backward_free_energy = reaction.free_energy_B
-
-            forward_rate = reaction.k_A
-            backward_rate = reaction.k_B
-
-            index_to_reaction.append(
-                {
-                    "reactants": reactant_indices,
-                    "products": product_indices,
-                    "free_energy": forward_free_energy,
-                    "rate_constant": forward_rate,
-                }
-            )
-            index_to_reaction.append(
-                {
-                    "reactants": product_indices,
-                    "products": reactant_indices,
-                    "free_energy": backward_free_energy,
-                    "rate_constant": backward_rate,
-                }
-            )
-
-        if use_thermo_cost:
-            for reaction in index_to_reaction:
-
-                dG = reaction["free_energy"]
-                kT = KB * self.temperature
-                max_rate = kT / PLANCK
-
-                if self.constant_barrier is None:
-                    if dG < 0:
-                        rate = max_rate
-                    else:
-                        rate = max_rate * math.exp(-dG / kT)
-
-                # if all rates are being set using a constant_barrier as in this formula,
-                # then the constant barrier will not actually affect the simulation. It
-                # becomes important when rates are being manually set.
-                else:
-                    if dG < 0:
-                        rate = max_rate * math.exp(-self.constant_barrier / kT)
-                    else:
-                        rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
-
-                reaction["rate_constant"] = rate
-
-        rev = {i: species for species, i in species_to_index.items()}
-        self.number_of_reactions = 2 * reaction_count
-        self.number_of_species = index
-        self.species_to_index = species_to_index
-        self.index_to_species = rev
-        self.index_to_reaction = index_to_reaction
-
-    def __extract_species_data(self, entries_list):
-        """
-        store MoleculeEntry data so it can be recalled later
-        """
-        species_data = {}
-        for entry in entries_list:
-            entry_id = entry.entry_id
-            if entry_id in self.species_to_index:
-                species_data[self.species_to_index[entry_id]] = entry
-
-        self.species_data = species_data
-
-    def serialize(
+    def insert_reaction(
         self,
-        folder: str,
-        initial_state_data: List[Tuple[MoleculeEntry, int]],
-        factor_zero: float = 1.0,
-        factor_two: float = 1.0,
-        factor_duplicate: float = 1.0,
+        reaction_string,
+        number_of_reactants,
+        number_of_products,
+        reactant_1,
+        reactant_2,
+        product_1,
+        product_2,
+        rate,
+        free_energy,
     ):
 
-        """
-        write the reaction networks to files for ingestion by RNMC
-        """
+        cur = self.con.cursor()
 
-        # these variables are used like folder + number_of_species_postfix
-        # postfix is to remind us that they are not total paths
-        number_of_species_postfix = "/number_of_species"
-        number_of_reactions_postfix = "/number_of_reactions"
-        number_of_reactants_postfix = "/number_of_reactants"
-        reactants_postfix = "/reactants"
-        number_of_products_postfix = "/number_of_products"
-        products_postfix = "/products"
-        factor_zero_postfix = "/factor_zero"
-        factor_two_postfix = "/factor_two"
-        factor_duplicate_postfix = "/factor_duplicate"
-        rates_postfix = "/rates"
-        initial_state_postfix = "/initial_state"
+        shard = self.number_of_reactions // self.shard_size
+        if shard > self.current_shard:
+            self.new_shard()
 
-        os.mkdir(folder)
+        cur.execute(
+            self.insert_statements[self.current_shard],
+            (
+                self.number_of_reactions,
+                reaction_string,
+                number_of_reactants,
+                number_of_products,
+                reactant_1,
+                reactant_2,
+                product_1,
+                product_2,
+                rate,
+                free_energy,
+            ),
+        )
 
-        with open(folder + number_of_species_postfix, "w") as f:
-            f.write(str(self.number_of_species) + "\n")
+        self.number_of_reactions += 1
 
-        with open(folder + number_of_reactions_postfix, "w") as f:
-            f.write(str(self.number_of_reactions) + "\n")
+        if self.number_of_reactions % self.commit_barrier == 0:
+            self.con.commit()
 
-        with open(folder + number_of_reactants_postfix, "w") as f:
-            for reaction in self.index_to_reaction:
-                f.write(str(len(reaction["reactants"])) + "\n")
+    def serialize(self):
 
-        with open(folder + reactants_postfix, "w") as f:
-            for reaction in self.index_to_reaction:
-                for index in reaction["reactants"]:
-                    f.write(str(index) + " ")
-                f.write("\n")
+        for (
+            reactants,
+            products,
+            forward_free_energy,
+            backward_free_energy,
+        ) in self.reaction_generator:
 
-        with open(folder + number_of_products_postfix, "w") as f:
-            for reaction in self.index_to_reaction:
-                f.write(str(len(reaction["products"])) + "\n")
+            forward_reaction_string = "".join(
+                [
+                    "+".join([str(i) for i in reactants]),
+                    "->",
+                    "+".join([str(i) for i in products]),
+                ]
+            )
 
-        with open(folder + products_postfix, "w") as f:
-            for reaction in self.index_to_reaction:
-                for index in reaction["products"]:
-                    f.write(str(index) + " ")
-                f.write("\n")
+            if not self.does_reaction_exist(forward_reaction_string):
 
-        with open(folder + factor_two_postfix, "w") as f:
-            f.write(("%e" % factor_two) + "\n")
+                reverse_reaction_string = "".join(
+                    [
+                        "+".join([str(i) for i in products]),
+                        "->",
+                        "+".join([str(i) for i in reactants]),
+                    ]
+                )
 
-        with open(folder + factor_zero_postfix, "w") as f:
-            f.write(("%e" % factor_zero) + "\n")
+                try:
+                    reactant_1_index = int(reactants[0])
+                except IndexError:
+                    reactant_1_index = -1
 
-        with open(folder + factor_duplicate_postfix, "w") as f:
-            f.write(("%e" % factor_duplicate) + "\n")
+                try:
+                    reactant_2_index = int(reactants[1])
+                except IndexError:
+                    reactant_2_index = -1
 
-        with open(folder + rates_postfix, "w") as f:
-            for reaction in self.index_to_reaction:
-                f.write(("%e" % reaction["rate_constant"]) + "\n")
+                try:
+                    product_1_index = int(products[0])
+                except IndexError:
+                    product_1_index = -1
 
-        initial_state = np.zeros(self.number_of_species)
-        for (mol_entry, count) in initial_state_data:
-            index = self.mol_entry_to_internal_index(mol_entry)
-            initial_state[index] = count
+                try:
+                    product_2_index = int(products[1])
+                except IndexError:
+                    product_2_index = -1
 
-        with open(folder + initial_state_postfix, "w") as f:
-            for i in range(self.number_of_species):
-                f.write(str(int(initial_state[i])) + "\n")
+                forward_rate = self.rate(forward_free_energy)
+                backward_rate = self.rate(backward_free_energy)
 
-        with open(folder + "/rnsd.pickle", "wb") as p:
-            pickle.dump(self, p)
+                self.insert_reaction(
+                    forward_reaction_string,
+                    len(reactants),
+                    len(products),
+                    reactant_1_index,
+                    reactant_2_index,
+                    product_1_index,
+                    product_2_index,
+                    forward_rate,
+                    forward_free_energy,
+                )
 
-        print("finished serializing")
+                self.insert_reaction(
+                    reverse_reaction_string,
+                    len(products),
+                    len(reactants),
+                    product_1_index,
+                    product_2_index,
+                    reactant_1_index,
+                    reactant_2_index,
+                    backward_rate,
+                    backward_free_energy,
+                )
+
+    def rate(self, dG):
+        kT = KB * self.temperature
+        max_rate = kT / PLANCK
+
+        if self.constant_barrier is None:
+            if dG < 0:
+                rate = max_rate
+            else:
+                rate = max_rate * math.exp(-dG / kT)
+
+        # if all rates are being set using a constant_barrier as in this formula,
+        # then the constant barrier will not actually affect the simulation. It
+        # becomes important when rates are being manually set.
+        else:
+            if dG < 0:
+                rate = max_rate * math.exp(-self.constant_barrier / kT)
+            else:
+                rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
+
+        return rate
+
+
+def serialize_initial_state(
+    folder: str,
+    entries_list,
+    initial_state_data: List[Tuple[MoleculeEntry, int]],
+    factor_zero: float = 1.0,
+    factor_two: float = 1.0,
+    factor_duplicate: float = 1.0,
+):
+
+    factor_zero_postfix = "/factor_zero"
+    factor_two_postfix = "/factor_two"
+    factor_duplicate_postfix = "/factor_duplicate"
+    initial_state_postfix = "/initial_state"
+
+    with open(folder + factor_two_postfix, "w") as f:
+        f.write(("%e" % factor_two) + "\n")
+
+    with open(folder + factor_zero_postfix, "w") as f:
+        f.write(("%e" % factor_zero) + "\n")
+
+    with open(folder + factor_duplicate_postfix, "w") as f:
+        f.write(("%e" % factor_duplicate) + "\n")
+
+    initial_state = np.zeros(len(entries_list))
+    for (mol_entry, count) in initial_state_data:
+        index = mol_entry.parameters["ind"]
+        initial_state[index] = count
+
+    with open(folder + initial_state_postfix, "w") as f:
+        for i in range(len(initial_state)):
+            f.write(str(int(initial_state[i])) + "\n")
 
 
 def serialize_simulation_parameters(
@@ -313,7 +410,7 @@ def serialize_simulation_parameters(
         f.write(str(number_of_threads) + "\n")
 
     with open(folder + seeds_postfix, "w") as f:
-        for seed in range(base_seed, base_seed + number_of_simulations * 2):
+        for seed in range(1000, 1000 + number_of_simulations * 2):
             f.write(str(seed) + "\n")
 
 
@@ -322,3 +419,13 @@ def run_simulator(network_folder, param_folder, path=None):
         os.system(path + " " + network_folder + " " + param_folder)
     else:
         os.system("RNMC " + network_folder + " " + param_folder)
+
+
+def clone_database(network_folder_1, network_folder_2):
+    """
+    serializing a network takes a long time, so instead of serializing twice
+    we symlink the db from the first network folder into the second
+    """
+    db_postfix = "/rn.sqlite "
+    os.system("mkdir " + network_folder_2)
+    os.system("ln -s " + network_folder_1 + db_postfix + network_folder_2 + db_postfix)
