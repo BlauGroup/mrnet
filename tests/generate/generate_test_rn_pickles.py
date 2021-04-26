@@ -16,7 +16,11 @@ __copyright__ = "Copyright 2021, The Materials Project"
 __version__ = "0.1"
 
 test_dir = os.path.join(
-    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "test_files",
+    "reaction_network_files",
 )
 
 try:
@@ -55,7 +59,11 @@ for entry in entries:
     H = float(entry["output"]["enthalpy"])
     S = float(entry["output"]["entropy"])
     mol_entry = MoleculeEntry(
-        molecule=mol, energy=E, enthalpy=H, entropy=S, entry_id=entry["task_id"],
+        molecule=mol,
+        energy=E,
+        enthalpy=H,
+        entropy=S,
+        entry_id=entry["task_id"],
     )
     if mol_entry.formula == "Li1":
         if mol_entry.charge == 1:
@@ -82,7 +90,9 @@ Li1_ind = reaction_network.entries["Li1"][0][1][0].parameters["ind"]
 pickle_in = open(os.path.join(test_dir, "unittest_RN_build.pkl"), "wb")
 pickle.dump(reaction_network, pickle_in)
 pickle_in.close()
-reaction_network.solve_prerequisites([EC_ind, Li1_ind], weight="softplus", generate_test_files=True)
+reaction_network.solve_prerequisites(
+    [EC_ind, Li1_ind], weight="softplus", generate_test_files=True
+)
 pickle_in = open(os.path.join(test_dir, "unittest_RN_pr_solved.pkl"), "wb")
 pickle.dump(reaction_network, pickle_in)
 pickle_in.close()

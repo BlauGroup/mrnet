@@ -41,7 +41,12 @@ RN_type = TypeVar("RN_type", bound="ReactionNetwork")
 
 
 test_dir = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "test_files", "reaction_network_files",
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "..",
+    "test_files",
+    "reaction_network_files",
 )
 
 
@@ -683,7 +688,11 @@ class ReactionNetwork(MSONable):
         return Reactant_record
 
     def solve_prerequisites(
-        self, starts: List[int], weight: str, max_iter=25, generate_test_files=False,
+        self,
+        starts: List[int],
+        weight: str,
+        max_iter=25,
+        generate_test_files=False,
     ):  # -> Tuple[Union[Dict[Union[int, Any], dict], Any], Any]:
         """
             A method to solve all of the prerequisites found in
@@ -1116,7 +1125,9 @@ class ReactionNetwork(MSONable):
         return solved_PRs, new_solved_PRs, cost_from_start
 
     def update_edge_weights(
-        self, min_cost: Dict[int, float], orig_graph: nx.DiGraph,
+        self,
+        min_cost: Dict[int, float],
+        orig_graph: nx.DiGraph,
     ) -> Dict[Tuple[int, str], Dict[str, float]]:
         """
             A method to update the ReactionNetwork.graph edge weights based on
@@ -1455,9 +1466,10 @@ class ReactionNetwork(MSONable):
         r = None
         r_node = None
         unique_reactions = []
-        (in_reactants, in_products,) = ReactionNetwork.parse_reaction_node(
-            in_reaction_node
-        )
+        (
+            in_reactants,
+            in_products,
+        ) = ReactionNetwork.parse_reaction_node(in_reaction_node)
         (out_reactants, out_products) = ReactionNetwork.parse_reaction_node(
             out_reaction_node
         )
@@ -1822,7 +1834,8 @@ class ReactionNetwork(MSONable):
         )
         pickle.dump(self, pickle_in)
         pickle_in = open(
-            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
+            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"),
+            "wb",
         )
         pickle.dump(PRs, pickle_in)
         dumpfn(
@@ -1841,19 +1854,22 @@ class ReactionNetwork(MSONable):
     def generate_pre_id_solved_PRs_files(self, PRs, cost_from_start, solved_PRs):
         pickle_in = open(
             os.path.join(
-                test_dir, "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl",
+                test_dir,
+                "unittest_RN_pr_ii_4_before_identify_solved_PRs.pkl",
             ),
             "wb",
         )
         pickle.dump(self, pickle_in)
         with open(
-            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"), "wb",
+            os.path.join(test_dir, "unittest_find_path_cost_PRs_IN.pkl"),
+            "wb",
         ) as handle:
             pickle.dump(PRs, handle, protocol=pickle.HIGHEST_PROTOCOL)
         dumpfn(
             cost_from_start,
             os.path.join(
-                test_dir, "unittest_identify_solved_PRs_cost_from_start_IN.json",
+                test_dir,
+                "unittest_identify_solved_PRs_cost_from_start_IN.json",
             ),
         )
         dumpfn(
@@ -1863,22 +1879,31 @@ class ReactionNetwork(MSONable):
 
     def generate_characterize_path_files(self, old_solved_PRs, dist_and_path):
         pickle_in = open(
-            os.path.join(test_dir, "unittest_RN_before_characterize_path.pkl",), "wb",
+            os.path.join(
+                test_dir,
+                "unittest_RN_before_characterize_path.pkl",
+            ),
+            "wb",
         )
         pickle.dump(self, pickle_in)
         pickle_in = open(
-            os.path.join(test_dir, "unittest_characterize_path_PRs_IN.pkl"), "wb",
+            os.path.join(test_dir, "unittest_characterize_path_PRs_IN.pkl"),
+            "wb",
         )
         pickle.dump(old_solved_PRs, pickle_in)
         dumpfn(
             dist_and_path,
-            os.path.join(test_dir, "unittest_characterize_path_path_IN.json",),
+            os.path.join(
+                test_dir,
+                "unittest_characterize_path_path_IN.json",
+            ),
         )
 
     def generate_pre_update_eweights_files(self, min_cost):
         pickle_in = open(
             os.path.join(
-                test_dir, "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",
+                test_dir,
+                "unittest_RN_pr_ii_4_before_update_edge_weights.pkl",
             ),
             "wb",
         )
