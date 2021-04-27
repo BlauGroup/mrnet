@@ -1,6 +1,6 @@
 import copy
 import itertools
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -22,8 +22,8 @@ from mrnet.utils.constants import KB, PLANCK, ROOM_TEMP
 from mrnet.utils.mols import mol_free_energy
 from mrnet.utils.reaction import (
     ReactionMappingError,
-    get_reaction_atom_mapping,
     generate_atom_mapping_1_1,
+    get_reaction_atom_mapping,
 )
 
 
@@ -148,25 +148,21 @@ class Reaction(MSONable, metaclass=ABCMeta):
             )
 
     @classmethod
-    @abstractmethod
     def generate(
         cls,
         entries: MappingDict,
         determine_atom_mappings: bool = True,
     ):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def graph_representation(self) -> nx.DiGraph:
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def set_free_energy(self, temperature=ROOM_TEMP):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def set_rate_constant(self):
-        pass
+        raise NotImplementedError
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
@@ -1670,6 +1666,8 @@ class ConcertedReaction(Reaction):
         transition_state: Optional[MoleculeEntry] = None,
         electron_free_energy: Optional[float] = None,
         parameters: Optional[Dict] = None,
+        reactants_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
+        products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
         """
           Initilizes IntermolecularReaction.reactant to be in the form of a
@@ -1691,7 +1689,12 @@ class ConcertedReaction(Reaction):
         self.electron_free_energy = electron_free_energy
         self.electron_energy = None
         super().__init__(
-            reactant, product, transition_state=transition_state, parameters=parameters
+            reactant,
+            product,
+            transition_state=transition_state,
+            parameters=parameters,
+            reactants_atom_mapping=reactants_atom_mapping,
+            products_atom_mapping=products_atom_mapping,
         )
 
         # Store necessary mol_entry attributes
