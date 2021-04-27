@@ -1774,9 +1774,9 @@ class ConcertedReaction(Reaction):
             self.product_indices,
             self.reactant_indices,
         )
-        self.reactant_atom_mapping, self.product_atom_mapping = (
-            self.product_atom_mapping,
-            self.reactant_atom_mapping,
+        self.reactants_atom_mapping, self.products_atom_mapping = (
+            self.products_atom_mapping,
+            self.reactants_atom_mapping,
         )
 
     @classmethod

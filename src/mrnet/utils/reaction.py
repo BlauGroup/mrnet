@@ -33,30 +33,38 @@ def get_reaction_atom_mapping(
     """
     Get the atom mapping between the reactants and products of a reaction.
 
-    This works for any number of reactant/product molecules, but the reaction should be
-    stoichiometrically balanced. This implementation only respects atom type and ignore
-    bond type (e.g. single vs double) as well as other information like stereo centers.
+    This works for reactions with any number of reactant/product molecules, provided
+    that the reaction is stoichiometrically balanced. This implementation respects atom
+    type and the connection between atoms, and ignore other information like bond type
+    (e.g. single vs double) as well and stereo centers.
 
-    There could be multiple mappings (due to, e.g. isomorphism and the fact bond type is
-    not taken into consideration), and this function only returns one such mapping.
+    There could be multiple mappings (due to, e.g. symmetry in molecules and the fact
+    that bond type is not considered), and this function only returns one such mapping.
 
     The algorithm treats the reactants as a single disjoint graph (same for the products)
-    and using integer programming to find the smallest bond edits to transform the
-    reactant graph to the product graph. See the paper in `Reference` for details of the
-    algorithm.
+    and using integer programming to find the smallest number of bond edits to transform
+    the reactant graph to the product graph. See the paper in `Reference` for details of
+    the algorithm.
 
     Args:
         reactants: reactant molecules
         products: product molecules
-        max_bond_change: maximum number of allowed bond changes (break and form)
-            between the reactants and products.
+        max_bond_change: maximum number of allowed bond changes (break and form) between
+            the reactants and products.
 
     Returns:
         reactants_map_number: rdkit style atom map number for the reactant molecules
-            (starts from 1 in rdkit but from 0 here). Each dict holds the map number
-            for one molecule {atom_index: map_number}, which maps the atom index to
-            a map number. Atoms in the reactants and products having the same map number
-            corresponds to each other in the reaction.
+            (starting from 1 in rdkit but from 0 here). Each dict holds the map number
+            for one molecule {atom_index: map_number}. This should be used together
+            with `products_map_number` to determine the correspondance of atoms.
+            Atoms in the reactants and products having the same map number corresponds
+            to each other in the reaction. For example, given
+            `reactants_map_number=[{0:3, 1:0}, {0:2, 1:1}]` and
+            `products_map_number = [{0:1}, {0:0, 1:2, 2:3}]`, we can conclude that
+            atom 0 in reactant molecule 0 maps to atom 2 in product molecule 1;
+            atom 1 in reactant molecule 0 maps to atom 0 in product molecule 1;
+            atom 0 in reactant molecule 1 maps to atom 1 in product molecule 1;
+            atom 1 in reactant molecule 1 maps to atom 0 in product molecule 0.
         products_map_number: rdkit style atom map number for the product molecules.
             See `reactants_map_number` for more.
         num_bond_change: number of changed bond in the reaction
@@ -163,7 +171,7 @@ def get_local_global_atom_index_mapping(
     molecules: List[MoleculeEntry],
 ) -> Tuple[List[str], List[Bond], List[List[int]], List[Tuple[int, int]]]:
     """
-    Map the local and global indices of atoms in a sequence of mols.
+    Map the local and global indices of atoms in a sequence of molecules.
 
     This is a utility function for `get_reaction_atom_mapping()`.
 
@@ -185,14 +193,14 @@ def get_local_global_atom_index_mapping(
 
     Returns:
         global_species: species of atoms in the combined molecule.
-        global_bonds: all bonds in the combine molecule; each bond is indexed by a
+        global_bonds: all bonds in the combine molecule; each bond is specified by a
             tuple of global atom index.
         local_to_global: local atom index to global atom index. Each inner list holds
             the global atom indexes of a molecule. E.g. local_to_global[0][2] gives 4,
             meaning atom 2 of molecule 0 has a global index of 4.
         global_to_local: global atom index to local atom index. Each tuple
-            (mol_index, atom_index) is for one atom, with mol_index the index of the
-            molecule from which the atom is from and atom_index the local index of the
+            (mol_index, atom_index) is for one atom, with `mol_index` the index of the
+            molecule from which the atom is from and `atom_index` the local index of the
             atom in the molecule. E.g. global[4] gives a tuple (0, 2), meaning atom with
             global index 4 corresponds to atom 2 in molecule 0.
     """
@@ -244,9 +252,10 @@ def solve_integer_programing(
             bonds (both broken and formed) in the reaction.
         r2p_mapping: mapping of reactant atom to product atom, e.g. r2p_mapping[0]
             giving 3 means that reactant atom 0 maps to product atom 3. A value of
-            `None` means a mapping cannot be found for the atom.
-        p2r_mapping: mapping of product atom to reactant atom. See `r2p_mapping` for an
-            example.
+            `None` means a mapping cannot be found for the reactant atom.
+        p2r_mapping: mapping of product atom to reactant atom, e.g. p2r_mapping[3]
+            giving 0 means that product atom 3 maps to reactant atom 0. A value of
+            `None` means a mapping cannot be found for the product atom.
 
     Reference:
         `Stereochemically Consistent Reaction Mapping and Identification of Multiple
@@ -336,11 +345,10 @@ def get_atom_mapping_no_bonds(
     Get the atom mapping for reaction where there is no bonds in either the reactants
     or products. For example, a reaction C-O -> C + O.
 
-
     This is a complement function to `solve_integer_programing()`, which cannot deal
     with the case where there is no bonds in the reactants or products.
 
-    See `solve_integer_programing()` for the arguments and returns.
+    The arguments and returns are the same as `solve_integer_programing()`.
     """
 
     if len(reactant_bonds) != 0 and len(product_bonds) != 0:
