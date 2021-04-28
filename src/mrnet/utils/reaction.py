@@ -298,7 +298,7 @@ def solve_integer_programing(
     atoms = list(range(len(reactant_species)))
 
     # init model and variables
-    model = LpProblem(sense=LpMinimize)
+    model = LpProblem(name="Reaction Atom Mapping", sense=LpMinimize)
 
     y_vars = {
         (i, k): LpVariable(cat=LpBinary, name=f"y_{i}_{k}")
