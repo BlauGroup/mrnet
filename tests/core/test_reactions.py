@@ -25,13 +25,6 @@ try:
 except ImportError:
     ob = None
 
-try:
-    import pulp
-
-    coincbc = "COIN_CMD" in pulp.listSolvers(onlyAvailable=True)
-except ImportError:
-    coincbc = None
-
 
 test_dir = os.path.join(
     os.path.dirname(__file__),
@@ -250,7 +243,6 @@ class TestRedoxReaction(PymatgenTest):
                 self.assertEqual(r.product.entry_id, entries["EC_0"].entry_id)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
     def test_atom_mapping(self):
         ents = bucket_mol_entries([entries["EC_-1"], entries["EC_0"], entries["EC_1"]])
 
@@ -348,7 +340,6 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
                 self.assertEqual(r.product.entry_id, entries["LiEC"].entry_id)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
     def test_atom_mapping(self):
 
         ents = bucket_mol_entries([entries["LiEC_RO"], entries["LiEC"]])
@@ -469,31 +460,6 @@ class TestIntermolecularReaction(PymatgenTest):
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
-    def test_atom_mapping(self):
-
-        ents = bucket_mol_entries(
-            [entries["LiEC_RO"], entries["C1Li1O3"], entries["C2H4"]]
-        )
-
-        reactions = IntermolecularReaction.generate(ents)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, entries["LiEC_RO"].entry_id)
-        self.assertEqual(rxn.product_0.entry_id, entries["C2H4"].entry_id)
-        self.assertEqual(rxn.product_1.entry_id, entries["C1Li1O3"].entry_id)
-
-        self.assertEqual(
-            rxn.reactants_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-
-        self.assertEqual(
-            rxn.products_atom_mapping,
-            [{0: 1, 1: 0, 2: 10, 3: 9, 4: 8, 5: 7}, {0: 2, 1: 3, 2: 5, 3: 4, 4: 6}],
-        )
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
 
         reaction = IntermolecularReaction(
@@ -593,29 +559,6 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                         or r.products[1].get_free_energy()
                         == entries["EC_-1"].get_free_energy()
                     )
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
-    def test_atom_mapping(self):
-
-        ents = bucket_mol_entries([entries["LiEC"], entries["EC_-1"], entries["Li"]])
-
-        reactions = CoordinationBondChangeReaction.generate(ents)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, entries["LiEC"].entry_id)
-        self.assertEqual(rxn.product_0.entry_id, entries["EC_-1"].entry_id)
-        self.assertEqual(rxn.product_1.entry_id, entries["Li"].entry_id)
-
-        self.assertEqual(
-            rxn.reactants_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-
-        self.assertEqual(
-            rxn.products_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 8, 7: 7, 8: 9, 9: 10}, {0: 6}],
-        )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):

@@ -30,6 +30,7 @@ def get_reaction_atom_mapping(
     products: List[MoleculeEntry],
     max_bond_change: int = 10,
     solver: str = "COIN_CMD",
+    **kwargs,
 ) -> Tuple[List[AtomMappingDict], List[AtomMappingDict], int]:
     """
     Get the atom mapping between the reactants and products of a reaction.
@@ -58,6 +59,11 @@ def get_reaction_atom_mapping(
             solver is set to `COIN_CMD`. If this solver is unavailable on your machine,
             try a different one (e.g. PULP_CBC_CMD). For a full list of solvers, see
             https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html
+        kwargs: additional keyword arguments passed to the pulp solver.
+            For example, if solver is `COIN_CMD`, we can pass `msg=False` to disable
+            the printing of solver message.
+            For available additional keyword argument for each solver, see
+            https://coin-or.github.io/pulp/technical/solvers.html
 
     Returns:
         reactants_map_number: rdkit style atom map number for the reactant molecules
@@ -131,7 +137,12 @@ def get_reaction_atom_mapping(
     # solve integer programming problem to get atom mapping
     if len(reactant_bonds) != 0 and len(product_bonds) != 0:
         num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
-            reactant_species, product_species, reactant_bonds, product_bonds, solver
+            reactant_species,
+            product_species,
+            reactant_bonds,
+            product_bonds,
+            solver,
+            **kwargs,
         )
     else:
         # corner case that integer programming cannot handle
@@ -253,6 +264,7 @@ def solve_integer_programing(
     reactant_bonds: List[Bond],
     product_bonds: List[Bond],
     solver: str = "COIN_CMD",
+    **kwargs,
 ) -> Tuple[int, List[Union[int, None]], List[Union[int, None]]]:
     """
     Solve an integer programming problem to get atom mapping between reactants and
@@ -271,6 +283,7 @@ def solve_integer_programing(
             solver is set to `COIN_CMD`. If this solver is unavailable on your machine,
             try a different one (e.g. PULP_CBC_CMD). For a full list of solvers, see
             https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html
+        kwargs: additional keyword arguments passed to the pulp solver.
 
     Returns:
         objective: minimized objective value. This corresponds to the number of changed
@@ -288,7 +301,7 @@ def solve_integer_programing(
         J. Chem. Inf. Model. 2012, 52, 84–92, https://doi.org/10.1021/ci200351b
     """
     solver = _check_pulp_solver(solver)
-    solver = pulp.getSolver(solver)
+    solver = pulp.getSolver(solver, **kwargs)
 
     atoms = list(range(len(reactant_species)))
 
