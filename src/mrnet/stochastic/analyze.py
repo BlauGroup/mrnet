@@ -14,6 +14,7 @@ from mrnet.utils.visualization import (
     generate_latex_footer,
     latex_emit_molecule,
     latex_emit_reaction,
+    visualize_molecules,
 )
 
 
@@ -175,7 +176,9 @@ class SimulationAnalyzer:
             self.time_histories.append(np.array(time_history))
 
         self.number_simulations = len(self.reaction_histories)
-        self.visualize_molecules()
+        visualize_molecules(
+            self.reports_folder + "/molecule_diagrams", self.mol_entries
+        )
 
     def index_to_reaction(self, reaction_index):
         shard = reaction_index // self.shard_size
@@ -194,16 +197,6 @@ class SimulationAnalyzer:
             reaction["dG"] = res[4]
             self.reaction_data[reaction_index] = reaction
             return reaction
-
-    def visualize_molecules(self):
-        folder = self.reports_folder + "/molecule_diagrams"
-        if os.path.isdir(folder):
-            return
-
-        os.mkdir(folder)
-        for index in range(self.number_of_species):
-            molecule_entry = self.mol_entries[index]
-            visualize_molecule_entry(molecule_entry, folder + "/" + str(index) + ".pdf")
 
     def extract_species_consumption_info(
         self, target_species_index: int

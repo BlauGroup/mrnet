@@ -1,7 +1,9 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import TextIO
+from typing import TextIO, Dict
+from mrnet.core.mol_entry import MoleculeEntry
+import os
 
 from copy import deepcopy
 
@@ -52,6 +54,15 @@ def visualize_molecule_entry(molecule_entry, path):
 
     agraph.layout()
     agraph.draw(path, format="pdf")
+
+
+def visualize_molecules(folder: str, mol_entries: Dict[int, MoleculeEntry]):
+    if os.path.isdir(folder):
+        return
+
+    os.mkdir(folder)
+    for index, molecule_entry in mol_entries.items():
+        visualize_molecule_entry(molecule_entry, folder + "/" + str(index) + ".pdf")
 
 
 def generate_latex_header(f: TextIO):
