@@ -13,7 +13,7 @@ from mrnet.utils.visualization import (
     generate_latex_header,
     generate_latex_footer,
     latex_emit_molecule,
-    latex_emit_reaction
+    latex_emit_reaction,
 )
 
 
@@ -606,5 +606,3 @@ class SimulationAnalyzer:
         )
 
         return sorted_reaction_analysis
-
-

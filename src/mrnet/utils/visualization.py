@@ -81,7 +81,8 @@ def latex_emit_molecule(f: TextIO, species_index: int):
         + ".pdf}}\n"
     )
 
-def latex_emit_reaction(f: TextIO, reaction: dict, reaction_index = None):
+
+def latex_emit_reaction(f: TextIO, reaction: dict, reaction_index=None):
     """
     reaction should be a dictionary with keys
     "reactants"
