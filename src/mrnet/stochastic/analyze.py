@@ -10,6 +10,10 @@ from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.visualization import (
     visualize_molecule_entry,
     visualize_molecule_count_histogram,
+    generate_latex_header,
+    generate_latex_footer,
+    latex_emit_molecule,
+    latex_emit_reaction
 )
 
 
@@ -192,7 +196,7 @@ class SimulationAnalyzer:
             return reaction
 
     def visualize_molecules(self):
-        folder = self.network_folder + "/molecule_diagrams"
+        folder = self.reports_folder + "/molecule_diagrams"
         if os.path.isdir(folder):
             return
 
@@ -414,7 +418,7 @@ class SimulationAnalyzer:
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
         reaction = self.index_to_reaction(reaction_index)
-        latex_emit_reaction(f, reaction)
+        latex_emit_reaction(f, reaction, reaction_index)
 
     def generate_simulation_history_report(self, history_num):
         with open(
@@ -604,56 +608,3 @@ class SimulationAnalyzer:
         return sorted_reaction_analysis
 
 
-def generate_latex_header(f: TextIO):
-    f.write("\\documentclass{article}\n")
-    f.write("\\usepackage{graphicx}\n")
-    f.write("\\usepackage[margin=1cm]{geometry}\n")
-    f.write("\\usepackage{amsmath}\n")
-    f.write("\\pagenumbering{gobble}\n")
-    f.write("\\begin{document}\n")
-
-
-def generate_latex_footer(f: TextIO):
-    f.write("\\end{document}")
-
-
-def latex_emit_molecule(f: TextIO, species_index: int):
-    f.write(str(species_index) + "\n")
-    f.write(
-        "\\raisebox{-.5\\height}{"
-        + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-        + str(species_index)
-        + ".pdf}}\n"
-    )
-
-def latex_emit_reaction(f: TextIO, reaction: dict):
-    """
-    reaction should be a dictionary with keys
-    "reactants"
-    "products"
-    "dG"
-    """
-    f.write("$$\n")
-    first = True
-    f.write(str(reaction_index) + ":\n")
-    for reactant_index in reaction["reactants"]:
-        if first:
-            first = False
-        else:
-            f.write("+\n")
-
-        latex_emit_molecule(f, reactant_index)
-
-    f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
-
-    first = True
-    for product_index in reaction["products"]:
-        if first:
-            first = False
-        else:
-            f.write("+\n")
-
-        latex_emit_molecule(f, product_index)
-
-    f.write("$$")
-    f.write("\n\n\n")

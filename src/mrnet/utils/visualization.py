@@ -1,6 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import TextIO
 
 from copy import deepcopy
 
@@ -51,3 +52,64 @@ def visualize_molecule_entry(molecule_entry, path):
 
     agraph.layout()
     agraph.draw(path, format="pdf")
+
+
+def generate_latex_header(f: TextIO):
+    f.write("\\documentclass{article}\n")
+    f.write("\\usepackage{graphicx}\n")
+    f.write("\\usepackage[margin=1cm]{geometry}\n")
+    f.write("\\usepackage{amsmath}\n")
+    f.write("\\pagenumbering{gobble}\n")
+    f.write("\\begin{document}\n")
+
+
+def generate_latex_footer(f: TextIO):
+    f.write("\\end{document}")
+
+
+def latex_emit_molecule(f: TextIO, species_index: int):
+    """
+    in the same folder as the latex doc being produced, there
+    should be a folder molecule_diagrams which contains the pdfs
+    for all the molecules labeled as species_index.pdf.
+    """
+    f.write(str(species_index) + "\n")
+    f.write(
+        "\\raisebox{-.5\\height}{"
+        + "\\includegraphics[scale=0.2]{./molecule_diagrams/"
+        + str(species_index)
+        + ".pdf}}\n"
+    )
+
+def latex_emit_reaction(f: TextIO, reaction: dict, reaction_index = None):
+    """
+    reaction should be a dictionary with keys
+    "reactants"
+    "products"
+    "dG"
+    """
+    f.write("$$\n")
+    first = True
+    if reaction_index is not None:
+        f.write(str(reaction_index) + ":\n")
+    for reactant_index in reaction["reactants"]:
+        if first:
+            first = False
+        else:
+            f.write("+\n")
+
+        latex_emit_molecule(f, reactant_index)
+
+    f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
+
+    first = True
+    for product_index in reaction["products"]:
+        if first:
+            first = False
+        else:
+            f.write("+\n")
+
+        latex_emit_molecule(f, product_index)
+
+    f.write("$$")
+    f.write("\n\n\n")
