@@ -17,6 +17,8 @@ from mrnet.utils.visualization import (
     visualize_molecules,
 )
 
+from mrnet.stochastic.serialize import rate
+
 
 get_metadata = """
     SELECT * FROM metadata;
@@ -64,16 +66,35 @@ class NetworkUpdater:
         self.number_of_reactions = md[1]
         self.shard_size = md[2]
         self.number_of_shards = md[3]
-        self.update_statements = {}
+        self.update_rates_sql = {}
+        self.get_reactions_sql = {}
 
         for i in range(self.number_of_shards):
-            self.update_statements[i] = update_rate(i)
+            self.update_rates_sql[i] = update_rate(i)
+            self.get_reactions_sql[i] = get_reaction(i)
 
     def update_rates(self, pairs: List[Tuple[int, float]]):
         cur = self.connection.cursor()
         for (index, rate) in pairs:
             shard = index // self.shard_size
-            cur.execute(self.update_statements[shard], (rate, index))
+            cur.execute(self.update_rates_sql[shard], (rate, index))
+
+        self.connection.commit()
+
+    def recompute_all_rates(
+        self, temperature, constant_barrier, commit_frequency=10000
+    ):
+        cur = self.connection.cursor()
+
+        for index in range(self.number_of_reactions):
+            shard = index // self.shard_size
+            res = list(cur.execute(self.get_reactions_sql[shard], (int(index),)))[0]
+            dG = res[4]
+            new_rate = rate(dG, temperature, constant_barrier)
+            cur.execute(self.update_rates_sql[shard], (new_rate, index))
+
+            if index % commit_frequency == 0:
+                self.connection.commit()
 
         self.connection.commit()
 
