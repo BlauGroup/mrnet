@@ -413,31 +413,8 @@ class SimulationAnalyzer:
                 f.write("\n\n")
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
-        f.write("$$\n")
         reaction = self.index_to_reaction(reaction_index)
-        first = True
-        f.write(str(reaction_index) + ":\n")
-        for reactant_index in reaction["reactants"]:
-            if first:
-                first = False
-            else:
-                f.write("+\n")
-
-            latex_emit_molecule(f, reactant_index)
-
-        f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
-
-        first = True
-        for product_index in reaction["products"]:
-            if first:
-                first = False
-            else:
-                f.write("+\n")
-
-            latex_emit_molecule(f, product_index)
-
-        f.write("$$")
-        f.write("\n\n\n")
+        latex_emit_reaction(f, reaction)
 
     def generate_simulation_history_report(self, history_num):
         with open(
@@ -648,3 +625,35 @@ def latex_emit_molecule(f: TextIO, species_index: int):
         + str(species_index)
         + ".pdf}}\n"
     )
+
+def latex_emit_reaction(f: TextIO, reaction: dict):
+    """
+    reaction should be a dictionary with keys
+    "reactants"
+    "products"
+    "dG"
+    """
+    f.write("$$\n")
+    first = True
+    f.write(str(reaction_index) + ":\n")
+    for reactant_index in reaction["reactants"]:
+        if first:
+            first = False
+        else:
+            f.write("+\n")
+
+        latex_emit_molecule(f, reactant_index)
+
+    f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
+
+    first = True
+    for product_index in reaction["products"]:
+        if first:
+            first = False
+        else:
+            f.write("+\n")
+
+        latex_emit_molecule(f, product_index)
+
+    f.write("$$")
+    f.write("\n\n\n")
