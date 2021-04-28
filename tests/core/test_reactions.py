@@ -480,7 +480,7 @@ class TestIntermolecularReaction(PymatgenTest):
 
         self.assertEqual(
             rxn.products_atom_mapping,
-            [{0: 1, 1: 0, 2: 9, 3: 10, 4: 8, 5: 7}, {0: 2, 1: 3, 2: 5, 3: 4, 4: 6}],
+            [{0: 1, 1: 0, 2: 10, 3: 9, 4: 8, 5: 7}, {0: 2, 1: 3, 2: 5, 3: 4, 4: 6}],
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -603,7 +603,7 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
 
         self.assertEqual(
             rxn.products_atom_mapping,
-            [{0: 4, 1: 1, 2: 5, 3: 3, 4: 0, 5: 2, 6: 9, 7: 10, 8: 7, 9: 8}, {0: 6}],
+            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 8, 7: 7, 8: 9, 9: 10}, {0: 6}],
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")

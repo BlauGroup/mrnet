@@ -29,7 +29,7 @@ def get_reaction_atom_mapping(
     reactants: List[MoleculeEntry],
     products: List[MoleculeEntry],
     max_bond_change: int = 10,
-    solver: str = "GLPK_CMD",
+    solver: str = "COIN_CMD",
 ) -> Tuple[List[AtomMappingDict], List[AtomMappingDict], int]:
     """
     Get the atom mapping between the reactants and products of a reaction.
@@ -55,8 +55,8 @@ def get_reaction_atom_mapping(
         solver: pulp solver to solve the integer linear programming problem. Different
             solver may give different result if there is degeneracy in the problem,
             e.g. symmetry in molecules. So, to give deterministic result, the default
-            solver is set to `GLPK_CMD`. If this solver is unavailable on your machine,
-            try a different one (e.g. COIN_CMD). For a full list of solvers, see
+            solver is set to `COIN_CMD`. If this solver is unavailable on your machine,
+            try a different one (e.g. PULP_CBC_CMD). For a full list of solvers, see
             https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html
 
     Returns:
@@ -83,6 +83,9 @@ def get_reaction_atom_mapping(
     """
 
     # preliminary check
+
+    # check 0: pulp solver
+    solver = _check_pulp_solver(solver)
 
     # check 1: reactants and products have the same atom counts
     rct_species = defaultdict(int)  # type: Dict[str, int]
@@ -249,7 +252,7 @@ def solve_integer_programing(
     product_species: List[str],
     reactant_bonds: List[Bond],
     product_bonds: List[Bond],
-    solver: str = "GLPK_CMD",
+    solver: str = "COIN_CMD",
 ) -> Tuple[int, List[Union[int, None]], List[Union[int, None]]]:
     """
     Solve an integer programming problem to get atom mapping between reactants and
@@ -265,8 +268,8 @@ def solve_integer_programing(
         solver: pulp solver to solve the integer linear programming problem. Different
             solver may give different result if there is degeneracy in the problem,
             e.g. symmetry in molecules. So, to give deterministic result, the default
-            solver is set to `GLPK_CMD`. If this solver is unavailable on your machine,
-            try a different one (e.g. COIN_CMD). For a full list of solvers, see
+            solver is set to `COIN_CMD`. If this solver is unavailable on your machine,
+            try a different one (e.g. PULP_CBC_CMD). For a full list of solvers, see
             https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html
 
     Returns:
@@ -284,21 +287,13 @@ def solve_integer_programing(
         Reaction Mechanisms through Integer Linear Optimization`,
         J. Chem. Inf. Model. 2012, 52, 84–92, https://doi.org/10.1021/ci200351b
     """
-
-    # get pulp solver
-    solver_list = pulp.listSolvers(onlyAvailable=True)
-    if solver not in solver_list:
-        raise ReactionMappingError(
-            f"Cannot proceed to do atom mapping, because the specified solver {solver} "
-            f"is unavailable on your machine. Your machine currently have {solver_list}, "
-            "try one of these by passing it to the argument `solver`."
-        )
+    solver = _check_pulp_solver(solver)
     solver = pulp.getSolver(solver)
 
     atoms = list(range(len(reactant_species)))
 
     # init model and variables
-    model = LpProblem(name="Reaction Atom Mapping", sense=LpMinimize)
+    model = LpProblem(name="Reaction_Atom_Mapping", sense=LpMinimize)
 
     y_vars = {
         (i, k): LpVariable(cat=LpBinary, name=f"y_{i}_{k}")
@@ -405,12 +400,6 @@ def get_atom_mapping_no_bonds(
     return objective, r2p_mapping, p2r_mapping
 
 
-class ReactionMappingError(Exception):
-    def __init__(self, msg=None):
-        super().__init__(msg)
-        self.msg = msg
-
-
 def generate_atom_mapping_1_1(
     node_mapping: Dict[int, int]
 ) -> Tuple[AtomMappingDict, AtomMappingDict]:
@@ -436,3 +425,46 @@ def generate_atom_mapping_1_1(
     product_atom_mapping = {v: k for k, v in node_mapping.items()}
 
     return reactant_atom_mapping, product_atom_mapping
+
+
+def _check_pulp_solver(solver: str) -> str:
+    """
+    Depending on how `pulp` is installed, different solver are available. If installed
+    via conda-forge, `COIN_CMD` is available; and if installed via PyPI, `PULP_CBC_CMD`
+    and `PULP_CHOCO_CMD` are available. In fact, `PULP_CBC_CMD` is just a precompiled
+    version of the COIN/CBC method, and it should behave the same as `COIN_CMD`.
+
+    In this function, we select `PULP_CBC_CMD` if `COIN_CMD` is unavailable. In such,
+    we get the same behavior regardless whether `pulp` is installed via conda-forge or
+    from PyPI.
+
+    Returns:
+        Either `COIN_CMD` or `PULP_CBC_CMD`.
+    """
+    solver = solver.upper()
+    avail_solver = pulp.listSolvers(onlyAvailable=True)
+
+    # switch to the other if requested solver is unavailable
+    if solver not in avail_solver:
+        if solver == "COIN_CMD":
+            solver = "PULP_CBC_CMD"
+        elif solver == "PULP_CBC_CMD":
+            solver = "COIN_CMD"
+
+    if solver not in avail_solver:
+        raise ReactionMappingError(
+            f"Cannot proceed to do atom mapping, because the default `pulp` solvers "
+            f"`COIN_CMD` or `PULP_CBC_CMD` are unavailable on your machine. Your current "
+            f"`pulp`installation supports {avail_solver}. Try one of these by passing "
+            "`solver=<AVAILABLE_SOLVER>` to the function."
+            "For more information of `pulp` solver, see: "
+            "https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html"
+        )
+
+    return solver
+
+
+class ReactionMappingError(Exception):
+    def __init__(self, msg=None):
+        super().__init__(msg)
+        self.msg = msg
