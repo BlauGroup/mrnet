@@ -25,6 +25,13 @@ try:
 except ImportError:
     ob = None
 
+try:
+    import pulp
+
+    coincbc = "COIN_CMD" in pulp.listSolvers(onlyAvailable=True)
+except ImportError:
+    coincbc = None
+
 
 test_dir = os.path.join(
     os.path.dirname(__file__),
@@ -243,6 +250,7 @@ class TestRedoxReaction(PymatgenTest):
                 self.assertEqual(r.product.entry_id, entries["EC_0"].entry_id)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
+    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
     def test_atom_mapping(self):
         ents = bucket_mol_entries([entries["EC_-1"], entries["EC_0"], entries["EC_1"]])
 
@@ -340,6 +348,7 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
                 self.assertEqual(r.product.entry_id, entries["LiEC"].entry_id)
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
+    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
     def test_atom_mapping(self):
 
         ents = bucket_mol_entries([entries["LiEC_RO"], entries["LiEC"]])
@@ -460,6 +469,7 @@ class TestIntermolecularReaction(PymatgenTest):
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
+    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
     def test_atom_mapping(self):
 
         ents = bucket_mol_entries(
@@ -585,6 +595,7 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
+    @unittest.skipIf(not coincbc, "coincbc not present. Skipping...")
     def test_atom_mapping(self):
 
         ents = bucket_mol_entries([entries["LiEC"], entries["EC_-1"], entries["Li"]])
