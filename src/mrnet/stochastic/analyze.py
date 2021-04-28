@@ -75,9 +75,9 @@ class NetworkUpdater:
 
     def update_rates(self, pairs: List[Tuple[int, float]]):
         cur = self.connection.cursor()
-        for (index, rate) in pairs:
+        for (index, r) in pairs:
             shard = index // self.shard_size
-            cur.execute(self.update_rates_sql[shard], (rate, index))
+            cur.execute(self.update_rates_sql[shard], (r, index))
 
         self.connection.commit()
 
