@@ -78,8 +78,8 @@ def get_reaction_atom_mapping(
     # preliminary check
 
     # check 1: reactants and products have the same atom counts
-    rct_species = defaultdict(int)
-    prdt_species = defaultdict(int)
+    rct_species = defaultdict(int)  # type: Dict[str, int]
+    prdt_species = defaultdict(int)  # type: Dict[str, int]
     for m in reactants:
         for s in m.species:
             rct_species[s] += 1
@@ -119,14 +119,16 @@ def get_reaction_atom_mapping(
     ) = get_local_global_atom_index_mapping(products)
 
     # solve integer programming problem to get atom mapping
-    if len(reactant_bonds) == 0 or len(product_bonds) == 0:
-        num_bond_change, r2p_mapping, p2r_mapping = get_atom_mapping_no_bonds(
-            reactant_species, product_species, reactant_bonds, product_bonds
-        )
-    else:
+    if len(reactant_bonds) != 0 and len(product_bonds) != 0:
         num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
             reactant_species, product_species, reactant_bonds, product_bonds
         )
+    else:
+        # corner case that integer programming cannot handle
+        out = get_atom_mapping_no_bonds(
+            reactant_species, product_species, reactant_bonds, product_bonds
+        )
+        num_bond_change, r2p_mapping, p2r_mapping = out  # type: ignore
 
     # final check
     if num_bond_change > max_bond_change:
@@ -153,15 +155,20 @@ def get_reaction_atom_mapping(
     # Atoms in reactants will have their global index as map number.
     # Map number for atoms in products are determined accordingly based on the results
     # of integer programming
-    reactants_map_number = [{} for _ in range(len(reactants))]
-    products_map_number = [{} for _ in range(len(products))]
+    reactants_map_number = [
+        {} for _ in range(len(reactants))
+    ]  # type: List[Dict[int,int]]
+    products_map_number = [
+        {} for _ in range(len(products))
+    ]  # type: List[Dict[int,int]]
+
     for rct_idx, prdt_idx in enumerate(r2p_mapping):
         map_number = rct_idx
 
-        mol_idx, atom_idx = reactant_idx_mapping[rct_idx]
+        mol_idx, atom_idx = reactant_idx_mapping[rct_idx]  # type: ignore
         reactants_map_number[mol_idx][atom_idx] = map_number
 
-        mol_idx, atom_idx = product_idx_mapping[prdt_idx]
+        mol_idx, atom_idx = product_idx_mapping[prdt_idx]  # type: ignore
         products_map_number[mol_idx][atom_idx] = map_number
 
     return reactants_map_number, products_map_number, num_bond_change
@@ -216,13 +223,14 @@ def get_local_global_atom_index_mapping(
         global_species.extend(m.species)
 
         bonds = np.asarray(m.bonds) + n
-        global_bonds.extend([tuple(b) for b in bonds.tolist()])
+        bonds = [tuple(b) for b in bonds.tolist()]
+        global_bonds.extend(bonds)
 
-        mp = [j + n for j in range(m.num_atoms)]
-        local_to_global.append(mp)
+        mp_l2g = [j + n for j in range(m.num_atoms)]
+        local_to_global.append(mp_l2g)
 
-        mp = [(i, j) for j in range(m.num_atoms)]
-        global_to_local.extend(mp)
+        mp_g2l = [(i, j) for j in range(m.num_atoms)]
+        global_to_local.extend(mp_g2l)
 
         n += m.num_atoms
 
@@ -311,22 +319,22 @@ def solve_integer_programing(
         1 - lpSum(alpha_vars[(i, j, k, l)] for (i, j) in reactant_bonds)
         for (k, l) in product_bonds
     )
-    objective = obj1 + obj2
+    obj = obj1 + obj2
 
     # solve the problem
     try:
-        model.setObjective(objective)
+        model.setObjective(obj)
         model.solve()
     except Exception:
         raise ReactionMappingError("Failed solving integer programming.")
 
-    objective = pulp.value(model.objective)
+    objective = pulp.value(model.objective)  # type: int
     if objective is None:
         raise ReactionMappingError("Failed solving integer programming.")
 
     # get atom mapping between reactant and product
-    r2p_mapping = [None for _ in atoms]
-    p2r_mapping = [None for _ in atoms]
+    r2p_mapping = [None for _ in atoms]  # type: List[Union[int, None]]
+    p2r_mapping = [None for _ in atoms]  # type: List[Union[int, None]]
     for (i, k), v in y_vars.items():
         if pulp.value(v) == 1:
             r2p_mapping[i] = k
@@ -340,7 +348,7 @@ def get_atom_mapping_no_bonds(
     product_species: List[str],
     reactant_bonds: List[Bond],
     product_bonds: List[Bond],
-) -> Tuple[int, List[Union[int, None]], List[Union[int, None]]]:
+) -> Tuple[int, List[int], List[int]]:
     """
     Get the atom mapping for reaction where there is no bonds in either the reactants
     or products. For example, a reaction C-O -> C + O.

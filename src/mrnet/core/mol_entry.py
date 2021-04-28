@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
-
 from monty.json import MSONable
 from pymatgen.analysis.graphs import MoleculeGraph, MolGraphSplitError
 from pymatgen.analysis.local_env import OpenBabelNN, metal_edge_extender
@@ -227,9 +226,9 @@ class MoleculeEntry(MSONable):
     @property
     def energy(self) -> float:
         if self.uncorrected_energy is not None:
-            return self.uncorrected_energy + self.correction
+            return self.uncorrected_energy + self.correction  # type: ignore
         else:
-            return None
+            return None  # type: ignore
 
     @property
     def formula(self) -> str:
