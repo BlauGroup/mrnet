@@ -4,6 +4,9 @@ import numpy as np
 import pickle
 import os
 import sqlite3
+from multiprocessing import Pool
+from functools import partial
+
 
 from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
@@ -60,7 +63,7 @@ def create_reactions_table(n):
         + str(n)
         + """ (
                 reaction_id         INTEGER NOT NULL PRIMARY KEY,
-                reaction_string     TEXT UNIQUE NOT NULL,
+                reaction_string     TEXT NOT NULL,
                 number_of_reactants INTEGER NOT NULL,
                 number_of_products  INTEGER NOT NULL,
                 reactant_1          INTEGER NOT NULL,
@@ -71,7 +74,7 @@ def create_reactions_table(n):
                 dG                  REAL NOT NULL
         );
 
-CREATE UNIQUE INDEX reaction_"""
+CREATE INDEX reaction_"""
         + str(n)
         + "_string_idx ON reactions_"
         + str(n)
@@ -100,7 +103,18 @@ VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
 
 
 def does_reaction_exist(n):
-    return "SELECT COUNT(*) FROM reactions_" + str(n) + " WHERE reaction_string = ?"
+    return "SELECT reaction_id FROM reactions_" + str(n) + " WHERE reaction_string = ?1;"
+
+
+def get_reaction_string(n: int):
+    return (
+        """
+    SELECT reaction_string
+    FROM reactions_"""
+        + str(n)
+        + " WHERE reaction_id = ?1;"
+    )
+
 
 
 insert_metadata = """
@@ -111,6 +125,40 @@ insert_metadata = """
           number_of_shards)
   VALUES (?1, ?2, ?3, ?4);
 """
+
+
+def find_duplicate_reactions(db_path: str,
+                             shard_size: int,
+                             number_of_shards: int,
+                             number_of_reactions: int,
+                             shard: int
+                             ):
+    repeats = []
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    get_reaction_string_sql = get_reaction_string(shard)
+
+    does_reaction_exist_sql = []
+    for i in range(number_of_shards):
+        does_reaction_exist_sql.append(does_reaction_exist(i))
+
+
+
+    base_index = shard * shard_size
+    top_index = min(number_of_reactions, (shard + 1) * shard_size)
+    for index in range(base_index, top_index):
+        duplicate_indices = []
+        reaction_string = list(cur.execute(get_reaction_string_sql, (index,)))[0][0]
+
+        for sql in does_reaction_exist_sql:
+            for row in cur.execute(sql, (reaction_string,)):
+                duplicate_indices.append(row[0])
+
+        if len(duplicate_indices) != 1:
+            repeats.append(sorted(duplicate_indices))
+
+    return repeats
+
 
 
 class SerializeNetwork:
@@ -144,6 +192,7 @@ class SerializeNetwork:
         commit_barrier: int = 10000,
         temperature=ROOM_TEMP,
         constant_barrier: float = 0.0,
+        number_of_threads = 6 # used in duplicate checking
     ):
 
         if shard_size < 0 or shard_size % 2 != 0:
@@ -155,12 +204,12 @@ class SerializeNetwork:
         self.commit_barrier = commit_barrier
         self.temperature = temperature
         self.constant_barrier = constant_barrier
+        self.number_of_threads = number_of_threads
         self.entries_list = self.reaction_generator.rn.entries_list
         self.db_postfix = "/rn.sqlite"
         self.current_shard = -1
         self.number_of_reactions = 0
         self.insert_statements: Dict[int, str] = {}
-        self.does_exist_statements: Dict[int, str] = {}
 
         os.mkdir(self.folder)
         self.con = sqlite3.connect(self.folder + self.db_postfix)
@@ -171,38 +220,50 @@ class SerializeNetwork:
         self.new_shard()
         self.serialize()
 
+        self.number_of_shards = self.current_shard + 1
         cur.execute(
             insert_metadata,
             (
                 len(self.entries_list),
                 self.number_of_reactions,
                 self.shard_size,
-                self.current_shard + 1,
+                self.number_of_shards
             ),
         )
 
         self.con.commit()
         self.con.close()
 
+        print(self.find_duplicates())
+
+
+    def find_duplicates(self):
+        f = partial(
+            find_duplicate_reactions,
+            self.folder + self.db_postfix,
+            self.shard_size,
+            self.number_of_shards,
+            self.number_of_reactions)
+
+
+        with Pool(self.number_of_threads) as p:
+            repeats_unordered = p.map(f, range(self.number_of_shards))
+
+
+        repeated = set()
+
+        for xs in repeats_unordered:
+            for x in xs:
+                repeated.add(tuple(sorted(x)))
+
+        return repeated
+
     def new_shard(self):
         cur = self.con.cursor()
         self.current_shard += 1
         cur.executescript(create_reactions_table(self.current_shard))
         self.insert_statements[self.current_shard] = insert_reaction(self.current_shard)
-        self.does_exist_statements[self.current_shard] = does_reaction_exist(
-            self.current_shard
-        )
         self.con.commit()
-
-    def does_reaction_exist(self, reaction_string: str):
-        cur = self.con.cursor()
-        for i in range(self.current_shard + 1):
-            cur.execute(self.does_exist_statements[i], (reaction_string,))
-            count = cur.fetchone()
-            if count[0] != 0:
-                return True
-
-        return False
 
     def insert_reaction(
         self,
@@ -261,67 +322,66 @@ class SerializeNetwork:
                 ]
             )
 
-            if not self.does_reaction_exist(forward_reaction_string):
 
-                reverse_reaction_string = "".join(
-                    [
-                        "+".join([str(i) for i in products]),
-                        "->",
-                        "+".join([str(i) for i in reactants]),
-                    ]
-                )
+            reverse_reaction_string = "".join(
+                [
+                    "+".join([str(i) for i in products]),
+                    "->",
+                    "+".join([str(i) for i in reactants]),
+                ]
+            )
 
-                try:
-                    reactant_1_index = int(reactants[0])
-                except IndexError:
-                    reactant_1_index = -1
+            try:
+                reactant_1_index = int(reactants[0])
+            except IndexError:
+                reactant_1_index = -1
 
-                try:
-                    reactant_2_index = int(reactants[1])
-                except IndexError:
-                    reactant_2_index = -1
+            try:
+                reactant_2_index = int(reactants[1])
+            except IndexError:
+                reactant_2_index = -1
 
-                try:
-                    product_1_index = int(products[0])
-                except IndexError:
-                    product_1_index = -1
+            try:
+                product_1_index = int(products[0])
+            except IndexError:
+                product_1_index = -1
 
-                try:
-                    product_2_index = int(products[1])
-                except IndexError:
-                    product_2_index = -1
+            try:
+                product_2_index = int(products[1])
+            except IndexError:
+                product_2_index = -1
 
-                forward_rate = rate(
-                    forward_free_energy, self.temperature, self.constant_barrier
-                )
+            forward_rate = rate(
+                forward_free_energy, self.temperature, self.constant_barrier
+            )
 
-                backward_rate = rate(
-                    backward_free_energy, self.temperature, self.constant_barrier
-                )
+            backward_rate = rate(
+                backward_free_energy, self.temperature, self.constant_barrier
+            )
 
-                self.insert_reaction(
-                    forward_reaction_string,
-                    len(reactants),
-                    len(products),
-                    reactant_1_index,
-                    reactant_2_index,
-                    product_1_index,
-                    product_2_index,
-                    forward_rate,
-                    forward_free_energy,
-                )
+            self.insert_reaction(
+                forward_reaction_string,
+                len(reactants),
+                len(products),
+                reactant_1_index,
+                reactant_2_index,
+                product_1_index,
+                product_2_index,
+                forward_rate,
+                forward_free_energy,
+            )
 
-                self.insert_reaction(
-                    reverse_reaction_string,
-                    len(products),
-                    len(reactants),
-                    product_1_index,
-                    product_2_index,
-                    reactant_1_index,
-                    reactant_2_index,
-                    backward_rate,
-                    backward_free_energy,
-                )
+            self.insert_reaction(
+                reverse_reaction_string,
+                len(products),
+                len(reactants),
+                product_1_index,
+                product_2_index,
+                reactant_1_index,
+                reactant_2_index,
+                backward_rate,
+                backward_free_energy,
+            )
 
 
 def rate(dG, temperature, constant_barrier):
@@ -337,6 +397,7 @@ def rate(dG, temperature, constant_barrier):
         rate = max_rate * math.exp(-(constant_barrier + dG) / kT)
 
     return rate
+
 
 
 def serialize_initial_state(

@@ -453,6 +453,22 @@ class SimulationAnalyzer:
 
             generate_latex_footer(f)
 
+    def generate_list_of_all_reactions_report(self):
+        with open(
+            self.reports_folder + "/list_of_all_reactions.tex",
+            "w",
+        ) as f:
+
+            generate_latex_header(f)
+
+            for reaction_index in range(self.number_of_reactions):
+                f.write("\n\n\n")
+                self.latex_emit_reaction(f, reaction_index)
+
+            generate_latex_footer(f)
+
+
+
     def generate_reaction_tally_report(self):
         observed_reactions = {}
         for history in self.reaction_histories:
