@@ -10,7 +10,14 @@ from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.visualization import (
     visualize_molecule_entry,
     visualize_molecule_count_histogram,
+    generate_latex_header,
+    generate_latex_footer,
+    latex_emit_molecule,
+    latex_emit_reaction,
+    visualize_molecules,
 )
+
+from mrnet.stochastic.serialize import rate
 
 
 get_metadata = """
@@ -18,7 +25,7 @@ get_metadata = """
 """
 
 
-def get_reaction(n):
+def get_reaction(n: int):
     return (
         """
     SELECT reactant_1,
@@ -30,6 +37,66 @@ def get_reaction(n):
         + str(n)
         + " WHERE reaction_id = ?;"
     )
+
+
+def update_rate(shard: int):
+    return (
+        "UPDATE reactions_"
+        + str(shard)
+        + """
+        SET rate = ?
+        WHERE reaction_id = ?;
+        """
+    )
+
+
+class NetworkUpdater:
+    """
+    class to manage the state required for updating a sharded database.
+    This could easily be a single function, but i anticipate that we will
+    be adding more methods in the future.
+    """
+
+    def __init__(self, network_folder: str):
+        database_postfix = "/rn.sqlite"
+        self.connection = sqlite3.connect(network_folder + database_postfix)
+        cur = self.connection.cursor()
+        md = list(cur.execute(get_metadata))[0]
+        self.number_of_species = md[0]
+        self.number_of_reactions = md[1]
+        self.shard_size = md[2]
+        self.number_of_shards = md[3]
+        self.update_rates_sql = {}
+        self.get_reactions_sql = {}
+
+        for i in range(self.number_of_shards):
+            self.update_rates_sql[i] = update_rate(i)
+            self.get_reactions_sql[i] = get_reaction(i)
+
+    def update_rates(self, pairs: List[Tuple[int, float]]):
+        cur = self.connection.cursor()
+        for (index, r) in pairs:
+            shard = index // self.shard_size
+            cur.execute(self.update_rates_sql[shard], (r, index))
+
+        self.connection.commit()
+
+    def recompute_all_rates(
+        self, temperature, constant_barrier, commit_frequency=10000
+    ):
+        cur = self.connection.cursor()
+
+        for index in range(self.number_of_reactions):
+            shard = index // self.shard_size
+            res = list(cur.execute(self.get_reactions_sql[shard], (int(index),)))[0]
+            dG = res[4]
+            new_rate = rate(dG, temperature, constant_barrier)
+            cur.execute(self.update_rates_sql[shard], (new_rate, index))
+
+            if index % commit_frequency == 0:
+                self.connection.commit()
+
+        self.connection.commit()
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -130,7 +197,9 @@ class SimulationAnalyzer:
             self.time_histories.append(np.array(time_history))
 
         self.number_simulations = len(self.reaction_histories)
-        self.visualize_molecules()
+        visualize_molecules(
+            self.reports_folder + "/molecule_diagrams", self.mol_entries
+        )
 
     def index_to_reaction(self, reaction_index):
         shard = reaction_index // self.shard_size
@@ -149,16 +218,6 @@ class SimulationAnalyzer:
             reaction["dG"] = res[4]
             self.reaction_data[reaction_index] = reaction
             return reaction
-
-    def visualize_molecules(self):
-        folder = self.network_folder + "/molecule_diagrams"
-        if os.path.isdir(folder):
-            return
-
-        os.mkdir(folder)
-        for index in range(self.number_of_species):
-            molecule_entry = self.mol_entries[index]
-            visualize_molecule_entry(molecule_entry, folder + "/" + str(index) + ".pdf")
 
     def extract_species_consumption_info(
         self, target_species_index: int
@@ -339,7 +398,7 @@ class SimulationAnalyzer:
 
             generate_latex_header(f)
 
-            f.write("pathway report for")
+            f.write("pathway report for\n\n")
             latex_emit_molecule(f, target_species_index)
             self.latex_emit_initial_state(f)
 
@@ -363,39 +422,17 @@ class SimulationAnalyzer:
             generate_latex_footer(f)
 
     def latex_emit_initial_state(self, f: TextIO):
-        f.write("initial state:\n\n\n")
+        f.write("\n\n initial state:\n\n\n")
         for species_index in range(self.number_of_species):
             num = self.initial_state[species_index]
             if num > 0:
-                f.write(str(num) + " of ")
+                f.write(str(num) + " molecules of ")
                 latex_emit_molecule(f, species_index)
                 f.write("\n\n")
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
-        f.write("$$\n")
         reaction = self.index_to_reaction(reaction_index)
-        first = True
-        for reactant_index in reaction["reactants"]:
-            if first:
-                first = False
-            else:
-                f.write("+\n")
-
-            latex_emit_molecule(f, reactant_index)
-
-        f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
-
-        first = True
-        for product_index in reaction["products"]:
-            if first:
-                first = False
-            else:
-                f.write("+\n")
-
-            latex_emit_molecule(f, product_index)
-
-        f.write("$$")
-        f.write("\n\n\n")
+        latex_emit_reaction(f, reaction, reaction_index)
 
     def generate_simulation_history_report(self, history_num):
         with open(
@@ -583,26 +620,3 @@ class SimulationAnalyzer:
         )
 
         return sorted_reaction_analysis
-
-
-def generate_latex_header(f: TextIO):
-    f.write("\\documentclass{article}\n")
-    f.write("\\usepackage{graphicx}\n")
-    f.write("\\usepackage[margin=1cm]{geometry}\n")
-    f.write("\\usepackage{amsmath}\n")
-    f.write("\\pagenumbering{gobble}\n")
-    f.write("\\begin{document}\n")
-
-
-def generate_latex_footer(f: TextIO):
-    f.write("\\end{document}")
-
-
-def latex_emit_molecule(f: TextIO, species_index: int):
-    f.write(str(species_index) + "\n")
-    f.write(
-        "\\raisebox{-.5\\height}{"
-        + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-        + str(species_index)
-        + ".pdf}}\n"
-    )

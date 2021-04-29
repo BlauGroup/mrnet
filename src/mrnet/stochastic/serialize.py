@@ -143,7 +143,7 @@ class SerializeNetwork:
         shard_size: int = 1000000,
         commit_barrier: int = 10000,
         temperature=ROOM_TEMP,
-        constant_barrier=None,
+        constant_barrier: float = 0.0,
     ):
 
         if shard_size < 0 or shard_size % 2 != 0:
@@ -291,8 +291,13 @@ class SerializeNetwork:
                 except IndexError:
                     product_2_index = -1
 
-                forward_rate = self.rate(forward_free_energy)
-                backward_rate = self.rate(backward_free_energy)
+                forward_rate = rate(
+                    forward_free_energy, self.temperature, self.constant_barrier
+                )
+
+                backward_rate = rate(
+                    backward_free_energy, self.temperature, self.constant_barrier
+                )
 
                 self.insert_reaction(
                     forward_reaction_string,
@@ -318,26 +323,20 @@ class SerializeNetwork:
                     backward_free_energy,
                 )
 
-    def rate(self, dG):
-        kT = KB * self.temperature
-        max_rate = kT / PLANCK
 
-        if self.constant_barrier is None:
-            if dG < 0:
-                rate = max_rate
-            else:
-                rate = max_rate * math.exp(-dG / kT)
+def rate(dG, temperature, constant_barrier):
+    kT = KB * temperature
+    max_rate = kT / PLANCK
 
-        # if all rates are being set using a constant_barrier as in this formula,
-        # then the constant barrier will not actually affect the simulation. It
-        # becomes important when rates are being manually set.
-        else:
-            if dG < 0:
-                rate = max_rate * math.exp(-self.constant_barrier / kT)
-            else:
-                rate = max_rate * math.exp(-(self.constant_barrier + dG) / kT)
+    # if all rates are being set using a constant_barrier > 0,
+    # then the constant barrier will not actually affect the simulation. It
+    # becomes important when rates are being manually set.
+    if dG < 0:
+        rate = max_rate * math.exp(-constant_barrier / kT)
+    else:
+        rate = max_rate * math.exp(-(constant_barrier + dG) / kT)
 
-        return rate
+    return rate
 
 
 def serialize_initial_state(
