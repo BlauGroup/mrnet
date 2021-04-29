@@ -742,13 +742,14 @@ class IntramolSingleBondChangeReaction(Reaction):
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
+        entry0_set = set()
         for bond in entry1.bonds:
             mg = copy.deepcopy(entry1.mol_graph)
             mg.break_edge(bond[0], bond[1], allow_reverse=True)
             if nx.is_weakly_connected(mg.graph):
                 for entry0 in entries[formula][Nbonds0][charge]:
                     isomorphic, node_mapping = is_isomorphic(entry0.graph, mg.graph)
-                    if isomorphic and node_mapping:
+                    if isomorphic and node_mapping and entry0 not in entry0_set:
                         if determine_atom_mappings:
                             rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
                             r = cls(
@@ -764,6 +765,7 @@ class IntramolSingleBondChangeReaction(Reaction):
                             )
 
                         reactions.append(r)
+                        entry0_set.add(entry0)
 
                         break
 
@@ -1038,6 +1040,7 @@ class IntermolecularReaction(Reaction):
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
+        product_set = set()
 
         for edge in entry.bonds:
             bond = [(edge[0], edge[1])]
@@ -1071,7 +1074,7 @@ class IntermolecularReaction(Reaction):
                                 isomorphic1, _ = is_isomorphic(
                                     frags[1].graph, entry1.graph
                                 )
-                                if isomorphic1:
+                                if isomorphic1 and frozenset([entry0, entry1]) not in product_set and frozenset([entry1, entry0]) not in product_set:
                                     if determine_atom_mappings:
                                         rct_mp, prdts_mp = generate_atom_mapping_1_2(
                                             entry, [entry0, entry1], [edge]
@@ -1089,6 +1092,8 @@ class IntermolecularReaction(Reaction):
                                         )
 
                                     reactions.append(r)
+                                    product_set.add(frozenset([entry0, entry1]))
+                                    product_set.add(frozenset([entry1, entry0]))
 
                                     break
                             break
@@ -1390,6 +1395,7 @@ class CoordinationBondChangeReaction(Reaction):
         Helper function to generate reactions for one molecule entry.
         """
         reactions = []
+        product_set = set()
 
         nosplit_M_bonds = list()
 
@@ -1451,7 +1457,7 @@ class CoordinationBondChangeReaction(Reaction):
                             nonM_charge
                         ]:
                             isomorphic, _ = is_isomorphic(frag.graph, nonM_entry.graph)
-                            if isomorphic:
+                            if isomorphic and frozenset([nonM_entry, M_entries[M_formula][M_charge]]) not in product_set:
                                 this_m = M_entries[M_formula][M_charge]
 
                                 if determine_atom_mappings:
@@ -1471,6 +1477,7 @@ class CoordinationBondChangeReaction(Reaction):
                                         [nonM_entry, this_m],
                                     )
                                 reactions.append(r)
+                                product_set.add(frozenset([nonM_entry, this_m]))
 
                                 break
 

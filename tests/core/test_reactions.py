@@ -317,7 +317,12 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     def test_generate(self):
 
         reactions = IntramolSingleBondChangeReaction.generate(entries["RN"].entries)
-        self.assertEqual(len(reactions), 93)
+        self.assertEqual(len(reactions), 73)
+
+        reaction_set = set()
+        for reaction in reactions:
+            reaction_set.add(frozenset([reaction.reactant.entry_id,reaction.product.entry_id]))
+        self.assertEqual(len(reaction_set), 73)
 
         for r in reactions:
             # TODO (mjwen) this is never run for two reasons:
@@ -433,7 +438,11 @@ class TestIntermolecularReaction(PymatgenTest):
     def test_generate(self):
         reactions = IntermolecularReaction.generate(entries["RN"].entries)
 
-        self.assertEqual(len(reactions), 3673)
+        self.assertEqual(len(reactions), 3029)
+        reaction_set = set()
+        for reaction in reactions:
+            reaction_set.add(frozenset([reaction.reactant.entry_id, reaction.product_0.entry_id, reaction.product_1.entry_id]))
+        self.assertEqual(len(reaction_set), 3029)
 
         for r in reactions:
             if r.reactant.entry_id == entries["LiEC_RO"].entry_id:
@@ -562,7 +571,12 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
     def test_generate(self):
 
         reactions = CoordinationBondChangeReaction.generate(entries["RN"].entries)
-        self.assertEqual(len(reactions), 50)
+        self.assertEqual(len(reactions), 48)
+
+        reaction_set = set()
+        for reaction in reactions:
+            reaction_set.add(frozenset([reaction.reactant.entry_id, reaction.product_0.entry_id, reaction.product_1.entry_id]))
+        self.assertEqual(len(reaction_set), 48)
 
         for r in reactions:
             if r.reactant.entry_id == entries["LiEC"].entry_id:
