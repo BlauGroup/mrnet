@@ -107,7 +107,7 @@ def _load_reaction():
     filename = test_dir.joinpath("rxn_mol_graphs.json")
     mol_graphs = loadfn(filename)
 
-    mol_entries = [MoleculeEntry(m.molecule, mol_graph=m) for m in mol_graphs]
+    mol_entries = [MoleculeEntry(m.molecule, energy=0, mol_graph=m) for m in mol_graphs]
     reactants = mol_entries[:2]
     products = mol_entries[2:]
 
