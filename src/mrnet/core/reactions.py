@@ -1074,7 +1074,8 @@ class IntermolecularReaction(Reaction):
                                 isomorphic1, _ = is_isomorphic(
                                     frags[1].graph, entry1.graph
                                 )
-                                if isomorphic1 and frozenset([entry0, entry1]) not in product_set and frozenset([entry1, entry0]) not in product_set:
+                                if isomorphic1 and frozenset([entry0, entry1]) not in product_set \
+                                and frozenset([entry1, entry0]) not in product_set:
                                     if determine_atom_mappings:
                                         rct_mp, prdts_mp = generate_atom_mapping_1_2(
                                             entry, [entry0, entry1], [edge]
@@ -1457,7 +1458,8 @@ class CoordinationBondChangeReaction(Reaction):
                             nonM_charge
                         ]:
                             isomorphic, _ = is_isomorphic(frag.graph, nonM_entry.graph)
-                            if isomorphic and frozenset([nonM_entry, M_entries[M_formula][M_charge]]) not in product_set:
+                            if isomorphic and frozenset([nonM_entry, M_entries[M_formula][M_charge]]) \
+                            not in product_set:
                                 this_m = M_entries[M_formula][M_charge]
 
                                 if determine_atom_mappings:
