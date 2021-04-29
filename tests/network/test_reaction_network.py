@@ -41,12 +41,15 @@ class TestReactionGenerator(PymatgenTest):
         molecule_entries = loadfn(os.path.join(test_dir, "ronalds_MoleculeEntry.json"))
         reaction_generator = ReactionGenerator(molecule_entries)
 
+        reaction_set = set()
         counter = 0
 
         for reaction in reaction_generator:
+            reaction_set.add(frozenset(reaction[0]+reaction[1]))
             counter += 1
 
-        self.assertEqual(counter, 129)
+        self.assertEqual(counter, 119)
+        self.assertEqual(len(reaction_set), 106)
 
 
 class TestReactionPath(PymatgenTest):

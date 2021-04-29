@@ -791,7 +791,7 @@ class ReactionNetwork(MSONable):
                 cost_from_start,
                 min_cost,
                 PRs,
-                generate=True,
+                generate=generate_test_files,
             )
 
             solved_PRs = copy.deepcopy(old_solved_PRs)
