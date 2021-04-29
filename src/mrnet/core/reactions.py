@@ -2385,14 +2385,14 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     rct_sorted_indices = np.argsort(reaction.reactant_indices)
 
     # Generate the index ordering used to create the node names
-    pro_node_indices = [
-        [index] + [i for i in pro_sorted_indices if i != index]
-        for index in range(len(reaction.product_indices))
-    ]
-    rct_node_indices = [
-        [index] + [i for i in rct_sorted_indices if i != index]
-        for index in range(len(reaction.reactant_indices))
-    ]
+    # pro_node_indices = [
+    #     [index] + [i for i in pro_sorted_indices if i != index]
+    #     for index in range(len(reaction.product_indices))
+    # ]
+    # rct_node_indices = [
+    #     [index] + [i for i in rct_sorted_indices if i != index]
+    #     for index in range(len(reaction.reactant_indices))
+    # ]
 
     # Here, create the 'base' names/ids for products and reactants (sorted by index)
     base_pro_name = "+".join(

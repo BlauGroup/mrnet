@@ -3,7 +3,6 @@ import heapq
 import os
 import itertools
 import operator
-import os
 import pickle
 import time as time
 from functools import reduce
@@ -171,7 +170,7 @@ class ReactionPath(MSONable):
                     class_instance.cost += graph[step][path[ii + 1]][weight]
                     if isinstance(step, str):  # REACTION NODE
                         reactants = step.split(",")[0]
-                        products = step.split(",")[1]
+                        # products = step.split(",")[1]
                         if "+" in reactants:  # prs for this reaction
                             prod = []  # type: List[Union[str, int]]
                             a = path[ii - 1]  # source reactant (non-pr)
@@ -1430,11 +1429,11 @@ class ReactionNetwork(MSONable):
         :return: react_list: reactant list, ex [1,2]
         :return: prod_list: product list, ex [3,4]
         """
-        react_list = node.split(",")[0].split("+")
-        prod_list = node.split(",")[1].split("+")
-        prod_list.sort()
-        react_list = [int(r) for r in react_list]
-        prod_list = [int(p) for p in prod_list]
+        react_list_str = node.split(",")[0].split("+")
+        prod_list_str = node.split(",")[1].split("+")
+        prod_list_str.sort()
+        react_list: List[int] = [int(r) for r in react_list_str]
+        prod_list: List[int] = [int(p) for p in prod_list_str]
         return (react_list, prod_list)
 
     @staticmethod

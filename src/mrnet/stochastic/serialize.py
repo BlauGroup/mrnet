@@ -5,6 +5,7 @@ import pickle
 import os
 import sqlite3
 
+
 from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
 from pymatgen.analysis.local_env import OpenBabelNN
@@ -60,7 +61,7 @@ def create_reactions_table(n):
         + str(n)
         + """ (
                 reaction_id         INTEGER NOT NULL PRIMARY KEY,
-                reaction_string     TEXT UNIQUE NOT NULL,
+                reaction_string     TEXT NOT NULL,
                 number_of_reactants INTEGER NOT NULL,
                 number_of_products  INTEGER NOT NULL,
                 reactant_1          INTEGER NOT NULL,
@@ -71,7 +72,7 @@ def create_reactions_table(n):
                 dG                  REAL NOT NULL
         );
 
-CREATE UNIQUE INDEX reaction_"""
+CREATE INDEX reaction_"""
         + str(n)
         + "_string_idx ON reactions_"
         + str(n)
@@ -97,10 +98,6 @@ def insert_reaction(n):
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
 """
     )
-
-
-def does_reaction_exist(n):
-    return "SELECT COUNT(*) FROM reactions_" + str(n) + " WHERE reaction_string = ?"
 
 
 insert_metadata = """
@@ -160,7 +157,6 @@ class SerializeNetwork:
         self.current_shard = -1
         self.number_of_reactions = 0
         self.insert_statements: Dict[int, str] = {}
-        self.does_exist_statements: Dict[int, str] = {}
 
         os.mkdir(self.folder)
         self.con = sqlite3.connect(self.folder + self.db_postfix)
@@ -171,13 +167,14 @@ class SerializeNetwork:
         self.new_shard()
         self.serialize()
 
+        self.number_of_shards = self.current_shard + 1
         cur.execute(
             insert_metadata,
             (
                 len(self.entries_list),
                 self.number_of_reactions,
                 self.shard_size,
-                self.current_shard + 1,
+                self.number_of_shards,
             ),
         )
 
@@ -189,20 +186,7 @@ class SerializeNetwork:
         self.current_shard += 1
         cur.executescript(create_reactions_table(self.current_shard))
         self.insert_statements[self.current_shard] = insert_reaction(self.current_shard)
-        self.does_exist_statements[self.current_shard] = does_reaction_exist(
-            self.current_shard
-        )
         self.con.commit()
-
-    def does_reaction_exist(self, reaction_string: str):
-        cur = self.con.cursor()
-        for i in range(self.current_shard + 1):
-            cur.execute(self.does_exist_statements[i], (reaction_string,))
-            count = cur.fetchone()
-            if count[0] != 0:
-                return True
-
-        return False
 
     def insert_reaction(
         self,
@@ -261,67 +245,65 @@ class SerializeNetwork:
                 ]
             )
 
-            if not self.does_reaction_exist(forward_reaction_string):
+            reverse_reaction_string = "".join(
+                [
+                    "+".join([str(i) for i in products]),
+                    "->",
+                    "+".join([str(i) for i in reactants]),
+                ]
+            )
 
-                reverse_reaction_string = "".join(
-                    [
-                        "+".join([str(i) for i in products]),
-                        "->",
-                        "+".join([str(i) for i in reactants]),
-                    ]
-                )
+            try:
+                reactant_1_index = int(reactants[0])
+            except IndexError:
+                reactant_1_index = -1
 
-                try:
-                    reactant_1_index = int(reactants[0])
-                except IndexError:
-                    reactant_1_index = -1
+            try:
+                reactant_2_index = int(reactants[1])
+            except IndexError:
+                reactant_2_index = -1
 
-                try:
-                    reactant_2_index = int(reactants[1])
-                except IndexError:
-                    reactant_2_index = -1
+            try:
+                product_1_index = int(products[0])
+            except IndexError:
+                product_1_index = -1
 
-                try:
-                    product_1_index = int(products[0])
-                except IndexError:
-                    product_1_index = -1
+            try:
+                product_2_index = int(products[1])
+            except IndexError:
+                product_2_index = -1
 
-                try:
-                    product_2_index = int(products[1])
-                except IndexError:
-                    product_2_index = -1
+            forward_rate = rate(
+                forward_free_energy, self.temperature, self.constant_barrier
+            )
 
-                forward_rate = rate(
-                    forward_free_energy, self.temperature, self.constant_barrier
-                )
+            backward_rate = rate(
+                backward_free_energy, self.temperature, self.constant_barrier
+            )
 
-                backward_rate = rate(
-                    backward_free_energy, self.temperature, self.constant_barrier
-                )
+            self.insert_reaction(
+                forward_reaction_string,
+                len(reactants),
+                len(products),
+                reactant_1_index,
+                reactant_2_index,
+                product_1_index,
+                product_2_index,
+                forward_rate,
+                forward_free_energy,
+            )
 
-                self.insert_reaction(
-                    forward_reaction_string,
-                    len(reactants),
-                    len(products),
-                    reactant_1_index,
-                    reactant_2_index,
-                    product_1_index,
-                    product_2_index,
-                    forward_rate,
-                    forward_free_energy,
-                )
-
-                self.insert_reaction(
-                    reverse_reaction_string,
-                    len(products),
-                    len(reactants),
-                    product_1_index,
-                    product_2_index,
-                    reactant_1_index,
-                    reactant_2_index,
-                    backward_rate,
-                    backward_free_energy,
-                )
+            self.insert_reaction(
+                reverse_reaction_string,
+                len(products),
+                len(reactants),
+                product_1_index,
+                product_2_index,
+                reactant_1_index,
+                reactant_2_index,
+                backward_rate,
+                backward_free_energy,
+            )
 
 
 def rate(dG, temperature, constant_barrier):
