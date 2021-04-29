@@ -20,6 +20,7 @@ from mrnet.stochastic.serialize import (
     serialize_initial_state,
 )
 from mrnet.stochastic.analyze import SimulationAnalyzer, NetworkUpdater
+from mrnet.utils.constants import ROOM_TEMP
 
 try:
     from openbabel import openbabel as ob
@@ -103,6 +104,11 @@ class RNMC(PymatgenTest):
 
         # update rates from a list
         network_updater = NetworkUpdater(network_folder_1)
+
+        # recompute all rates using a fixed constant barrier
+        network_updater.recompute_all_rates(ROOM_TEMP, 0.3)
+
+        # set specific rates
         network_updater.update_rates([(113, 2.0), (215, 3.0)])
 
         os.system("rm -r " + network_folder_1)

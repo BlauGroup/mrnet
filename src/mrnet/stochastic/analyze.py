@@ -10,7 +10,14 @@ from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.visualization import (
     visualize_molecule_entry,
     visualize_molecule_count_histogram,
+    generate_latex_header,
+    generate_latex_footer,
+    latex_emit_molecule,
+    latex_emit_reaction,
+    visualize_molecules,
 )
+
+from mrnet.stochastic.serialize import rate
 
 
 get_metadata = """
@@ -59,16 +66,35 @@ class NetworkUpdater:
         self.number_of_reactions = md[1]
         self.shard_size = md[2]
         self.number_of_shards = md[3]
-        self.update_statements = {}
+        self.update_rates_sql = {}
+        self.get_reactions_sql = {}
 
         for i in range(self.number_of_shards):
-            self.update_statements[i] = update_rate(i)
+            self.update_rates_sql[i] = update_rate(i)
+            self.get_reactions_sql[i] = get_reaction(i)
 
     def update_rates(self, pairs: List[Tuple[int, float]]):
         cur = self.connection.cursor()
-        for (index, rate) in pairs:
+        for (index, r) in pairs:
             shard = index // self.shard_size
-            cur.execute(self.update_statements[shard], (rate, index))
+            cur.execute(self.update_rates_sql[shard], (r, index))
+
+        self.connection.commit()
+
+    def recompute_all_rates(
+        self, temperature, constant_barrier, commit_frequency=10000
+    ):
+        cur = self.connection.cursor()
+
+        for index in range(self.number_of_reactions):
+            shard = index // self.shard_size
+            res = list(cur.execute(self.get_reactions_sql[shard], (int(index),)))[0]
+            dG = res[4]
+            new_rate = rate(dG, temperature, constant_barrier)
+            cur.execute(self.update_rates_sql[shard], (new_rate, index))
+
+            if index % commit_frequency == 0:
+                self.connection.commit()
 
         self.connection.commit()
 
@@ -171,7 +197,9 @@ class SimulationAnalyzer:
             self.time_histories.append(np.array(time_history))
 
         self.number_simulations = len(self.reaction_histories)
-        self.visualize_molecules()
+        visualize_molecules(
+            self.reports_folder + "/molecule_diagrams", self.mol_entries
+        )
 
     def index_to_reaction(self, reaction_index):
         shard = reaction_index // self.shard_size
@@ -190,16 +218,6 @@ class SimulationAnalyzer:
             reaction["dG"] = res[4]
             self.reaction_data[reaction_index] = reaction
             return reaction
-
-    def visualize_molecules(self):
-        folder = self.network_folder + "/molecule_diagrams"
-        if os.path.isdir(folder):
-            return
-
-        os.mkdir(folder)
-        for index in range(self.number_of_species):
-            molecule_entry = self.mol_entries[index]
-            visualize_molecule_entry(molecule_entry, folder + "/" + str(index) + ".pdf")
 
     def extract_species_consumption_info(
         self, target_species_index: int
@@ -413,31 +431,8 @@ class SimulationAnalyzer:
                 f.write("\n\n")
 
     def latex_emit_reaction(self, f: TextIO, reaction_index: int):
-        f.write("$$\n")
         reaction = self.index_to_reaction(reaction_index)
-        first = True
-        f.write(str(reaction_index) + ":\n")
-        for reactant_index in reaction["reactants"]:
-            if first:
-                first = False
-            else:
-                f.write("+\n")
-
-            latex_emit_molecule(f, reactant_index)
-
-        f.write("\\xrightarrow{" + ("%.2f" % reaction["dG"]) + "}\n")
-
-        first = True
-        for product_index in reaction["products"]:
-            if first:
-                first = False
-            else:
-                f.write("+\n")
-
-            latex_emit_molecule(f, product_index)
-
-        f.write("$$")
-        f.write("\n\n\n")
+        latex_emit_reaction(f, reaction, reaction_index)
 
     def generate_simulation_history_report(self, history_num):
         with open(
@@ -625,26 +620,3 @@ class SimulationAnalyzer:
         )
 
         return sorted_reaction_analysis
-
-
-def generate_latex_header(f: TextIO):
-    f.write("\\documentclass{article}\n")
-    f.write("\\usepackage{graphicx}\n")
-    f.write("\\usepackage[margin=1cm]{geometry}\n")
-    f.write("\\usepackage{amsmath}\n")
-    f.write("\\pagenumbering{gobble}\n")
-    f.write("\\begin{document}\n")
-
-
-def generate_latex_footer(f: TextIO):
-    f.write("\\end{document}")
-
-
-def latex_emit_molecule(f: TextIO, species_index: int):
-    f.write(str(species_index) + "\n")
-    f.write(
-        "\\raisebox{-.5\\height}{"
-        + "\\includegraphics[scale=0.2]{../molecule_diagrams/"
-        + str(species_index)
-        + ".pdf}}\n"
-    )
