@@ -13,6 +13,7 @@ test_dir = os.path.join(
     "reaction_network_files",
 )
 
+
 def generate_pre_find_path_files(rn, PRs, cost_from_start, old_solved_PRs, min_cost):
     pickle_in = open(
         os.path.join(test_dir, "unittest_RN_pr_ii_4_before_find_path_cost.pkl"),
