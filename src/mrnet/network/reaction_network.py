@@ -1430,11 +1430,11 @@ class ReactionNetwork(MSONable):
         :return: react_list: reactant list, ex [1,2]
         :return: prod_list: product list, ex [3,4]
         """
-        react_list = node.split(",")[0].split("+")
-        prod_list = node.split(",")[1].split("+")
+        react_list_str = node.split(",")[0].split("+")
+        prod_list_str = node.split(",")[1].split("+")
         prod_list.sort()
-        react_list = [int(r) for r in react_list]
-        prod_list = [int(p) for p in prod_list]
+        react_list: List[int] = [int(r) for r in react_list_str]
+        prod_list: List[int] = [int(p) for p in prod_list_str]
         return (react_list, prod_list)
 
     @staticmethod
