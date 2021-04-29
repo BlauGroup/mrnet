@@ -27,11 +27,7 @@ except ImportError:
     ob = None
 
 test_dir = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "test_files",
-    "reaction_network_files",
+    os.path.dirname(__file__), "..", "..", "test_files", "reaction_network_files",
 )
 
 
@@ -912,7 +908,7 @@ class TestReactionNetwork(PymatgenTest):
 
         with open(
             os.path.join(
-                test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"
+                test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"
             ),
             "rb",
         ) as input:
@@ -974,7 +970,7 @@ class TestReactionNetwork(PymatgenTest):
         # load RN
         with open(
             os.path.join(
-                test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"
+                test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"
             ),
             "rb",
         ) as input:
@@ -1041,7 +1037,7 @@ class TestReactionNetwork(PymatgenTest):
 
         with open(
             os.path.join(
-                test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"
+                test_dir, "identify_concerted_via_intermediate_unittest_RN.pkl"
             ),
             "rb",
         ) as input:
@@ -1061,9 +1057,7 @@ class TestReactionNetwork(PymatgenTest):
 
     def test_add_concerted_rxns(self):
         with open(
-            os.path.join(
-                test_dir, "identify_concerted_via_intermediate_unittest_RN_ak.pkl"
-            ),
+            os.path.join(test_dir, "identify_concerted_via_intermediate_unittest.pkl"),
             "rb",
         ) as input:
             RN_loaded = pickle.load(input)
