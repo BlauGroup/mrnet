@@ -3,8 +3,9 @@ import pickle
 import os
 import copy
 import sqlite3
-
+from multiprocessing import Pool
 import numpy as np
+from functools import partial
 
 from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.visualization import (
@@ -50,6 +51,54 @@ def update_rate(shard: int):
     )
 
 
+def does_reaction_exist(n):
+    return (
+        "SELECT reaction_id FROM reactions_" + str(n) + " WHERE reaction_string = ?1;"
+    )
+
+
+def get_reaction_string(n: int):
+    return (
+        """
+    SELECT reaction_string
+    FROM reactions_"""
+        + str(n)
+        + " WHERE reaction_id = ?1;"
+    )
+
+
+def find_duplicate_reactions(
+    db_path: str,
+    shard_size: int,
+    number_of_shards: int,
+    number_of_reactions: int,
+    shard: int,
+):
+    repeats = []
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    get_reaction_string_sql = get_reaction_string(shard)
+
+    does_reaction_exist_sql = []
+    for i in range(number_of_shards):
+        does_reaction_exist_sql.append(does_reaction_exist(i))
+
+    base_index = shard * shard_size
+    top_index = min(number_of_reactions, (shard + 1) * shard_size)
+    for index in range(base_index, top_index):
+        duplicate_indices = []
+        reaction_string = list(cur.execute(get_reaction_string_sql, (index,)))[0][0]
+
+        for sql in does_reaction_exist_sql:
+            for row in cur.execute(sql, (reaction_string,)):
+                duplicate_indices.append(row[0])
+
+        if len(duplicate_indices) != 1:
+            repeats.append(sorted(duplicate_indices))
+
+    return repeats
+
+
 class NetworkUpdater:
     """
     class to manage the state required for updating a sharded database.
@@ -57,9 +106,14 @@ class NetworkUpdater:
     be adding more methods in the future.
     """
 
-    def __init__(self, network_folder: str):
-        database_postfix = "/rn.sqlite"
-        self.connection = sqlite3.connect(network_folder + database_postfix)
+    def __init__(
+        self, network_folder: str, number_of_threads=6  # used in duplicate checking
+    ):
+
+        self.network_folder = network_folder
+        self.db_postfix = "/rn.sqlite"
+        self.connection = sqlite3.connect(self.network_folder + self.db_postfix)
+        self.number_of_threads = number_of_threads
         cur = self.connection.cursor()
         md = list(cur.execute(get_metadata))[0]
         self.number_of_species = md[0]
@@ -97,6 +151,39 @@ class NetworkUpdater:
                 self.connection.commit()
 
         self.connection.commit()
+
+    def find_duplicates(self):
+        f = partial(
+            find_duplicate_reactions,
+            self.network_folder + self.db_postfix,
+            self.shard_size,
+            self.number_of_shards,
+            self.number_of_reactions,
+        )
+
+        with Pool(self.number_of_threads) as p:
+            repeats_unordered = p.map(f, range(self.number_of_shards))
+
+        repeated = set()
+
+        for xs in repeats_unordered:
+            for x in xs:
+                repeated.add(tuple(sorted(x)))
+
+        return repeated
+
+    def set_duplicate_reaction_rates_to_zero(self):
+        repeats = self.find_duplicates()
+        update_list = []
+        for xs in repeats:
+            head = True
+            for x in xs:
+                if head:
+                    head = False
+                else:
+                    update_list.append((x, 0.0))
+
+        self.update_rates(update_list)
 
 
 def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
@@ -467,7 +554,19 @@ class SimulationAnalyzer:
 
             generate_latex_footer(f)
 
+    def generate_list_of_all_species_report(self):
+        with open(
+            self.reports_folder + "/list_of_all_species.tex",
+            "w",
+        ) as f:
 
+            generate_latex_header(f)
+
+            for species_index in range(self.number_of_species):
+                f.write("\n\n\n")
+                latex_emit_molecule(f, species_index)
+
+            generate_latex_footer(f)
 
     def generate_reaction_tally_report(self):
         observed_reactions = {}

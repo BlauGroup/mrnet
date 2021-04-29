@@ -70,6 +70,11 @@ class RNMC(PymatgenTest):
 
         # for large networks, you want to use shard_size=2000000
         SerializeNetwork(network_folder_1, reaction_generator, shard_size=100)
+        network_updater = NetworkUpdater(network_folder_1)
+        # recompute all rates using a fixed constant barrier
+        network_updater.recompute_all_rates(ROOM_TEMP, 0.3)
+
+        network_updater.set_duplicate_reaction_rates_to_zero()
 
         # serializing is expensive, so we only want to do it once
         # instead, for reaction_network_2 we symlink the database into the folder
@@ -103,10 +108,6 @@ class RNMC(PymatgenTest):
         rxn_counts_2 = sa_2.rank_reaction_counts()
 
         # update rates from a list
-        network_updater = NetworkUpdater(network_folder_1)
-
-        # recompute all rates using a fixed constant barrier
-        network_updater.recompute_all_rates(ROOM_TEMP, 0.3)
 
         # set specific rates
         network_updater.update_rates([(113, 2.0), (215, 3.0)])
