@@ -3,6 +3,7 @@ import itertools
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
+from collections import Counter
 from typing import Dict, List, Optional, Tuple, Union
 
 import networkx as nx
@@ -20,6 +21,7 @@ from mrnet.core.rates import (
     RedoxRateCalculator,
 )
 from mrnet.utils.mols import mol_free_energy
+from mrnet.utils.generation import *
 from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
@@ -2360,6 +2362,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     """
     assert len(reaction.reactant_ids) <= 3
     assert len(reaction.product_ids) <= 3
+
     # Create the graph object, and define/call appropriate data
     graph = nx.DiGraph()
     rxn_type_A = reaction.rxn_type_A
@@ -2383,107 +2386,107 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
         [index] + [i for i in rct_sorted_indices if i != index]
         for index in range(len(reaction.reactant_indices))
     ]
+
     # Here, create the 'base' names/ids for products and reactants (sorted by index)
     base_pro_name = "+".join(
         [str(reaction.product_indices[i]) for i in pro_sorted_indices]
     )
     base_pro_ids = "+".join([str(reaction.product_ids[i]) for i in pro_sorted_indices])
-
     base_rct_name = "+".join(
         [str(reaction.reactant_indices[i]) for i in rct_sorted_indices]
     )
     base_rct_ids = "+".join([str(reaction.reactant_ids[i]) for i in rct_sorted_indices])
 
-    # This will give the "PR" part of the name for the nodes, e.g. A+PR_B
-    pro_names_PR = [
-        "+PR_".join([str(reaction.product_indices[i]) for i in el])
-        for el in pro_node_indices
-    ]
-    rct_names_PR = [
-        "+PR_".join([str(reaction.reactant_indices[i]) for i in el])
-        for el in rct_node_indices
-    ]
+    fwd_node_name = base_rct_name + "," + base_pro_name
+    fwd_node_ids = base_rct_ids + "," + base_pro_ids
+    rev_node_name = base_pro_name + "," + base_rct_name
+    rev_node_ids = base_pro_ids + "," + base_rct_ids
 
-    # This will give the full names for the products and reactants (used in the graph)
-    # e.g. A+PR_B,C
-    rct_node_names = [",".join([name, base_pro_name]) for name in rct_names_PR]
-    pro_node_names = [",".join([name, base_rct_name]) for name in pro_names_PR]
+    # Create fwd reaction node
+    if fwd_node_name in graph:
+        return
+    graph.add_node(
+        fwd_node_name,
+        rxn_type=rxn_type_A,
+        bipartite=1,
+        energy=energy_A,
+        free_energy=free_energy_A,
+        entry_ids=fwd_node_ids,
+    )
 
-    # This will give the "PR" part of the id for the products and reactants
-    pro_ids_PR = [
-        "+PR_".join([str(reaction.product_ids[i]) for i in el])
-        for el in pro_node_indices
-    ]
-    rct_ids_PR = [
-        "+PR_".join([str(reaction.reactant_ids[i]) for i in el])
-        for el in rct_node_indices
-    ]
-
-    # This will give the full ids for the products and reactants (used in the graph)
-    rct_node_ids = [",".join([name, base_pro_ids]) for name in rct_ids_PR]
-    pro_node_ids = [",".join([name, base_rct_ids]) for name in pro_ids_PR]
-
-    for node_ind in range(len(rct_node_names)):
-        # Add a reactant reaction node
-        graph.add_node(
-            rct_node_names[node_ind],
-            rxn_type=rxn_type_A,
-            bipartite=1,
-            energy=energy_A,
-            free_energy=free_energy_A,
-            entry_ids=rct_node_ids[node_ind],
-        )
-        # Add an edge from the reactant node to its "reactant" (i.e. Molecule Node)
+    # Create rev reaction node
+    graph.add_node(
+        rev_node_name,
+        rxn_type=rxn_type_B,
+        bipartite=1,
+        energy=energy_B,
+        free_energy=free_energy_B,
+        entry_ids=rev_node_ids,
+    )
+    duplicate_rct = any(
+        [
+            item
+            for item, count in Counter(reaction.reactant_indices).items()
+            if count > 1
+        ]
+    )
+    # Create edges w/ reactant molecule nodes
+    for reactant in reaction.reactant_indices:
+        # Edge from reactant molecule to fwd reaction node
+        if not duplicate_rct or not graph.has_edge(int(reactant), fwd_node_name):
+            graph.add_edge(
+                int(reactant),
+                fwd_node_name,
+                softplus=softplus(free_energy_A),
+                exponent=exponent(free_energy_A),
+                rexp=rexp(free_energy_A),
+                weight=1.0,
+                PRs=[
+                    int(r)
+                    for r in reaction.reactant_indices
+                    if (r != reactant or (reaction.reactant_indices == r).sum() > 1)
+                ],
+            )
+        # Edge from rev reaction node to reactant molecule
         graph.add_edge(
-            int(reaction.reactant_indices[node_ind]),
-            rct_node_names[node_ind],
-            softplus=softplus(free_energy_A),
-            exponent=exponent(free_energy_A),
-            rexp=rexp(free_energy_A),
+            rev_node_name,
+            int(reactant),
+            softplus=0.0,
+            exponent=0.0,
+            rexp=0.0,
             weight=1.0,
         )
 
-        # Add edges from the reactant node to the products (i.e. Product Molecule Node)
-        for p_ind in reaction.product_indices:
+    duplicate_prod = any(
+        [item for item, count in Counter(reaction.product_indices).items() if count > 1]
+    )
+
+    # Create edges w/product molecule nodes
+    for product in reaction.product_indices:
+        # Edge from product molecule to rev reaction node
+        if not duplicate_prod or not graph.has_edge(int(product), rev_node_name):
             graph.add_edge(
-                rct_node_names[node_ind],
-                int(p_ind),
-                softplus=0.0,
-                exponent=0.0,
-                rexp=0.0,
+                int(product),
+                rev_node_name,
+                softplus=softplus(free_energy_B),
+                exponent=exponent(free_energy_B),
+                rexp=rexp(free_energy_B),
                 weight=1.0,
+                PRs=[
+                    int(p)
+                    for p in reaction.product_indices
+                    if (p != product or (reaction.product_indices == p).sum() > 1)
+                ],
             )
-
-    for node_ind in range(len(pro_node_names)):
-        # Add a product node (reaction node)
-        graph.add_node(
-            pro_node_names[node_ind],
-            rxn_type=rxn_type_B,
-            bipartite=1,
-            energy=energy_B,
-            free_energy=free_energy_B,
-            entry_ids=pro_node_ids[node_ind],
-        )
-
-        # Add an edge from the product node to its corresponding "product" Molecule Node
+        # Edge from fwd reaction node to product molecule
         graph.add_edge(
-            int(reaction.product_indices[node_ind]),
-            pro_node_names[node_ind],
-            softplus=softplus(free_energy_B),
-            exponent=exponent(free_energy_B),
-            rexp=rexp(free_energy_B),
+            fwd_node_name,
+            int(product),
+            softplus=0.0,
+            exponent=0.0,
+            rexp=0.0,
             weight=1.0,
         )
-        for r_ind in reaction.reactant_indices:
-            # Add an edge from the product node to the reactant Molecule Nodes
-            graph.add_edge(
-                pro_node_names[node_ind],
-                int(r_ind),
-                softplus=0.0,
-                exponent=0.0,
-                rexp=0.0,
-                weight=1.0,
-            )
 
     return graph
 
