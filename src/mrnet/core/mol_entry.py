@@ -48,8 +48,8 @@ class MoleculeEntry(MSONable):
     def __init__(
         self,
         molecule: Molecule,
-        energy: Optional[float] = None,
-        correction: Optional[float] = 0.0,
+        energy: float,
+        correction: float = 0.0,
         enthalpy: Optional[float] = None,
         entropy: Optional[float] = None,
         parameters: Optional[Dict] = None,
@@ -225,10 +225,7 @@ class MoleculeEntry(MSONable):
 
     @property
     def energy(self) -> float:
-        if self.uncorrected_energy is not None:
-            return self.uncorrected_energy + self.correction  # type: ignore
-        else:
-            return None  # type: ignore
+        return self.uncorrected_energy + self.correction
 
     @property
     def formula(self) -> str:

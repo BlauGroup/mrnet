@@ -1,6 +1,6 @@
 import copy
 import itertools
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -25,7 +25,6 @@ from mrnet.utils.reaction import (
     generate_atom_mapping_1_1,
     get_reaction_atom_mapping,
 )
-
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -148,21 +147,25 @@ class Reaction(MSONable, metaclass=ABCMeta):
             )
 
     @classmethod
+    @abstractmethod
     def generate(
         cls,
         entries: MappingDict,
         determine_atom_mappings: bool = True,
     ):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def graph_representation(self) -> nx.DiGraph:
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def set_free_energy(self, temperature=ROOM_TEMP):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def set_rate_constant(self):
-        raise NotImplementedError
+        pass
 
     def as_dict(self) -> dict:
         if self.transition_state is None:
