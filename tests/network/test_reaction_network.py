@@ -45,7 +45,7 @@ class TestReactionGenerator(PymatgenTest):
         counter = 0
 
         for reaction in reaction_generator:
-            reaction_set.add(frozenset(reaction[0]+reaction[1]))
+            reaction_set.add(frozenset(reaction[0] + reaction[1]))
             counter += 1
 
         self.assertEqual(counter, 119)

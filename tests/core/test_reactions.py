@@ -321,7 +321,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
 
         reaction_set = set()
         for reaction in reactions:
-            reaction_set.add(frozenset([reaction.reactant.entry_id,reaction.product.entry_id]))
+            reaction_set.add(
+                frozenset([reaction.reactant.entry_id, reaction.product.entry_id])
+            )
         self.assertEqual(len(reaction_set), 73)
 
         for r in reactions:
@@ -441,7 +443,15 @@ class TestIntermolecularReaction(PymatgenTest):
         self.assertEqual(len(reactions), 3029)
         reaction_set = set()
         for reaction in reactions:
-            reaction_set.add(frozenset([reaction.reactant.entry_id, reaction.product_0.entry_id, reaction.product_1.entry_id]))
+            reaction_set.add(
+                frozenset(
+                    [
+                        reaction.reactant.entry_id,
+                        reaction.product_0.entry_id,
+                        reaction.product_1.entry_id,
+                    ]
+                )
+            )
         self.assertEqual(len(reaction_set), 3029)
 
         for r in reactions:
@@ -575,7 +585,15 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
 
         reaction_set = set()
         for reaction in reactions:
-            reaction_set.add(frozenset([reaction.reactant.entry_id, reaction.product_0.entry_id, reaction.product_1.entry_id]))
+            reaction_set.add(
+                frozenset(
+                    [
+                        reaction.reactant.entry_id,
+                        reaction.product_0.entry_id,
+                        reaction.product_1.entry_id,
+                    ]
+                )
+            )
         self.assertEqual(len(reaction_set), 48)
 
         for r in reactions:
