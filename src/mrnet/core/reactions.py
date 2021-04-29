@@ -749,7 +749,11 @@ class IntramolSingleBondChangeReaction(Reaction):
             if nx.is_weakly_connected(mg.graph):
                 for entry0 in entries[formula][Nbonds0][charge]:
                     isomorphic, node_mapping = is_isomorphic(entry0.graph, mg.graph)
-                    if isomorphic and node_mapping and entry0 not in entry0_set:
+                    if (
+                        isomorphic
+                        and node_mapping
+                        and entry0.entry_id not in entry0_set
+                    ):
                         if determine_atom_mappings:
                             rct_mp, prdt_mp = generate_atom_mapping_1_1(node_mapping)
                             r = cls(
@@ -765,7 +769,7 @@ class IntramolSingleBondChangeReaction(Reaction):
                             )
 
                         reactions.append(r)
-                        entry0_set.add(entry0)
+                        entry0_set.add(entry0.entry_id)
 
                         break
 
@@ -1076,8 +1080,10 @@ class IntermolecularReaction(Reaction):
                                 )
                                 if (
                                     isomorphic1
-                                    and frozenset([entry0, entry1]) not in product_set
-                                    and frozenset([entry1, entry0]) not in product_set
+                                    and frozenset([entry0.entry_id, entry1.entry_id])
+                                    not in product_set
+                                    and frozenset([entry1.entry_id, entry0.entry_id])
+                                    not in product_set
                                 ):
                                     if determine_atom_mappings:
                                         rct_mp, prdts_mp = generate_atom_mapping_1_2(
@@ -1096,8 +1102,12 @@ class IntermolecularReaction(Reaction):
                                         )
 
                                     reactions.append(r)
-                                    product_set.add(frozenset([entry0, entry1]))
-                                    product_set.add(frozenset([entry1, entry0]))
+                                    product_set.add(
+                                        frozenset([entry0.entry_id, entry1.entry_id])
+                                    )
+                                    product_set.add(
+                                        frozenset([entry1.entry_id, entry0.entry_id])
+                                    )
 
                                     break
                             break
@@ -1464,7 +1474,10 @@ class CoordinationBondChangeReaction(Reaction):
                             if (
                                 isomorphic
                                 and frozenset(
-                                    [nonM_entry, M_entries[M_formula][M_charge]]
+                                    [
+                                        nonM_entry.entry_id,
+                                        M_entries[M_formula][M_charge].entry_id,
+                                    ]
                                 )
                                 not in product_set
                             ):
@@ -1487,7 +1500,9 @@ class CoordinationBondChangeReaction(Reaction):
                                         [nonM_entry, this_m],
                                     )
                                 reactions.append(r)
-                                product_set.add(frozenset([nonM_entry, this_m]))
+                                product_set.add(
+                                    frozenset([nonM_entry.entry_id, this_m.entry_id])
+                                )
 
                                 break
 
