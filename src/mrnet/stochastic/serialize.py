@@ -144,11 +144,12 @@ class SerializeNetwork:
         commit_barrier: int = 10000,
         temperature=ROOM_TEMP,
         constant_barrier: float = 0.0,
-        insert_duplicates = False
+        insert_duplicates = False,
+        dG_cutoff = 0.5
     ):
 
-        if shard_size < 0 or shard_size % 2 != 0:
-            raise ValueError("shard_size must be positive and even")
+        if shard_size < 0:
+            raise ValueError("shard_size must be positive")
 
         self.folder = folder
         self.reaction_generator = reaction_generator
@@ -157,6 +158,7 @@ class SerializeNetwork:
         self.temperature = temperature
         self.constant_barrier = constant_barrier
         self.insert_duplicates = insert_duplicates
+        self.dG_cutoff = dG_cutoff
         self.entries_list = self.reaction_generator.rn.entries_list
         self.db_postfix = "/rn.sqlite"
         self.current_shard = -1
@@ -270,13 +272,6 @@ class SerializeNetwork:
             )
             if ( self.insert_duplicates
                  or not self.does_reaction_exist(forward_reaction_string)):
-                reverse_reaction_string = "".join(
-                    [
-                        "+".join([str(i) for i in products]),
-                        "->",
-                        "+".join([str(i) for i in reactants]),
-                    ]
-                )
 
                 try:
                     reactant_1_index = int(reactants[0])
@@ -302,9 +297,6 @@ class SerializeNetwork:
                     forward_free_energy, self.temperature, self.constant_barrier
                 )
 
-                backward_rate = rate(
-                    backward_free_energy, self.temperature, self.constant_barrier
-                )
 
                 self.insert_reaction(
                     forward_reaction_string,
@@ -318,17 +310,32 @@ class SerializeNetwork:
                     forward_free_energy,
                 )
 
-                self.insert_reaction(
-                    reverse_reaction_string,
-                    len(products),
-                    len(reactants),
-                    product_1_index,
-                    product_2_index,
-                    reactant_1_index,
-                    reactant_2_index,
-                    backward_rate,
-                    backward_free_energy,
-                )
+                if backward_free_energy < self.dG_cutoff:
+
+                    reverse_reaction_string = "".join(
+                        [
+                            "+".join([str(i) for i in products]),
+                            "->",
+                            "+".join([str(i) for i in reactants]),
+                        ]
+                    )
+
+
+                    backward_rate = rate(
+                        backward_free_energy, self.temperature, self.constant_barrier
+                    )
+
+                    self.insert_reaction(
+                        reverse_reaction_string,
+                        len(products),
+                        len(reactants),
+                        product_1_index,
+                        product_2_index,
+                        reactant_1_index,
+                        reactant_2_index,
+                        backward_rate,
+                        backward_free_energy,
+                    )
 
 
 def rate(dG, temperature, constant_barrier):

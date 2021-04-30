@@ -74,7 +74,8 @@ class RNMC(PymatgenTest):
         # recompute all rates using a fixed constant barrier
         network_updater.recompute_all_rates(ROOM_TEMP, 0.3)
 
-        network_updater.set_duplicate_reaction_rates_to_zero()
+        # check that no duplicates got inserted
+        assert(len(network_updater.find_duplicates()) == 0)
 
         # serializing is expensive, so we only want to do it once
         # instead, for reaction_network_2 we symlink the database into the folder
