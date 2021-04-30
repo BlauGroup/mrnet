@@ -568,7 +568,7 @@ class SimulationAnalyzer:
 
             generate_latex_footer(f)
 
-    def generate_reaction_tally_report(self):
+    def generate_reaction_tally_report(self, cutoff: int):
         observed_reactions = {}
         for history in self.reaction_histories:
             for reaction_index in history:
@@ -586,8 +586,9 @@ class SimulationAnalyzer:
             for (reaction_index, number) in sorted(
                 observed_reactions.items(), key=lambda pair: -pair[1]
             ):
-                f.write(str(number) + " occourances of:")
-                self.latex_emit_reaction(f, reaction_index)
+                if number > cutoff:
+                    f.write(str(number) + " occourances of:")
+                    self.latex_emit_reaction(f, reaction_index)
 
             generate_latex_footer(f)
 
