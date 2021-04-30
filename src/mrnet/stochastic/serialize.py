@@ -144,6 +144,7 @@ class SerializeNetwork:
         commit_barrier: int = 10000,
         temperature=ROOM_TEMP,
         constant_barrier: float = 0.0,
+        insert_duplicates = False
     ):
 
         if shard_size < 0 or shard_size % 2 != 0:
@@ -155,6 +156,7 @@ class SerializeNetwork:
         self.commit_barrier = commit_barrier
         self.temperature = temperature
         self.constant_barrier = constant_barrier
+        self.insert_duplicates = insert_duplicates
         self.entries_list = self.reaction_generator.rn.entries_list
         self.db_postfix = "/rn.sqlite"
         self.current_shard = -1
@@ -266,7 +268,8 @@ class SerializeNetwork:
                     "+".join([str(i) for i in products]),
                 ]
             )
-            if not self.does_reaction_exist(forward_reaction_string):
+            if ( self.insert_duplicates
+                 or not self.does_reaction_exist(forward_reaction_string)):
                 reverse_reaction_string = "".join(
                     [
                         "+".join([str(i) for i in products]),
