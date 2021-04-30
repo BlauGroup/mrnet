@@ -111,7 +111,7 @@ class RNMC(PymatgenTest):
         # update rates from a list
 
         # set specific rates
-        network_updater.update_rates([(113, 2.0), (215, 3.0)])
+        network_updater.update_rates([(113, 2.0), (40, 3.0)])
 
         os.system("rm -r " + network_folder_1)
         os.system("rm -r " + network_folder_2)

@@ -266,6 +266,7 @@ class SerializeNetwork:
                     "+".join([str(i) for i in products]),
                 ]
             )
+            # if we are inserting duplicates or the reaction does not exist
             if self.insert_duplicates or not self.does_reaction_exist(
                 forward_reaction_string
             ):
