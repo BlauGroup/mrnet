@@ -75,6 +75,10 @@ jobs:
       shell: bash -l {0}
       run: conda install -c conda-forge rnmc-native
 
+    - name: Install pulp
+      shell: bash -l {0}
+      run: conda install -c conda-forge pulp
+
     - name: Install Python dependencies
       shell: bash -l {0}
       run: |

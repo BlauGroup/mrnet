@@ -1,9 +1,8 @@
 import copy
 import itertools
 from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
-from collections.abc import Iterable
 from collections import Counter
+from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
 
 import networkx as nx
@@ -20,9 +19,13 @@ from mrnet.core.rates import (
     ReactionRateCalculator,
     RedoxRateCalculator,
 )
+from mrnet.utils.constants import KB, PLANCK, ROOM_TEMP
 from mrnet.utils.mols import mol_free_energy
-from mrnet.utils.generation import *
-from mrnet.utils.constants import ROOM_TEMP, KB, PLANCK
+from mrnet.utils.reaction import (
+    ReactionMappingError,
+    generate_atom_mapping_1_1,
+    get_reaction_atom_mapping,
+)
 
 __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Mingjian Wen"
 __version__ = "0.1"
@@ -30,6 +33,7 @@ __maintainer__ = "Sam Blau"
 __status__ = "Alpha"
 
 
+# typing
 MappingDict = Dict[str, Dict[int, Dict[int, List[MoleculeEntry]]]]
 Mapping_Record_Dict = Dict[str, List[str]]
 Atom_Mapping_Dict = Dict[int, int]
@@ -71,9 +75,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
         products: List[MoleculeEntry],
         transition_state: Optional[MoleculeEntry] = None,
         parameters: Optional[Dict] = None,
-        reactants_atom_mapping: Optional[
-            List[Atom_Mapping_Dict]
-        ] = None,  # atom mapping argument may not be necessary
+        reactants_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
         products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
         self.reactants = reactants
@@ -95,8 +97,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
 
         self.parameters = parameters or dict()
 
-        self.reactant_atom_mapping = reactants_atom_mapping
-        self.product_atom_mapping = products_atom_mapping
+        self.reactants_atom_mapping = reactants_atom_mapping
+        self.products_atom_mapping = products_atom_mapping
 
     def __in__(self, entry: MoleculeEntry):
         return entry.entry_id in self.reactant_ids or entry.entry_id in self.product_ids
@@ -185,8 +187,8 @@ class Reaction(MSONable, metaclass=ABCMeta):
             "transition_state": ts,
             "rate_calculator": rc,  # consider writing as_dict/from_dict methods
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.reactant_atom_mapping,
-            "products_atom_mapping": self.product_atom_mapping,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -566,8 +568,8 @@ class RedoxReaction(Reaction):
             "electrode_distance": self.electrode_distance,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.reactant_atom_mapping,
-            "products_atom_mapping": self.product_atom_mapping,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -878,8 +880,8 @@ class IntramolSingleBondChangeReaction(Reaction):
             "transition_state": ts,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.reactant_atom_mapping,
-            "products_atom_mapping": self.product_atom_mapping,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -1086,13 +1088,22 @@ class IntermolecularReaction(Reaction):
                                     not in product_set
                                 ):
                                     if determine_atom_mappings:
-                                        rct_mp, prdts_mp = generate_atom_mapping_1_2(
-                                            entry, [entry0, entry1], [edge]
+                                        (
+                                            rcts_mp,
+                                            prdts_mp,
+                                            num_bond,
+                                        ) = get_reaction_atom_mapping(
+                                            [entry], [entry0, entry1]
                                         )
+                                        if num_bond != 1:
+                                            raise ReactionMappingError(
+                                                f"Expect 1 bond change; got {num_bond}"
+                                            )
+
                                         r = cls(
                                             entry,
                                             [entry0, entry1],
-                                            reactant_atom_mapping=rct_mp,
+                                            reactant_atom_mapping=rcts_mp[0],
                                             products_atom_mapping=prdts_mp,
                                         )
                                     else:
@@ -1224,8 +1235,8 @@ class IntermolecularReaction(Reaction):
             "transition_state": ts,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.reactant_atom_mapping,
-            "products_atom_mapping": self.product_atom_mapping,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -1484,14 +1495,18 @@ class CoordinationBondChangeReaction(Reaction):
                                 this_m = M_entries[M_formula][M_charge]
 
                                 if determine_atom_mappings:
-                                    rct_mp, prdts_mp = generate_atom_mapping_1_2(
-                                        entry, [nonM_entry, this_m], bond_pair
+                                    (
+                                        rcts_mp,
+                                        prdts_mp,
+                                        num_bond,
+                                    ) = get_reaction_atom_mapping(
+                                        [entry], [nonM_entry, this_m]
                                     )
 
                                     r = cls(
                                         entry,
                                         [nonM_entry, this_m],
-                                        reactant_atom_mapping=rct_mp,
+                                        reactant_atom_mapping=rcts_mp[0],
                                         products_atom_mapping=prdts_mp,
                                     )
                                 else:
@@ -1618,8 +1633,8 @@ class CoordinationBondChangeReaction(Reaction):
             "transition_state": ts,
             "rate_calculator": rc,
             "parameters": self.parameters,
-            "reactants_atom_mapping": self.reactant_atom_mapping,
-            "products_atom_mapping": self.product_atom_mapping,
+            "reactants_atom_mapping": self.reactants_atom_mapping,
+            "products_atom_mapping": self.products_atom_mapping,
         }
 
         return d
@@ -1687,6 +1702,8 @@ class ConcertedReaction(Reaction):
         transition_state: Optional[MoleculeEntry] = None,
         electron_free_energy: Optional[float] = None,
         parameters: Optional[Dict] = None,
+        reactants_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
+        products_atom_mapping: Optional[List[Atom_Mapping_Dict]] = None,
     ):
         """
           Initilizes IntermolecularReaction.reactant to be in the form of a
@@ -1708,7 +1725,12 @@ class ConcertedReaction(Reaction):
         self.electron_free_energy = electron_free_energy
         self.electron_energy = None
         super().__init__(
-            reactant, product, transition_state=transition_state, parameters=parameters
+            reactant,
+            product,
+            transition_state=transition_state,
+            parameters=parameters,
+            reactants_atom_mapping=reactants_atom_mapping,
+            products_atom_mapping=products_atom_mapping,
         )
 
         # Store necessary mol_entry attributes
@@ -1788,9 +1810,9 @@ class ConcertedReaction(Reaction):
             self.product_indices,
             self.reactant_indices,
         )
-        self.reactant_atom_mapping, self.product_atom_mapping = (
-            self.product_atom_mapping,
-            self.reactant_atom_mapping,
+        self.reactants_atom_mapping, self.products_atom_mapping = (
+            self.products_atom_mapping,
+            self.reactants_atom_mapping,
         )
 
     @classmethod
@@ -2577,125 +2599,7 @@ def is_isomorphic(
         return False, None
 
 
-def generate_atom_mapping_1_1(
-    node_mapping: Dict[int, int]
-) -> Tuple[Atom_Mapping_Dict, Atom_Mapping_Dict]:
-    """
-    Generate rdkit style atom mapping for reactions with one reactant and one product.
-
-    For example, given `node_mapping = {0:2, 1:0, 2:1}`, which means atoms 0, 1,
-    and 2 in the reactant maps to atoms 2, 0, and 1 in the product, respectively,
-    the atom mapping number for reactant atoms are simply set to their index,
-    and the atom mapping number for product atoms are determined accordingly.
-    As a result, this function gives: `({0:0, 1:1, 2:2}, {0:1 1:2 2:0})` as the output.
-    Atoms in the reactant and product with the same atom mapping number
-    (keys in the dicts) are corresponding to each other.
-
-    Args:
-        node_mapping: node mapping from reactant to product
-
-    Returns:
-        reactant_atom_mapping: rdkit style atom mapping for the reactant
-        product_atom_mapping: rdkit style atom mapping for the product
-    """
-    reactant_atom_mapping = {k: k for k in node_mapping}
-    product_atom_mapping = {v: k for k, v in node_mapping.items()}
-
-    return reactant_atom_mapping, product_atom_mapping
-
-
-def generate_atom_mapping_1_2(
-    reactant: MoleculeEntry, products: List[MoleculeEntry], edges: List[Tuple[int, int]]
-) -> Tuple[Atom_Mapping_Dict, List[Atom_Mapping_Dict]]:
-    """
-    Generate rdkit style atom mapping for reactions with one reactant and two products.
-
-    The atom mapping number for reactant atoms are simply set to their index,
-    and the atom mapping number for product atoms are determined accordingly.
-    Atoms in the reactant and products with the same atom mapping number (value in the
-    atom mapping dictionary {atom_index: atom_mapping_number}) corresponds to each other.
-
-    For example, given reactant
-
-          C 0
-         / \
-        /___\
-       O     N---H
-       1     2   3
-
-    and the two products
-          C 1
-         / \
-        /___\
-       O     N
-       2     0
-
-    and
-       H 0
-
-    This function returns:
-    reactant_atom_mapping = {0:0, 1:1, 2:2, 3:3}
-    products_atom_mapping = [{0:2, 1:0, 2:1}, {0:3}]
-
-    Args:
-        reactant: reactant molecule entry
-        products: products molecule entry
-        edges: a list of bonds in reactant, by breaking which can form the two products
-
-    Returns:
-        reactant_atom_mapping: rdkit style atom mapping number for the reactant
-        products_atom_mapping: rdkit style atom mapping number for the two products
-    """
-
-    assert len(products) == 2, f"Expect 2 product molecules, got {len(products)}."
-
-    reactant_atom_mapping = {i: i for i in range(reactant.num_atoms)}
-
-    # Split the reactant mol graph to form two sub graphs
-    # This is similar to MoleculeGraph.split_molecule_subbraphs(), but do not reorder
-    # the nodes, i.e. the nodes in the subgraphs will have the same node indexes as
-    original = copy.deepcopy(reactant.mol_graph)
-    for edge in edges:
-        original.break_edge(edge[0], edge[1], allow_reverse=True)
-    components = nx.weakly_connected_components(original.graph)
-    sub_graphs = [original.graph.subgraph(c) for c in components]
-    assert (
-        len(sub_graphs) == 2
-    ), f"Expect 2 subgraphs after breaking the bonds; got {len(sub_graphs)}"
-
-    products_atom_mapping = []
-
-    # try to find correspondence between sub_graphs and products
-    _, node_mapping = is_isomorphic(products[0].graph, sub_graphs[0])
-
-    # 0~0 and 1~1
-    if node_mapping is not None:
-        products_atom_mapping.append(node_mapping)
-
-        _, node_mapping = is_isomorphic(products[1].graph, sub_graphs[1])
-        assert node_mapping is not None, (
-            f"Cannot obtain node mapping. Reactant: {reactant}; "
-            f"Products: {'; '.join([str(m) for m in products])}"
-        )
-        products_atom_mapping.append(node_mapping)
-
-    # 0~1 and 1~0
-    else:
-        correspondence = OrderedDict()
-        correspondence[0] = 1
-        correspondence[1] = 0
-
-        for i, j in correspondence.items():
-            _, node_mapping = is_isomorphic(products[i].graph, sub_graphs[j])
-            assert node_mapping is not None, (
-                f"Cannot obtain node mapping. Reactant: {reactant}; "
-                f"Products: {'; '.join([str(m) for m in products])}"
-            )
-            products_atom_mapping.append(node_mapping)
-
-    return reactant_atom_mapping, products_atom_mapping
-
-
+# TODO `bucket_mol_entries` and `unbucket_mol_entries` can be moved to mol_entry.py
 def bucket_mol_entries(entries: List[MoleculeEntry], keys: Optional[List[str]] = None):
     """
     Bucket molecules into nested dictionaries according to molecule properties

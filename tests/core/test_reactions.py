@@ -2,23 +2,23 @@
 import os
 import unittest
 
-from pymatgen.util.testing import PymatgenTest
-from pymatgen.core.structure import Molecule
+from monty.serialization import loadfn
 from pymatgen.analysis.graphs import MoleculeGraph
 from pymatgen.analysis.local_env import OpenBabelNN, metal_edge_extender
+from pymatgen.core.structure import Molecule
+from pymatgen.util.testing import PymatgenTest
 
-from mrnet.core.reactions import (
-    RedoxReaction,
-    IntramolSingleBondChangeReaction,
-    IntermolecularReaction,
-    CoordinationBondChangeReaction,
-    MetalHopReaction,
-)
-from mrnet.core.reactions import bucket_mol_entries, unbucket_mol_entries
 from mrnet.core.mol_entry import MoleculeEntry
+from mrnet.core.reactions import (
+    CoordinationBondChangeReaction,
+    IntermolecularReaction,
+    IntramolSingleBondChangeReaction,
+    MetalHopReaction,
+    RedoxReaction,
+    bucket_mol_entries,
+    unbucket_mol_entries,
+)
 from mrnet.network.reaction_network import ReactionNetwork
-
-from monty.serialization import loadfn
 
 try:
     import openbabel as ob
@@ -251,11 +251,11 @@ class TestRedoxReaction(PymatgenTest):
 
         for r in reactions:
             self.assertEqual(
-                r.reactant_atom_mapping,
+                r.reactants_atom_mapping,
                 [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
             self.assertEqual(
-                r.product_atom_mapping,
+                r.products_atom_mapping,
                 [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
             )
 
@@ -358,11 +358,11 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
         self.assertEqual(rxn.product.entry_id, entries["LiEC"].entry_id)
 
         self.assertEqual(
-            rxn.reactant_atom_mapping,
+            rxn.reactants_atom_mapping,
             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
         )
         self.assertEqual(
-            rxn.product_atom_mapping,
+            rxn.products_atom_mapping,
             [{0: 2, 1: 3, 2: 1, 3: 4, 4: 5, 5: 0, 6: 6, 7: 9, 8: 10, 9: 7, 10: 8}],
         )
 
@@ -478,29 +478,6 @@ class TestIntermolecularReaction(PymatgenTest):
                     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
-
-        ents = bucket_mol_entries(
-            [entries["LiEC_RO"], entries["C1Li1O3"], entries["C2H4"]]
-        )
-
-        reactions = IntermolecularReaction.generate(ents)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, entries["LiEC_RO"].entry_id)
-        self.assertEqual(rxn.product_0.entry_id, entries["C2H4"].entry_id)
-        self.assertEqual(rxn.product_1.entry_id, entries["C1Li1O3"].entry_id)
-
-        self.assertEqual(
-            rxn.reactant_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-        self.assertEqual(
-            rxn.product_atom_mapping,
-            [{0: 0, 1: 1, 2: 7, 3: 8, 4: 9, 5: 10}, {0: 2, 1: 3, 2: 4, 3: 5, 4: 6}],
-        )
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
 
         reaction = IntermolecularReaction(
@@ -612,28 +589,6 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
                         or r.products[1].get_free_energy()
                         == entries["EC_-1"].get_free_energy()
                     )
-
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
-
-        ents = bucket_mol_entries([entries["LiEC"], entries["EC_-1"], entries["Li"]])
-
-        reactions = CoordinationBondChangeReaction.generate(ents)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, entries["LiEC"].entry_id)
-        self.assertEqual(rxn.product_0.entry_id, entries["EC_-1"].entry_id)
-        self.assertEqual(rxn.product_1.entry_id, entries["Li"].entry_id)
-
-        self.assertEqual(
-            rxn.reactant_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-
-        self.assertEqual(
-            rxn.product_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 7, 7: 8, 8: 9, 9: 10}, {0: 6}],
-        )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
@@ -835,33 +790,6 @@ def test_unbucket_mol_entries():
     d = {"a": {"aa": [0, 1, 2], "aaa": [3, 4]}, "b": {"bb": [5, 6, 7], "bbb": (8, 9)}}
     out = unbucket_mol_entries(d)
     assert out == list(range(10))
-
-
-def test_atom_mapping():
-    """
-    This is a test for the corner case where atom mapping for `LiF2 -> Li+ + F2` was
-    incorrect due to reordering of reactant subgraphs. It is fixed and the test should
-    pass now.
-    """
-
-    test_file = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "..",
-        "test_files",
-        "reaction_files",
-        "LiF2_to_Li_F2.json",
-    )
-
-    entries = loadfn(test_file)
-    bucketed_entries = bucket_mol_entries(entries)
-
-    reactions = CoordinationBondChangeReaction.generate(bucketed_entries)
-    assert len(reactions) == 1
-
-    rxn = reactions[0]
-    assert rxn.reactant_atom_mapping == [{0: 0, 1: 1, 2: 2}]
-    assert rxn.product_atom_mapping == [{0: 1, 1: 2}, {0: 0}]
 
 
 if __name__ == "__main__":
