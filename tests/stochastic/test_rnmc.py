@@ -75,7 +75,7 @@ class RNMC(PymatgenTest):
         network_updater.recompute_all_rates(ROOM_TEMP, 0.3)
 
         # check that no duplicates got inserted
-        assert(len(network_updater.find_duplicates()) == 0)
+        assert len(network_updater.find_duplicates()) == 0
 
         # serializing is expensive, so we only want to do it once
         # instead, for reaction_network_2 we symlink the database into the folder

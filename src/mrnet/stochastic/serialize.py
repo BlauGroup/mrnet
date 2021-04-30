@@ -109,6 +109,7 @@ insert_metadata = """
   VALUES (?1, ?2, ?3, ?4);
 """
 
+
 def does_reaction_exist(n):
     return "SELECT COUNT(*) FROM reactions_" + str(n) + " WHERE reaction_string = ?"
 
@@ -144,8 +145,8 @@ class SerializeNetwork:
         commit_barrier: int = 10000,
         temperature=ROOM_TEMP,
         constant_barrier: float = 0.0,
-        insert_duplicates = False,
-        dG_cutoff = 0.5
+        insert_duplicates=False,
+        dG_cutoff=0.5,
     ):
 
         if shard_size < 0:
@@ -199,7 +200,6 @@ class SerializeNetwork:
         )
         self.con.commit()
 
-
     def does_reaction_exist(self, reaction_string: str):
         cur = self.con.cursor()
         for i in range(self.current_shard + 1):
@@ -209,10 +209,6 @@ class SerializeNetwork:
                 return True
 
         return False
-
-
-
-
 
     def insert_reaction(
         self,
@@ -270,8 +266,9 @@ class SerializeNetwork:
                     "+".join([str(i) for i in products]),
                 ]
             )
-            if ( self.insert_duplicates
-                 or not self.does_reaction_exist(forward_reaction_string)):
+            if self.insert_duplicates or not self.does_reaction_exist(
+                forward_reaction_string
+            ):
 
                 try:
                     reactant_1_index = int(reactants[0])
@@ -297,7 +294,6 @@ class SerializeNetwork:
                     forward_free_energy, self.temperature, self.constant_barrier
                 )
 
-
                 self.insert_reaction(
                     forward_reaction_string,
                     len(reactants),
@@ -310,6 +306,8 @@ class SerializeNetwork:
                     forward_free_energy,
                 )
 
+                # we don't want to insert the backward reaction if
+                # dG is to large since it is extremely unlikely to fire
                 if backward_free_energy < self.dG_cutoff:
 
                     reverse_reaction_string = "".join(
@@ -319,7 +317,6 @@ class SerializeNetwork:
                             "+".join([str(i) for i in reactants]),
                         ]
                     )
-
 
                     backward_rate = rate(
                         backward_free_energy, self.temperature, self.constant_barrier
