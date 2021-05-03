@@ -578,16 +578,19 @@ class SimulationAnalyzer:
                     else:
                         self.observed_reactions[reaction_index] = 1
 
-
     def frequently_occouring_reactions(self, number: int):
         """
         return a list of the number most frequently occouring reactions
         """
         self.compute_reaction_tally()
         return list(
-            map(lambda pair: pair[0],
-                sorted(self.observed_reactions.items(), key=lambda pair: -pair[1])[0:number]))
-
+            map(
+                lambda pair: pair[0],
+                sorted(self.observed_reactions.items(), key=lambda pair: -pair[1])[
+                    0:number
+                ],
+            )
+        )
 
     def generate_reaction_tally_report(self, cutoff: int):
         self.compute_reaction_tally()
