@@ -252,6 +252,7 @@ class SimulationAnalyzer:
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
         self.reaction_histories = list()
         self.time_histories = list()
+        self.observed_reactions: Dict[int, int] = {}
 
         histories_contents = sorted(os.listdir(self.histories_folder))
         reaction_histories_contents = [
@@ -568,14 +569,31 @@ class SimulationAnalyzer:
 
             generate_latex_footer(f)
 
-    def generate_reaction_tally_report(self):
-        observed_reactions = {}
-        for history in self.reaction_histories:
-            for reaction_index in history:
-                if reaction_index in observed_reactions:
-                    observed_reactions[reaction_index] += 1
-                else:
-                    observed_reactions[reaction_index] = 1
+    def compute_reaction_tally(self):
+        if len(self.observed_reactions) == 0:
+            for history in self.reaction_histories:
+                for reaction_index in history:
+                    if reaction_index in self.observed_reactions:
+                        self.observed_reactions[reaction_index] += 1
+                    else:
+                        self.observed_reactions[reaction_index] = 1
+
+    def frequently_occouring_reactions(self, number: int):
+        """
+        return a list of the number most frequently occouring reactions
+        """
+        self.compute_reaction_tally()
+        return list(
+            map(
+                lambda pair: pair[0],
+                sorted(self.observed_reactions.items(), key=lambda pair: -pair[1])[
+                    0:number
+                ],
+            )
+        )
+
+    def generate_reaction_tally_report(self, cutoff: int):
+        self.compute_reaction_tally()
 
         with open(self.reports_folder + "/reaction_tally_report.tex", "w") as f:
 
@@ -584,10 +602,11 @@ class SimulationAnalyzer:
             f.write("reaction tally report")
             f.write("\n\n\n")
             for (reaction_index, number) in sorted(
-                observed_reactions.items(), key=lambda pair: -pair[1]
+                self.observed_reactions.items(), key=lambda pair: -pair[1]
             ):
-                f.write(str(number) + " occourances of:")
-                self.latex_emit_reaction(f, reaction_index)
+                if number > cutoff:
+                    f.write(str(number) + " occourances of:")
+                    self.latex_emit_reaction(f, reaction_index)
 
             generate_latex_footer(f)
 
