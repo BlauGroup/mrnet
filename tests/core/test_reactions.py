@@ -18,7 +18,7 @@ from mrnet.core.reactions import (
     bucket_mol_entries,
     unbucket_mol_entries,
 )
-from mrnet.network.reaction_network import ReactionNetwork
+from mrnet.network.reaction_generation import ReactionGenerator
 
 try:
     import openbabel as ob
@@ -60,7 +60,7 @@ def get_entries():
             else:
                 LiEC_reextended_entries.append(mol_entry)
 
-        RN = ReactionNetwork.from_input_entries(LiEC_reextended_entries)
+        RN = ReactionGenerator(LiEC_reextended_entries)
 
         EC_mg = MoleculeGraph.with_local_env_strategy(
             Molecule.from_file(os.path.join(test_dir, "EC.xyz")), OpenBabelNN()
