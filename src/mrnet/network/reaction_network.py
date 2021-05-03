@@ -560,7 +560,7 @@ class ReactionNetwork(MSONable):
                 "CoordinationBondChangeReaction",
             }
         ),
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
         build_matrix=False,
     ) -> nx.DiGraph:
         """

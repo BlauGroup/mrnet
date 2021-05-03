@@ -152,7 +152,7 @@ class Reaction(MSONable, metaclass=ABCMeta):
     def generate(
         cls,
         entries: MappingDict,
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
     ):
         pass
 
@@ -399,7 +399,7 @@ class RedoxReaction(Reaction):
     def generate(
         cls,
         entries: MappingDict,
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         """
         A method to generate all the possible redox reactions from given entries
@@ -704,7 +704,7 @@ class IntramolSingleBondChangeReaction(Reaction):
     def generate(
         cls,
         entries: MappingDict,
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         for formula in entries:
@@ -1020,7 +1020,7 @@ class IntermolecularReaction(Reaction):
     def generate(
         cls,
         entries: MappingDict,
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
 
@@ -1378,7 +1378,7 @@ class CoordinationBondChangeReaction(Reaction):
     def generate(
         cls,
         entries: MappingDict,
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
 
         # find metal entries
@@ -1819,7 +1819,7 @@ class ConcertedReaction(Reaction):
     def generate(
         cls,
         entries: MappingDict,
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
         name="nothing",
         read_file=False,
         num_processors=16,
@@ -2161,7 +2161,7 @@ class MetalHopReaction(Reaction):
     def generate(
         cls,
         entries: MappingDict,
-        determine_atom_mappings: bool = False,
+        determine_atom_mappings: bool = True,
     ) -> List[Reaction]:
         reactions = list()  # type: List[Reaction]
         M_entries = dict()  # type: MappingDict
