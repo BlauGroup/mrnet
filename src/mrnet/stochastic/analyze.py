@@ -252,7 +252,7 @@ class SimulationAnalyzer:
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
         self.reaction_histories = list()
         self.time_histories = list()
-        self.observed_reactions = {}
+        self.observed_reactions: Dict[int, int] = {}
 
         histories_contents = sorted(os.listdir(self.histories_folder))
         reaction_histories_contents = [
