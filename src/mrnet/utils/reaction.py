@@ -60,8 +60,8 @@ def get_reaction_atom_mapping(
             try a different one (e.g. PULP_CBC_CMD). For a full list of solvers, see
             https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html
         kwargs: additional keyword arguments passed to the pulp solver.
-            For example, if solver is `COIN_CMD`, we can pass `msg=False` to disable
-            the printing of solver message.
+            For example, if solver is `COIN_CMD`, we can pass `msg=True` to enable
+            the printing of solver message for debug purpose.
             For available additional keyword argument for each solver, see
             https://coin-or.github.io/pulp/technical/solvers.html
 
@@ -301,7 +301,10 @@ def solve_integer_programing(
         J. Chem. Inf. Model. 2012, 52, 84–92, https://doi.org/10.1021/ci200351b
     """
     solver = _check_pulp_solver(solver)
-    solver = pulp.getSolver(solver, **kwargs)
+
+    # default msg to False to avoid printing solver info
+    msg = kwargs.pop("msg", False)
+    solver = pulp.getSolver(solver, msg=msg, **kwargs)
 
     atoms = list(range(len(reactant_species)))
 

@@ -1093,7 +1093,7 @@ class IntermolecularReaction(Reaction):
                                             prdts_mp,
                                             num_bond,
                                         ) = get_reaction_atom_mapping(
-                                            [entry], [entry0, entry1], msg=False
+                                            [entry], [entry0, entry1]
                                         )
                                         if num_bond != 1:
                                             raise ReactionMappingError(
@@ -1500,7 +1500,7 @@ class CoordinationBondChangeReaction(Reaction):
                                         prdts_mp,
                                         num_bond,
                                     ) = get_reaction_atom_mapping(
-                                        [entry], [nonM_entry, this_m], msg=False
+                                        [entry], [nonM_entry, this_m]
                                     )
 
                                     r = cls(
