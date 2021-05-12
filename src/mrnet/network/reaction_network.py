@@ -954,7 +954,7 @@ class ReactionNetwork(MSONable):
                                     int(paths[node][ii - 1])
                                 )  # source reactant
                                 rcts.remove(
-                                    paths[node][ii - 1]
+                                    int(paths[node][ii - 1])
                                 )  # remove "reactant" reactant
                                 assert len(rcts) == 1
                                 PR.append(int(rcts[0]))
