@@ -387,8 +387,6 @@ class ReactionNetwork(MSONable):
         self.entries_list = reaction_iterator.rn.entries_list
 
         self.graph = nx.DiGraph()
-        self.PR_record = dict()
-        self.reactions: List[Reaction] = list()
 
         self.PRs: dict = dict()
         self.reachable_nodes: list = []
