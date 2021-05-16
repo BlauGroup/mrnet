@@ -160,7 +160,7 @@ class SerializeNetwork:
         self.constant_barrier = constant_barrier
         self.insert_duplicates = insert_duplicates
         self.dG_cutoff = dG_cutoff
-        self.entries_list = self.reaction_generator.rn.entries_list
+        self.entries_list = self.reaction_generator.entries_box.entries_list
         self.db_postfix = "/rn.sqlite"
         self.current_shard = -1
         self.number_of_reactions = 0

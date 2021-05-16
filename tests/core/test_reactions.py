@@ -18,7 +18,7 @@ from mrnet.core.reactions import (
     bucket_mol_entries,
     unbucket_mol_entries,
 )
-from mrnet.network.reaction_generation import ReactionGenerator
+from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 
 try:
     import openbabel as ob
@@ -60,7 +60,7 @@ def get_entries():
             else:
                 LiEC_reextended_entries.append(mol_entry)
 
-        RN = ReactionGenerator(LiEC_reextended_entries)
+        entries_box = EntriesBox(LiEC_reextended_entries)
 
         EC_mg = MoleculeGraph.with_local_env_strategy(
             Molecule.from_file(os.path.join(test_dir, "EC.xyz")), OpenBabelNN()
@@ -97,7 +97,7 @@ def get_entries():
         C1Li1O3_entry = None
         Li_entry = None
 
-        for entry in RN.entries_list:
+        for entry in entries_box.entries_list:
             if (
                 entry.formula == "C3 H4 O3"
                 and entry.num_bonds == 10
@@ -181,8 +181,7 @@ def get_entries():
                     Li_entry = entry
 
         return {
-            "entries": LiEC_reextended_entries,
-            "RN": RN,
+            "entries_box": entries_box,
             "LiEC": LiEC_entry,
             "LiEC_plus": LiEC_plus_entry,
             "EC_1": EC_1_entry,
@@ -232,7 +231,7 @@ class TestRedoxReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions = RedoxReaction.generate(entries["RN"].entries)
+        reactions = RedoxReaction.generate(entries["entries_box"].entries_dict)
 
         self.assertEqual(len(reactions), 273)
 
@@ -316,7 +315,9 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions = IntramolSingleBondChangeReaction.generate(entries["RN"].entries)
+        reactions = IntramolSingleBondChangeReaction.generate(
+            entries["entries_box"].entries_dict
+        )
         self.assertEqual(len(reactions), 73)
 
         reaction_set = set()
@@ -438,7 +439,7 @@ class TestIntermolecularReaction(PymatgenTest):
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
-        reactions = IntermolecularReaction.generate(entries["RN"].entries)
+        reactions = IntermolecularReaction.generate(entries["entries_box"].entries_dict)
 
         self.assertEqual(len(reactions), 3029)
         reaction_set = set()
@@ -557,7 +558,9 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions = CoordinationBondChangeReaction.generate(entries["RN"].entries)
+        reactions = CoordinationBondChangeReaction.generate(
+            entries["entries_box"].entries_dict
+        )
         self.assertEqual(len(reactions), 48)
 
         reaction_set = set()
@@ -692,7 +695,7 @@ class TestMetalHopReaction(PymatgenTest):
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_generate(self):
 
-        reactions = MetalHopReaction.generate(entries["RN"].entries)
+        reactions = MetalHopReaction.generate(entries["entries_box"].entries_dict)
         self.assertEqual(len(reactions), 4753)
 
         for r in reactions:

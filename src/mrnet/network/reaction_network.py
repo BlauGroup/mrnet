@@ -13,7 +13,7 @@ from monty.json import MSONable
 from monty.serialization import dumpfn, loadfn
 from networkx.readwrite import json_graph
 
-from mrnet.network.reaction_generation import ReactionIterator
+from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 from mrnet.core.mol_entry import MoleculeEntry
 from pymatgen.analysis.graphs import MoleculeGraph
 from mrnet.core.reactions import (
@@ -383,8 +383,8 @@ class ReactionNetwork(MSONable):
         self.solvent_dielectric = solvent_dielectric
         self.solvent_refractive_index = solvent_refractive_index
 
-        self.entries = reaction_iterator.rn.entries
-        self.entries_list = reaction_iterator.rn.entries_list
+        # self.entries = reaction_iterator.rn.entries
+        self.entries_list = reaction_iterator.entries_box.entries_list
 
         self.graph = nx.DiGraph()
 
@@ -1269,7 +1269,8 @@ class ReactionNetwork(MSONable):
 def path_finding_wrapper(
     mol_list: List[MoleculeEntry], init_mols: List[MoleculeEntry], target: MoleculeEntry
 ):
-    ri = ReactionIterator(mol_list)
+    entries_box = EntriesBox(mol_list)
+    ri = ReactionIterator(entries_box)
     rn = ReactionNetwork(ri)
 
     initial_inds = [e.parameters["ind"] for e in init_mols]

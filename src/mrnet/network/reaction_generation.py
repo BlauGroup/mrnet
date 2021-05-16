@@ -22,35 +22,17 @@ __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Daniel Bart
 __maintainer__ = "Daniel Barter"
 
 
-class ReactionGenerator(MSONable):
+class EntriesBox:
     """
-    Class to build a reaction network from entries
+    function for preprocessing a list of molecule centries. In particular, they get sorted
+    by features in the attribute entries_dict and given fixed explicit indices
     """
 
     def __init__(
         self,
         input_entries,
-        electron_free_energy=-2.15,
         temperature=298.15,
-        solvent_dielectric=18.5,
-        solvent_refractive_index=1.415,
-        replace_ind=True,
     ):
-        """
-        Generate a ReactionNetwork from a set of MoleculeEntries.
-
-        :param input_entries: list of MoleculeEntries which will make up the
-            network
-        :param electron_free_energy: float representing the Gibbs free energy
-            required to add an electron (in eV)
-        :param temperature: Temperature of the system, used for free energy
-            and rate constants (in K)
-        :param solvent_dielectric: Dielectric constant of the solvent medium
-        :param solvent_refractive_index: Refractive index of the solvent medium
-        :param replace_ind: True if reindex the entries if it there is already
-            indices in the input_entries
-        :return:
-        """
 
         entries = dict()
         entries_list = list()
@@ -124,11 +106,44 @@ class ReactionGenerator(MSONable):
 
         print(len(entries_list), "unique entries")
         # Add entry indices
-        if replace_ind:
-            for ii, entry in enumerate(entries_list):
-                entry.parameters["ind"] = ii
+        for ii, entry in enumerate(entries_list):
+            entry.parameters["ind"] = ii
 
-        entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
+        self.entries_dict = entries
+        self.entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
+
+
+class ReactionGenerator(MSONable):
+    """
+    Class to build a reaction network from entries
+    """
+
+    def __init__(
+        self,
+        entries_box,
+        electron_free_energy=-2.15,
+        temperature=298.15,
+        solvent_dielectric=18.5,
+        solvent_refractive_index=1.415,
+        replace_ind=True,
+    ):
+        """
+        Generate a ReactionNetwork from a set of MoleculeEntries.
+
+        :param input_entries: list of MoleculeEntries which will make up the
+            network
+        :param electron_free_energy: float representing the Gibbs free energy
+            required to add an electron (in eV)
+        :param temperature: Temperature of the system, used for free energy
+            and rate constants (in K)
+        :param solvent_dielectric: Dielectric constant of the solvent medium
+        :param solvent_refractive_index: Refractive index of the solvent medium
+        :param replace_ind: True if reindex the entries if it there is already
+            indices in the input_entries
+        :return:
+        """
+
+        self.entries_box = entries_box
 
         graph = nx.DiGraph()
 
@@ -136,14 +151,10 @@ class ReactionGenerator(MSONable):
         self.temperature = temperature
         self.solvent_dielectric = solvent_dielectric
         self.solvent_refractive_index = solvent_refractive_index
-
-        self.entries = entries
-        self.entries_list = entries_list
-
         self.graph = graph
         self.reactions = list()
 
-        self.entry_ids = {e.entry_id for e in self.entries_list}
+        self.entry_ids = {e.entry_id for e in self.entries_box.entries_list}
         self.matrix = None
         self.matrix_inverse = None
 
@@ -173,7 +184,7 @@ class ReactionGenerator(MSONable):
         print("build() start", time.time())
 
         # Add molecule nodes
-        for entry in self.entries_list:
+        for entry in self.entries_box.entries_list:
             self.graph.add_node(entry.parameters["ind"], bipartite=0)
 
         reaction_classes = [load_class(str(self.__module__), s) for s in reaction_types]
@@ -183,7 +194,8 @@ class ReactionGenerator(MSONable):
         # Generate reactions
         for r in reaction_classes:
             reactions = r.generate(
-                self.entries, determine_atom_mappings=determine_atom_mappings
+                self.entries_box.entries_dict,
+                determine_atom_mappings=determine_atom_mappings,
             )  # review
             all_reactions.append(reactions)
 
@@ -242,7 +254,7 @@ class ReactionGenerator(MSONable):
         :return: nested dictionary {r1:{c1:[],c2:[]}, r2:{c1:[],c2:[]}}
         """
         self.matrix = {}
-        for i in range(len(self.entries_list)):
+        for i in range(len(self.entries_box.entries_list)):
             self.matrix[i] = {}
         for node in self.graph.nodes:
             if isinstance(node, str):
@@ -328,7 +340,7 @@ class ReactionGenerator(MSONable):
         entry_ind = entry.parameters["ind"]  # type: int
 
         if mols_to_keep is None:
-            mols_to_keep = list(range(0, len(self.entries_list)))
+            mols_to_keep = list(range(0, len(self.entries_box.entries_list)))
         not_wanted_formula = single_elem_interm_ignore
 
         if (
@@ -444,7 +456,7 @@ class ReactionIterator:
         """
         (reactions, _,) = self.rn.identify_concerted_rxns_for_specific_intermediate(
             entry,
-            mols_to_keep=[e.parameters["ind"] for e in self.rn.entries_list],
+            mols_to_keep=[e.parameters["ind"] for e in self.entries_box.entries_list],
             single_elem_interm_ignore=self.single_elem_interm_ignore,
         )
 
@@ -455,11 +467,11 @@ class ReactionIterator:
             new_products = []
             for reactant_id in reactants:
                 if reactant_id is not None:
-                    new_reactants.append(self.rn.entries_list[reactant_id])
+                    new_reactants.append(self.entries_box.entries_list[reactant_id])
 
             for product_id in products:
                 if product_id is not None:
-                    new_products.append(self.rn.entries_list[product_id])
+                    new_products.append(self.entries_box.entries_list[product_id])
 
             cs = ConcertedReaction(
                 new_reactants,
@@ -482,11 +494,11 @@ class ReactionIterator:
         while not next_chunk:
             self.intermediate_index += 1
 
-            if self.intermediate_index == len(self.rn.entries_list):
+            if self.intermediate_index == len(self.entries_box.entries_list):
                 raise StopIteration()
 
             next_chunk = self.current_chunk = self.generate_concerted_reactions(
-                self.rn.entries_list[self.intermediate_index]
+                self.entries_box.entries_list[self.intermediate_index]
             )
 
             print(
@@ -515,11 +527,13 @@ class ReactionIterator:
 
     def __init__(
         self,
-        input_entries,
+        entries_box,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
     ):
 
-        self.rn = ReactionGenerator(input_entries)
+        self.entries_box = entries_box
+
+        self.rn = ReactionGenerator(entries_box)
         self.rn.build()
         self.single_elem_interm_ignore = single_elem_interm_ignore
 
