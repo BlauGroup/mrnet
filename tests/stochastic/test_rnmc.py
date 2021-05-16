@@ -82,12 +82,8 @@ class RNMC(PymatgenTest):
         # instead, for reaction_network_2 we symlink the database into the folder
         clone_database(network_folder_1, network_folder_2)
 
-        serialize_initial_state(
-            network_folder_1, molecule_entries, initial_state_data_1
-        )
-        serialize_initial_state(
-            network_folder_2, molecule_entries, initial_state_data_2
-        )
+        serialize_initial_state(network_folder_1, entries_box, initial_state_data_1)
+        serialize_initial_state(network_folder_2, entries_box, initial_state_data_2)
         serialize_simulation_parameters(param_folder, number_of_threads=4)
 
         run_simulator(network_folder_1, param_folder)

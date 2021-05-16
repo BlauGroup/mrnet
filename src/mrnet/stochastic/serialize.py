@@ -352,7 +352,7 @@ def rate(dG, temperature, constant_barrier):
 
 def serialize_initial_state(
     folder: str,
-    entries_list,
+    entries_box,
     initial_state_data: List[Tuple[MoleculeEntry, int]],
     factor_zero: float = 1.0,
     factor_two: float = 1.0,
@@ -373,7 +373,7 @@ def serialize_initial_state(
     with open(folder + factor_duplicate_postfix, "w") as f:
         f.write(("%e" % factor_duplicate) + "\n")
 
-    initial_state = np.zeros(len(entries_list))
+    initial_state = np.zeros(len(entries_box.entries_list))
     for (mol_entry, count) in initial_state_data:
         index = mol_entry.parameters["ind"]
         initial_state[index] = count

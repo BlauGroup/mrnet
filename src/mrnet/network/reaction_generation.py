@@ -145,7 +145,6 @@ class ReactionGenerator(MSONable):
 
         self.entries_box = entries_box
 
-
         self.electron_free_energy = electron_free_energy
         self.temperature = temperature
         self.solvent_dielectric = solvent_dielectric
@@ -180,11 +179,9 @@ class ReactionGenerator(MSONable):
 
         print("build() start", time.time())
 
-
         graph = nx.DiGraph()
         self.graph = graph
         self.reactions = list()
-
 
         # Add molecule nodes
         for entry in self.entries_box.entries_list:
