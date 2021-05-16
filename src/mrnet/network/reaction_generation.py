@@ -145,14 +145,11 @@ class ReactionGenerator(MSONable):
 
         self.entries_box = entries_box
 
-        graph = nx.DiGraph()
 
         self.electron_free_energy = electron_free_energy
         self.temperature = temperature
         self.solvent_dielectric = solvent_dielectric
         self.solvent_refractive_index = solvent_refractive_index
-        self.graph = graph
-        self.reactions = list()
 
         self.entry_ids = {e.entry_id for e in self.entries_box.entries_list}
         self.matrix = None
@@ -182,6 +179,12 @@ class ReactionGenerator(MSONable):
         """
 
         print("build() start", time.time())
+
+
+        graph = nx.DiGraph()
+        self.graph = graph
+        self.reactions = list()
+
 
         # Add molecule nodes
         for entry in self.entries_box.entries_list:
