@@ -489,7 +489,6 @@ class ReactionNetwork(MSONable):
         starts: List[int],
         weight: str,
         max_iter=25,
-        generate_test_files=False,
     ):  # -> Tuple[Union[Dict[Union[int, Any], dict], Any], Any]:
         """
             A method to solve all of the prerequisites found in
@@ -570,10 +569,6 @@ class ReactionNetwork(MSONable):
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
 
-            if ii == 4 and generate_test_files:
-                self.generate_pre_find_path_files(
-                    PRs, cost_from_start, old_solved_PRs, min_cost
-                )
 
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts,
@@ -582,21 +577,16 @@ class ReactionNetwork(MSONable):
                 cost_from_start,
                 min_cost,
                 PRs,
-                generate=generate_test_files,
             )
 
             solved_PRs = copy.deepcopy(old_solved_PRs)
 
-            if ii == 4 and generate_test_files:
-                self.generate_pre_id_solved_PRs_files(PRs, cost_from_start, solved_PRs)
 
             solved_PRs, new_solved_PRs, cost_from_start = self.identify_solved_PRs(
                 PRs, solved_PRs, cost_from_start
             )
 
             # print(ii, len(old_solved_PRs), len(new_solved_PRs), new_solved_PRs)
-            if ii == 4 and generate_test_files:
-                self.generate_pre_update_eweights_files(min_cost)
             attrs = self.update_edge_weights(min_cost, orig_graph)
 
             self.min_cost = copy.deepcopy(min_cost)
