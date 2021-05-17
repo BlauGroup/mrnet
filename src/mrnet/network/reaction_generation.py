@@ -164,8 +164,7 @@ class ReactionGenerator(MSONable):
                 "CoordinationBondChangeReaction",
             }
         ),
-        determine_atom_mappings: bool = True,
-        build_matrix=False,
+        determine_atom_mappings: bool = True
     ) -> nx.DiGraph:
         """
             A method to build the reaction network graph
@@ -181,7 +180,6 @@ class ReactionGenerator(MSONable):
 
         graph = nx.DiGraph()
         self.graph = graph
-        self.reactions = list()
 
         # Add molecule nodes
         for entry in self.entries_box.entries_list:
@@ -233,8 +231,7 @@ class ReactionGenerator(MSONable):
             coord_c,
         )
 
-        if build_matrix:
-            self.build_matrix()
+        self.build_matrix()
 
         print("build() end", time.time())
 
@@ -348,8 +345,6 @@ class ReactionGenerator(MSONable):
             and entry.parameters["ind"] in mols_to_keep
         ):
 
-            if self.matrix is None:
-                self.build_matrix()
             if update_matrix:
                 self.matrix2 = copy.deepcopy(self.matrix)
 
