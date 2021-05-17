@@ -401,9 +401,7 @@ class ReactionNetwork(MSONable):
         for entry in self.entries_list:
             self.graph.add_node(entry.parameters["ind"], bipartite=0)
 
-        self.reactions = []
         for reaction in reaction_iterator:
-            self.reactions.append(reactions)
             self.add_reaction(reaction.graph_representation())
 
         self.PR_record = self.build_PR_record()  # begin creating PR list
