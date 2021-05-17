@@ -403,6 +403,7 @@ class ReactionNetwork(MSONable):
 
         self.reactions = []
         for reaction in reaction_iterator:
+            self.reactions.append(reactions)
             self.add_reaction(reaction.graph_representation())
 
         self.PR_record = self.build_PR_record()  # begin creating PR list
