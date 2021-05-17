@@ -1189,6 +1189,7 @@ class ReactionNetwork(MSONable):
         )
         return node_str
 
+
 def path_finding_wrapper(
     mol_list: List[MoleculeEntry], init_mols: List[MoleculeEntry], target: MoleculeEntry
 ):

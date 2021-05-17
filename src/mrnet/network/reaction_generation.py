@@ -164,7 +164,7 @@ class ReactionGenerator(MSONable):
                 "CoordinationBondChangeReaction",
             }
         ),
-        determine_atom_mappings: bool = True
+        determine_atom_mappings: bool = True,
     ) -> nx.DiGraph:
         """
             A method to build the reaction network graph
