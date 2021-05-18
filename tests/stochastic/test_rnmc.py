@@ -89,7 +89,7 @@ class RNMC(PymatgenTest):
         run_simulator(network_folder_1, param_folder)
         run_simulator(network_folder_2, param_folder)
 
-        sa_1 = SimulationAnalyzer(network_folder_1, molecule_entries)
+        sa_1 = SimulationAnalyzer(network_folder_1, entries_box)
         sa_1.generate_pathway_report(ledc_mol_entry, 10)
         sa_1.generate_consumption_report(ledc_mol_entry)
         sa_1.generate_reaction_tally_report(10)
@@ -97,7 +97,7 @@ class RNMC(PymatgenTest):
         states_1 = sa_1.final_state_analysis(profiles_1["final_states"])
         rxn_counts_1 = sa_1.rank_reaction_counts()
 
-        sa_2 = SimulationAnalyzer(network_folder_2, molecule_entries)
+        sa_2 = SimulationAnalyzer(network_folder_2, entries_box)
         sa_2.generate_pathway_report(ledc_mol_entry, 10)
         sa_2.generate_consumption_report(ledc_mol_entry)
         sa_2.generate_reaction_tally_report(10)
