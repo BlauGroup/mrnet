@@ -27,6 +27,7 @@ from mrnet.core.reactions import (
     general_graph_rep,
     rexp,
     softplus,
+    default_cost,
     MetalHopReaction,
 )
 from mrnet.utils.classes import load_class
@@ -284,6 +285,10 @@ class ReactionPath(MSONable):
                         class_instance.pure_cost += ReactionNetwork.rexp(
                             graph.nodes[step]["free_energy"]
                         )
+                    elif weight == "default_cost":
+                        class_instance.pure_cost += ReactionNetwork.default_cost(
+                            graph.nodes[step]["free_energy"]
+                        )
 
                     class_instance.overall_free_energy_change += graph.nodes[step][
                         "free_energy"
@@ -429,6 +434,96 @@ class ReactionNetwork(MSONable):
         Method to determine edge weight using exponent(dG/kt) cost function
         """
         return rexp(free_energy)
+
+    @staticmethod
+    def default_cost(free_energy: float) -> float:
+        """
+        Method to determine edge weight using exponent(dG/kt) + 1 cost function
+        """
+        return default_cost(free_energy)
+
+    def build(
+        self,
+        reaction_types: Union[Set, FrozenSet] = frozenset(
+            {
+                "RedoxReaction",
+                "IntramolSingleBondChangeReaction",
+                "IntermolecularReaction",
+                "CoordinationBondChangeReaction",
+            }
+        ),
+        determine_atom_mappings: bool = True,
+        build_matrix=False,
+    ) -> nx.DiGraph:
+        """
+            A method to build the reaction network graph
+
+        :param reaction_types (set/frozenset): set/frozenset of all the reactions
+            class to include while building the graph
+        :param determine_atom_mappings (bool): If True (default), create an atom
+            mapping between reactants and products in a given reaction
+        :return: nx.DiGraph
+        """
+
+        print("build() start", time.time())
+
+        # Add molecule nodes
+        for entry in self.entries_list:
+            self.graph.add_node(entry.parameters["ind"], bipartite=0)
+
+        reaction_classes = [load_class(str(self.__module__), s) for s in reaction_types]
+
+        all_reactions = list()
+
+        # Generate reactions
+        for r in reaction_classes:
+            reactions = r.generate(
+                self.entries, determine_atom_mappings=determine_atom_mappings
+            )  # review
+            all_reactions.append(reactions)
+
+        all_reactions = [i for i in all_reactions if i]
+        self.reactions = list(itertools.chain.from_iterable(all_reactions))
+
+        redox_c = 0
+        inter_c = 0
+        intra_c = 0
+        coord_c = 0
+
+        for ii, r in enumerate(self.reactions):
+            r.parameters["ind"] = ii
+            if r.__class__.__name__ == "RedoxReaction":
+                redox_c += 1
+                r.electron_free_energy = self.electron_free_energy
+                r.set_free_energy()
+                r.set_rate_constant()
+            elif r.__class__.__name__ == "IntramolSingleBondChangeReaction":
+                intra_c += 1
+            elif r.__class__.__name__ == "IntermolecularReaction":
+                inter_c += 1
+            elif r.__class__.__name__ == "CoordinationBondChangeReaction":
+                coord_c += 1
+            self.add_reaction(r.graph_representation())  # add graph element here
+
+        print(
+            "redox: ",
+            redox_c,
+            "inter: ",
+            inter_c,
+            "intra: ",
+            intra_c,
+            "coord: ",
+            coord_c,
+        )
+        self.PR_record = self.build_PR_record()  # begin creating PR list
+        self.Reactant_record = self.build_reactant_record()  # begin creating rct list
+
+        if build_matrix:
+            self.build_matrix()
+
+        print("build() end", time.time())
+
+        return self.graph
 
     def add_reaction(self, graph_representation: nx.DiGraph):
         """

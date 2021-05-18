@@ -2494,6 +2494,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
                 softplus=softplus(free_energy_A),
                 exponent=exponent(free_energy_A),
                 rexp=rexp(free_energy_A),
+                default_cost=default_cost(free_energy_A),
                 weight=1.0,
                 PRs=[
                     int(r)
@@ -2508,6 +2509,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             softplus=0.0,
             exponent=0.0,
             rexp=0.0,
+            default_cost=0.0,
             weight=1.0,
         )
 
@@ -2525,6 +2527,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
                 softplus=softplus(free_energy_B),
                 exponent=exponent(free_energy_B),
                 rexp=rexp(free_energy_B),
+                default_cost=default_cost(free_energy_B),
                 weight=1.0,
                 PRs=[
                     int(p)
@@ -2539,6 +2542,7 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
             softplus=0.0,
             exponent=0.0,
             rexp=0.0,
+            default_cost=0.0,
             weight=1.0,
         )
 
@@ -2570,6 +2574,15 @@ def rexp(free_energy: float) -> float:
         d = np.array([[free_energy]], dtype=np.float128)
         r = np.exp(38.94 * d)
 
+    return r[0][0]
+
+
+def default_cost(free_energy: float) -> float:
+    """
+    Method to determine edge weight using exponent(dG/kt) + 1 cost function
+    """
+    d = np.array([[free_energy]], dtype=np.float128)
+    r = np.exp(d / (ROOM_TEMP * KB)) + 1
     return r[0][0]
 
 
