@@ -241,22 +241,22 @@ class TestRedoxReaction(PymatgenTest):
             if r.reactant == entries["EC_-1"]:
                 self.assertEqual(r.product.entry_id, entries["EC_0"].entry_id)
 
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
-        ents = bucket_mol_entries([entries["EC_-1"], entries["EC_0"], entries["EC_1"]])
+    # @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
+    # def test_atom_mapping(self):
+    #     ents = bucket_mol_entries([entries["EC_-1"], entries["EC_0"], entries["EC_1"]])
 
-        reactions = RedoxReaction.generate(ents)
-        self.assertEqual(len(reactions), 2)
+    #     reactions = RedoxReaction.generate(ents)
+    #     self.assertEqual(len(reactions), 2)
 
-        for r in reactions:
-            self.assertEqual(
-                r.reactants_atom_mapping,
-                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
-            )
-            self.assertEqual(
-                r.products_atom_mapping,
-                [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
-            )
+    #     for r in reactions:
+    #         self.assertEqual(
+    #             r.reactants_atom_mapping,
+    #             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
+    #         )
+    #         self.assertEqual(
+    #             r.products_atom_mapping,
+    #             [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}],
+    #         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
@@ -347,25 +347,25 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
             if r.reactant == entries["LiEC_RO"]:
                 self.assertEqual(r.product.entry_id, entries["LiEC"].entry_id)
 
-    @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
-    def test_atom_mapping(self):
+    # @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
+    # def test_atom_mapping(self):
 
-        ents = bucket_mol_entries([entries["LiEC_RO"], entries["LiEC"]])
+    #     ents = bucket_mol_entries([entries["LiEC_RO"], entries["LiEC"]])
 
-        reactions = IntramolSingleBondChangeReaction.generate(ents)
-        self.assertEqual(len(reactions), 1)
-        rxn = reactions[0]
-        self.assertEqual(rxn.reactant.entry_id, entries["LiEC_RO"].entry_id)
-        self.assertEqual(rxn.product.entry_id, entries["LiEC"].entry_id)
+    #     reactions = IntramolSingleBondChangeReaction.generate(ents)
+    #     self.assertEqual(len(reactions), 1)
+    #     rxn = reactions[0]
+    #     self.assertEqual(rxn.reactant.entry_id, entries["LiEC_RO"].entry_id)
+    #     self.assertEqual(rxn.product.entry_id, entries["LiEC"].entry_id)
 
-        self.assertEqual(
-            rxn.reactants_atom_mapping,
-            [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
-        )
-        self.assertEqual(
-            rxn.products_atom_mapping,
-            [{0: 2, 1: 3, 2: 1, 3: 4, 4: 5, 5: 0, 6: 6, 7: 9, 8: 10, 9: 7, 10: 8}],
-        )
+    #     self.assertEqual(
+    #         rxn.reactants_atom_mapping,
+    #         [{0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10}],
+    #     )
+    #     self.assertEqual(
+    #         rxn.products_atom_mapping,
+    #         [{0: 2, 1: 3, 2: 1, 3: 4, 4: 5, 5: 0, 6: 6, 7: 9, 8: 10, 9: 7, 10: 8}],
+    #     )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
     def test_free_energy(self):
