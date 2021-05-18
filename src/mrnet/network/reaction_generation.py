@@ -32,85 +32,91 @@ class EntriesBox:
         self,
         input_entries,
         temperature=298.15,
+        reindex = True
     ):
+        if reindex:
 
-        entries = dict()
-        entries_list = list()
+            entries = dict()
+            entries_list = list()
 
-        print(len(input_entries), "input entries")
+            print(len(input_entries), "input entries")
 
-        # Filter out unconnected entries, aka those that contain distinctly
-        # separate molecules which are not connected via a bond
-        connected_entries = list()
-        for entry in input_entries:
-            if len(entry.molecule) > 1:
-                if nx.is_weakly_connected(entry.graph):
+            # Filter out unconnected entries, aka those that contain distinctly
+            # separate molecules which are not connected via a bond
+            connected_entries = list()
+            for entry in input_entries:
+                if len(entry.molecule) > 1:
+                    if nx.is_weakly_connected(entry.graph):
+                        connected_entries.append(entry)
+                else:
                     connected_entries.append(entry)
-            else:
-                connected_entries.append(entry)
-        print(len(connected_entries), "connected entries")
+            print(len(connected_entries), "connected entries")
 
-        def get_formula(x):
-            return x.formula
+            def get_formula(x):
+                return x.formula
 
-        def get_num_bonds(x):
-            return x.num_bonds
+            def get_num_bonds(x):
+                return x.num_bonds
 
-        def get_charge(x):
-            return x.charge
+            def get_charge(x):
+                return x.charge
 
-        def get_free_energy(x):
-            return x.get_free_energy(temperature=temperature)
+            def get_free_energy(x):
+                return x.get_free_energy(temperature=temperature)
 
-        # Sort by formula
-        sorted_entries_0 = sorted(connected_entries, key=get_formula)
-        for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
-            sorted_entries_1 = sorted(list(g1), key=get_num_bonds)
-            entries[k1] = dict()
-            # Sort by number of bonds
-            for k2, g2 in itertools.groupby(sorted_entries_1, get_num_bonds):
-                sorted_entries_2 = sorted(list(g2), key=get_charge)
-                entries[k1][k2] = dict()
-                # Sort by charge
-                for k3, g3 in itertools.groupby(sorted_entries_2, get_charge):
-                    sorted_entries_3 = sorted(list(g3), key=get_free_energy)
-                    if len(sorted_entries_3) > 1:
-                        unique = list()
-                        for entry in sorted_entries_3:
-                            isomorphic_found = False
-                            # Sort by graph isomorphism, taking the isomorphic
-                            # entry with the lowest free energy
-                            for ii, Uentry in enumerate(unique):
-                                if entry.mol_graph.isomorphic_to(Uentry.mol_graph):
-                                    isomorphic_found = True
-                                    if (
-                                        entry.get_free_energy() is not None
-                                        and Uentry.get_free_energy() is not None
-                                    ):
-                                        if entry.get_free_energy(
-                                            temperature
-                                        ) < Uentry.get_free_energy(temperature):
+            # Sort by formula
+            sorted_entries_0 = sorted(connected_entries, key=get_formula)
+            for k1, g1 in itertools.groupby(sorted_entries_0, get_formula):
+                sorted_entries_1 = sorted(list(g1), key=get_num_bonds)
+                entries[k1] = dict()
+                # Sort by number of bonds
+                for k2, g2 in itertools.groupby(sorted_entries_1, get_num_bonds):
+                    sorted_entries_2 = sorted(list(g2), key=get_charge)
+                    entries[k1][k2] = dict()
+                    # Sort by charge
+                    for k3, g3 in itertools.groupby(sorted_entries_2, get_charge):
+                        sorted_entries_3 = sorted(list(g3), key=get_free_energy)
+                        if len(sorted_entries_3) > 1:
+                            unique = list()
+                            for entry in sorted_entries_3:
+                                isomorphic_found = False
+                                # Sort by graph isomorphism, taking the isomorphic
+                                # entry with the lowest free energy
+                                for ii, Uentry in enumerate(unique):
+                                    if entry.mol_graph.isomorphic_to(Uentry.mol_graph):
+                                        isomorphic_found = True
+                                        if (
+                                            entry.get_free_energy() is not None
+                                            and Uentry.get_free_energy() is not None
+                                        ):
+                                            if entry.get_free_energy(
+                                                temperature
+                                            ) < Uentry.get_free_energy(temperature):
+                                                unique[ii] = entry
+                                        elif entry.get_free_energy() is not None:
                                             unique[ii] = entry
-                                    elif entry.get_free_energy() is not None:
-                                        unique[ii] = entry
-                                    elif entry.energy < Uentry.energy:
-                                        unique[ii] = entry
-                                    break
-                            if not isomorphic_found:
-                                unique.append(entry)
-                        entries[k1][k2][k3] = unique
-                    else:
-                        entries[k1][k2][k3] = sorted_entries_3
-                    for entry in entries[k1][k2][k3]:
-                        entries_list.append(entry)
+                                        elif entry.energy < Uentry.energy:
+                                            unique[ii] = entry
+                                        break
+                                if not isomorphic_found:
+                                    unique.append(entry)
+                            entries[k1][k2][k3] = unique
+                        else:
+                            entries[k1][k2][k3] = sorted_entries_3
+                        for entry in entries[k1][k2][k3]:
+                            entries_list.append(entry)
 
-        print(len(entries_list), "unique entries")
-        # Add entry indices
-        for ii, entry in enumerate(entries_list):
-            entry.parameters["ind"] = ii
+            print(len(entries_list), "unique entries")
+            # Add entry indices
+            for ii, entry in enumerate(entries_list):
+                entry.parameters["ind"] = ii
 
-        self.entries_dict = entries
-        self.entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
+            self.entries_dict = entries
+            self.entries_list = sorted(
+                entries_list, key=lambda x: x.parameters["ind"])
+        else:
+            self.entries_dict = {}
+            self.entries_list = input_entries
 
 
 class ReactionGenerator(MSONable):
