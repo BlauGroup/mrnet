@@ -25,6 +25,7 @@ from mrnet.core.reactions import (
     general_graph_rep,
     rexp,
     softplus,
+    default_cost,
     MetalHopReaction,
 )
 from mrnet.utils.classes import load_class
@@ -293,6 +294,10 @@ class ReactionPath(MSONable):
                         class_instance.pure_cost += ReactionNetwork.rexp(
                             graph.nodes[step]["free_energy"]
                         )
+                    elif weight == "default_cost":
+                        class_instance.pure_cost += ReactionNetwork.default_cost(
+                            graph.nodes[step]["free_energy"]
+                        )
 
                     class_instance.overall_free_energy_change += graph.nodes[step][
                         "free_energy"
@@ -549,6 +554,13 @@ class ReactionNetwork(MSONable):
         Method to determine edge weight using exponent(dG/kt) cost function
         """
         return rexp(free_energy)
+
+    @staticmethod
+    def default_cost(free_energy: float) -> float:
+        """
+        Method to determine edge weight using exponent(dG/kt) + 1 cost function
+        """
+        return default_cost(free_energy)
 
     def build(
         self,
