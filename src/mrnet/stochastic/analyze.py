@@ -552,10 +552,12 @@ class SimulationAnalyzer:
             f.write("\\newpage\n\n\n")
 
             if sort_by_frequency:
-                sort_function = lambda item: -item[1]["frequency"]
+                def sort_function(item):
+                    return -item[1]["frequency"]
 
             else:
-                sort_function = lambda item: item[1]["weight"]
+                def sort_function(item):
+                    return item[1]["weight"]
 
             count = 1
             for _, unique_pathway in sorted(pathways.items(), key=sort_function):
