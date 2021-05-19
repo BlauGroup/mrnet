@@ -240,7 +240,7 @@ class SimulationAnalyzer:
         self.reaction_data: Dict[int, dict] = {}
 
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
-        self.reaction_histories = list()
+        self.reaction_histories: List[List[int]] = list()
         self.time_histories = list()
         self.observed_reactions: Dict[int, int] = {}
 
@@ -264,7 +264,7 @@ class SimulationAnalyzer:
                 for line in f:
                     reaction_history.append(int(line.strip()))
 
-            self.reaction_histories.append(np.array(reaction_history))
+            self.reaction_histories.append(reaction_history)
 
         for filename in time_histories_contents:
             time_history = list()
