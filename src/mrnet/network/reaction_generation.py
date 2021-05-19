@@ -529,12 +529,20 @@ class ReactionIterator:
     def __init__(
         self,
         entries_box,
+        electron_free_energy=-2.15,
+        temperature=298.15,
+        solvent_dielectric=18.5,
+        solvent_refractive_index=1.415,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
     ):
 
         self.entries_box = entries_box
 
-        self.rn = ReactionGenerator(entries_box)
+        self.rn = ReactionGenerator(entries_box,
+                                    electron_free_energy=electron_free_energy,
+                                    temperature=temperature,
+                                    solvent_dielectric=solvent_dielectric,
+                                    solvent_refractive_index=solvent_refractive_index)
         self.rn.build()
         self.single_elem_interm_ignore = single_elem_interm_ignore
 
