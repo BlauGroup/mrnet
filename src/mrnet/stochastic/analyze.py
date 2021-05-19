@@ -552,10 +552,12 @@ class SimulationAnalyzer:
             f.write("\\newpage\n\n\n")
 
             if sort_by_frequency:
+
                 def sort_function(item):
                     return -item[1]["frequency"]
 
             else:
+
                 def sort_function(item):
                     return item[1]["weight"]
 
