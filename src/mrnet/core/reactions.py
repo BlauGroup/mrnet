@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from collections import Counter
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
-
+import math
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
 import numpy as np
@@ -2576,14 +2576,11 @@ def rexp(free_energy: float) -> float:
 
     return r[0][0]
 
-
 def default_cost(free_energy: float) -> float:
     """
     Method to determine edge weight using exponent(dG/kt) + 1 cost function
     """
-    d = np.array([[free_energy]], dtype=np.float128)
-    r = np.exp(d / (ROOM_TEMP * KB)) + 1
-    return r[0][0]
+    return math.exp(min(10.0, free_energy) / (ROOM_TEMP * KB)) + 1
 
 
 def is_isomorphic(

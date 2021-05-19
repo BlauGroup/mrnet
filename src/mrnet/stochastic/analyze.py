@@ -18,6 +18,7 @@ from mrnet.utils.visualization import (
     visualize_molecules,
 )
 
+from mrnet.core.reactions import default_cost
 from mrnet.stochastic.serialize import rate
 from mrnet.network.reaction_generation import EntriesBox
 
@@ -186,16 +187,6 @@ class NetworkUpdater:
         self.update_rates(update_list)
 
 
-def collect_duplicate_pathways(pathways: List[List[int]]) -> Dict[frozenset, dict]:
-    pathway_dict: Dict[frozenset, dict] = {}
-    for pathway in pathways:
-        key = frozenset(pathway)
-        if key in pathway_dict:
-            pathway_dict[key]["frequency"] += 1
-        else:
-            pathway_dict[key] = {"pathway": pathway, "frequency": 1}
-    return pathway_dict
-
 
 def update_state(state, reaction):
     for species_index in reaction["reactants"]:
@@ -306,6 +297,31 @@ class SimulationAnalyzer:
             reaction["dG"] = res[4]
             self.reaction_data[reaction_index] = reaction
             return reaction
+
+    def compute_path_weight(self, pathway):
+        weight = 0.0
+        for reaction_index in pathway:
+            reaction = self.index_to_reaction(reaction_index)
+            weight += default_cost(reaction["dG"])
+        return weight
+
+    def collect_duplicate_pathways(
+            self,
+            pathways: List[List[int]]) -> Dict[frozenset, dict]:
+        pathway_dict: Dict[frozenset, dict] = {}
+        for pathway in pathways:
+            key = frozenset(pathway)
+            if key in pathway_dict:
+                pathway_dict[key]["frequency"] += 1
+            else:
+                path_weight = self.compute_path_weight(pathway)
+                pathway_dict[key] = {"pathway": pathway,
+                                     "frequency": 1,
+                                     "weight": path_weight}
+
+        return pathway_dict
+
+
 
     def extract_species_consumption_info(
         self, target_species_index: int
@@ -433,7 +449,7 @@ class SimulationAnalyzer:
 
                 reaction_pathway_list.append(pathway)
 
-        reaction_pathway_dict = collect_duplicate_pathways(reaction_pathway_list)
+        reaction_pathway_dict = self.collect_duplicate_pathways(reaction_pathway_list)
         self.reaction_pathways_dict[target_species_index] = reaction_pathway_dict
 
     def generate_consumption_report(self, mol_entry: MoleculeEntry):
@@ -499,7 +515,7 @@ class SimulationAnalyzer:
 
             generate_latex_footer(f)
 
-    def generate_pathway_report(self, mol_entry: MoleculeEntry, min_frequency: int):
+    def generate_pathway_report(self, mol_entry: MoleculeEntry, number_of_pathways=100, sort_by_frequency = True):
         target_species_index = mol_entry.parameters["ind"]
 
         if target_species_index not in self.reaction_pathways_dict:
@@ -523,19 +539,29 @@ class SimulationAnalyzer:
 
             f.write("\\newpage\n\n\n")
 
+            if sort_by_frequency:
+                sort_function = lambda item: -item[1]["frequency"]
+
+            else:
+                sort_function = lambda item: item[1]["weight"]
+
+            count = 0
             for _, unique_pathway in sorted(
-                pathways.items(), key=lambda item: -item[1]["frequency"]
+                    pathways.items(), key=sort_function
             ):
 
                 frequency = unique_pathway["frequency"]
-                if frequency > min_frequency:
-                    f.write(str(frequency) + " occurrences:\n")
+                weight = unique_pathway["weight"]
 
-                    for reaction_index in unique_pathway["pathway"]:
-                        self.latex_emit_reaction(f, reaction_index)
+                f.write("path weight: " + str(weight) + '\n\n')
+                f.write(str(frequency) + " occurrences:\n")
 
-                    f.write("\\newpage\n")
-                else:
+                for reaction_index in unique_pathway["pathway"]:
+                    self.latex_emit_reaction(f, reaction_index)
+
+                f.write("\\newpage\n")
+                count += 1
+                if count > number_of_pathways:
                     break
 
             generate_latex_footer(f)
