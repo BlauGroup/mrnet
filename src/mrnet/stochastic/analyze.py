@@ -535,8 +535,13 @@ class SimulationAnalyzer:
 
             f.write("pathway report for\n\n")
             latex_emit_molecule(f, target_species_index)
-            self.latex_emit_initial_state(f)
+            if sort_by_frequency:
+                f.write("\n\ntop " + str(number_of_pathways) + " pathways sorted by frequency")
+            else:
+                f.write("\n\ntop " + str(number_of_pathways) + " pathways sorted by cost")
 
+            f.write("\\vspace{1cm}")
+            self.latex_emit_initial_state(f)
             f.write("\\newpage\n\n\n")
 
             if sort_by_frequency:
