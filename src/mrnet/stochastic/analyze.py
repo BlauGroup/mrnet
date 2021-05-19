@@ -518,13 +518,20 @@ class SimulationAnalyzer:
     def generate_pathway_report(self, mol_entry: MoleculeEntry, number_of_pathways=100, sort_by_frequency = True):
         target_species_index = mol_entry.parameters["ind"]
 
+
         if target_species_index not in self.reaction_pathways_dict:
             self.extract_reaction_pathways(target_species_index)
+
+        if sort_by_frequency:
+            suffix = "frequency"
+        else:
+            suffix = "cost"
 
         with open(
             self.reports_folder
             + "/pathway_report_"
             + str(target_species_index)
+            + "_" + suffix
             + ".tex",
             "w",
         ) as f:
