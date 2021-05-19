@@ -550,7 +550,7 @@ class SimulationAnalyzer:
             else:
                 sort_function = lambda item: item[1]["weight"]
 
-            count = 0
+            count = 1
             for _, unique_pathway in sorted(
                     pathways.items(), key=sort_function
             ):
@@ -558,6 +558,7 @@ class SimulationAnalyzer:
                 frequency = unique_pathway["frequency"]
                 weight = unique_pathway["weight"]
 
+                f.write("pathway " + str(count) + '\n\n')
                 f.write("path weight: " + str(weight) + '\n\n')
                 f.write(str(frequency) + " occurrences:\n")
 
