@@ -28,12 +28,7 @@ class EntriesBox:
     by features in the attribute entries_dict and given fixed explicit indices
     """
 
-    def __init__(
-        self,
-        input_entries,
-        temperature=298.15,
-        reindex = True
-    ):
+    def __init__(self, input_entries, temperature=298.15, reindex=True):
         if reindex:
 
             entries = dict()
@@ -112,8 +107,7 @@ class EntriesBox:
                 entry.parameters["ind"] = ii
 
             self.entries_dict = entries
-            self.entries_list = sorted(
-                entries_list, key=lambda x: x.parameters["ind"])
+            self.entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
         else:
             self.entries_dict = {}
             self.entries_list = input_entries

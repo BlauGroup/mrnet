@@ -662,7 +662,6 @@ class ReactionNetwork(MSONable):
                     if start not in cost_from_start[PR]:
                         cost_from_start[PR][start] = "unsolved"
 
-
             PRs, cost_from_start, min_cost = self.find_path_cost(
                 starts,
                 weight,
@@ -673,7 +672,6 @@ class ReactionNetwork(MSONable):
             )
 
             solved_PRs = copy.deepcopy(old_solved_PRs)
-
 
             solved_PRs, new_solved_PRs, cost_from_start = self.identify_solved_PRs(
                 PRs, solved_PRs, cost_from_start

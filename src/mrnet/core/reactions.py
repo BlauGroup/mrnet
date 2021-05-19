@@ -2576,6 +2576,7 @@ def rexp(free_energy: float) -> float:
 
     return r[0][0]
 
+
 def default_cost(free_energy: float) -> float:
     """
     Method to determine edge weight using exponent(dG/kt) + 1 cost function
