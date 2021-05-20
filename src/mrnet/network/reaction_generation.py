@@ -475,7 +475,11 @@ class ReactionIterator:
             )
 
             if cs:
-                return_list.append(cs)
+                 return_list.append(
+                     (tuple(reactants),
+                      tuple(products),
+                      cs.free_energy_A,
+                      cs.free_energy_B))
             else:
                 print("concerted reaction not created:")
                 print("reactants:", reactants)
@@ -534,7 +538,14 @@ class ReactionIterator:
 
         # generator state
 
-        first_chunk = self.rn.reactions
+        first_chunk_reaction_objects = self.rn.reactions
+        first_chunk = [
+            ( tuple([int(r) for r in reaction.reactant_indices]),
+              tuple([int(r) for r in reaction.product_indices]),
+              reaction.free_energy_A,
+              reaction.free_energy_B
+            )
+            for reaction in first_chunk_reaction_objects]
 
         self.current_chunk = first_chunk
         self.chunk_index = 0

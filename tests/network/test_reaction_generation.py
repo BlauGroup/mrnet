@@ -49,8 +49,8 @@ class TestReactionGenerator(PymatgenTest):
         for reaction in reaction_generator:
             reactions.append(
                 (
-                    tuple([int(r) for r in reaction.reactant_indices]),
-                    tuple([int(r) for r in reaction.product_indices]),
+                    reaction[0],
+                    reaction[1]
                 )
             )
 
