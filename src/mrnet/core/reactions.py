@@ -1,5 +1,6 @@
 import copy
 import itertools
+import math
 from abc import ABCMeta, abstractmethod
 from collections import Counter
 from collections.abc import Iterable
@@ -2586,9 +2587,7 @@ def default_cost(free_energy: float) -> float:
     """
     Method to determine edge weight using exponent(dG/kt) + 1 cost function
     """
-    d = np.array([[free_energy]], dtype=np.float128)
-    r = np.exp(d / (ROOM_TEMP * KB)) + 1
-    return r[0][0]
+    return math.exp(min(10.0, free_energy) / (ROOM_TEMP * KB)) + 1
 
 
 def is_isomorphic(
