@@ -1688,74 +1688,13 @@ class ReactionNetwork(MSONable):
         for i in RN.entries_list:
             mol_id_to_mol_entry_dict[int(i.parameters["ind"])] = i
         for reaction in reactions:
-            if len(reaction[0]) == 1 and len(reaction[1]) == 1:
-                assert int(reaction[0][0]) in RN.graph.nodes
-                assert int(reaction[1][0]) in RN.graph.nodes
-                reactants = mol_id_to_mol_entry_dict[int(reaction[0][0])]
-                products = mol_id_to_mol_entry_dict[int(reaction[1][0])]
-                cr = ConcertedReaction([reactants], [products])
-                cr.electron_free_energy = RN.electron_free_energy
-                g = cr.graph_representation()
-                for node in list(g.nodes):
-                    if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-                        g.remove_node(node)
-                RN.add_reaction(g)
-                c1 = c1 + 1
+            reactants = [mol_id_to_mol_entry_dict[ii] for ii in reaction[0]]
+            products = [mol_id_to_mol_entry_dict[ii] for ii in reaction[1]]
+            cr = ConcertedReaction(reactants, products)
+            RN.add_reaction(cr.graph_representation())
 
-            elif len(reaction[0]) == 1 and len(reaction[1]) == 2:
-                assert int(reaction[0][0]) in RN.graph.nodes
-                assert int(reaction[1][0]) in RN.graph.nodes
-                assert int(reaction[1][1]) in RN.graph.nodes
-                reactant_0 = mol_id_to_mol_entry_dict[int(reaction[0][0])]
-                product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
-                product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
-                cr = ConcertedReaction([reactant_0], [product_0, product_1])
-                cr.electron_free_energy = RN.electron_free_energy
-                g = cr.graph_representation()
-                for node in list(g.nodes):
-                    if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-                        g.remove_node(node)
-
-                RN.add_reaction(g)
-                c2 = c2 + 1
-            elif len(reaction[0]) == 2 and len(reaction[1]) == 1:
-                assert int(reaction[0][0]) in RN.graph.nodes
-                assert int(reaction[0][1]) in RN.graph.nodes
-                assert int(reaction[1][0]) in RN.graph.nodes
-                reactant_0 = mol_id_to_mol_entry_dict[int(reaction[0][0])]
-                PR = mol_id_to_mol_entry_dict[int(reaction[0][1])]
-                product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
-                cr = ConcertedReaction([reactant_0, PR], [product_0])
-                cr.electron_free_energy = RN.electron_free_energy
-                g = cr.graph_representation()
-                for node in list(g.nodes):
-                    if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-                        g.remove_node(node)
-
-                RN.add_reaction(g)
-                c3 = c3 + 1
-            elif len(reaction[0]) == 2 and len(reaction[1]) == 2:
-                assert int(reaction[0][0]) in RN.graph.nodes
-                assert int(reaction[0][1]) in RN.graph.nodes
-                assert int(reaction[1][0]) in RN.graph.nodes
-                assert int(reaction[1][1]) in RN.graph.nodes
-                reactant_0 = mol_id_to_mol_entry_dict[int(reaction[0][0])]
-                PR = mol_id_to_mol_entry_dict[int(reaction[0][1])]
-                product_0 = mol_id_to_mol_entry_dict[int(reaction[1][0])]
-                product_1 = mol_id_to_mol_entry_dict[int(reaction[1][1])]
-                cr = ConcertedReaction([reactant_0, PR], [product_0, product_1])
-                cr.electron_free_energy = RN.electron_free_energy
-                g = cr.graph_representation()
-                for node in list(g.nodes):
-                    if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
-                        g.remove_node(node)
-
-                RN.add_reaction(g)
-                c4 = c4 + 1
-        total_num_concerted = c1 + c2 + c3 + c4
         RN.PR_record = RN.build_PR_record()
         RN.Reactant_record = RN.build_reactant_record()
-        print("number of concerted reactions added", total_num_concerted)
         print("add_concerted_rxns end", time.time())
         return RN
 
