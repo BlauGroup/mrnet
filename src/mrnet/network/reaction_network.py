@@ -411,18 +411,10 @@ class ReactionNetwork(MSONable):
             if reaction_iterator.intermediate_index == -1:
                 reaction_object = reaction_iterator.rn.reactions[count]
             else:
-                reactant_objects = [
-                    self.entries_list[i]
-                    for i in reaction[0]
-                    ]
+                reactant_objects = [self.entries_list[i] for i in reaction[0]]
 
-                product_objects = [
-                    self.entries_list[i]
-                    for i in reaction[1]
-                    ]
-                reaction_object = ConcertedReaction(
-                    reactant_objects,
-                    product_objects)
+                product_objects = [self.entries_list[i] for i in reaction[1]]
+                reaction_object = ConcertedReaction(reactant_objects, product_objects)
 
             self.add_reaction(reaction_object.graph_representation())
             count += 1

@@ -471,17 +471,15 @@ class ReactionIterator:
             free_energy_forward = 0.0
             for product in new_products:
                 free_energy_forward += product.get_free_energy(
-                    temperature = self.rn.temperature)
+                    temperature=self.rn.temperature
+                )
 
             for reactant in new_reactants:
                 free_energy_forward -= reactant.get_free_energy(
-                    temperature = self.rn.temperature)
+                    temperature=self.rn.temperature
+                )
 
-
-            return_list.append(
-                (tuple(reactants),
-                 tuple(products),
-                 free_energy_forward))
+            return_list.append((tuple(reactants), tuple(products), free_energy_forward))
 
         return return_list
 
@@ -538,11 +536,13 @@ class ReactionIterator:
 
         first_chunk_reaction_objects = self.rn.reactions
         first_chunk = [
-            ( tuple([int(r) for r in reaction.reactant_indices]),
-              tuple([int(r) for r in reaction.product_indices]),
-              reaction.free_energy_A
-             )
-            for reaction in first_chunk_reaction_objects]
+            (
+                tuple([int(r) for r in reaction.reactant_indices]),
+                tuple([int(r) for r in reaction.product_indices]),
+                reaction.free_energy_A,
+            )
+            for reaction in first_chunk_reaction_objects
+        ]
 
         self.current_chunk = first_chunk
         self.chunk_index = 0
