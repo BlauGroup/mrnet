@@ -1680,10 +1680,6 @@ class ReactionNetwork(MSONable):
         """
 
         print("add_concerted_rxns start", time.time())
-        c1 = 0
-        c2 = 0
-        c3 = 0
-        c4 = 0
         mol_id_to_mol_entry_dict = {}
         for i in RN.entries_list:
             mol_id_to_mol_entry_dict[int(i.parameters["ind"])] = i
