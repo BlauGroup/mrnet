@@ -1,10 +1,10 @@
 import copy
 import itertools
+import math
 from abc import ABCMeta, abstractmethod
 from collections import Counter
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
-import math
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
 import numpy as np
@@ -1781,7 +1781,11 @@ class ConcertedReaction(Reaction):
         assert len(self.product_ids) <= 3
         if len(self.reactants) == 2 and len(self.products) == 1:
             self.swap_elements()
-        return general_graph_rep(self)
+        g = general_graph_rep(self)
+        for node in list(g.nodes):
+            if not isinstance(node, int) and g.nodes[node]["free_energy"] > 0:
+                g.remove_node(node)
+        return g
 
     def swap_elements(self):
         self.reactants, self.products = self.products, self.reactants

@@ -406,8 +406,18 @@ class ReactionNetwork(MSONable):
         for entry in self.entries_list:
             self.graph.add_node(entry.parameters["ind"], bipartite=0)
 
+        count = 0
         for reaction in reaction_iterator:
-            self.add_reaction(reaction.graph_representation())
+            if reaction_iterator.intermediate_index == -1:
+                reaction_object = reaction_iterator.rn.reactions[count]
+            else:
+                reactant_objects = [self.entries_list[i] for i in reaction[0]]
+
+                product_objects = [self.entries_list[i] for i in reaction[1]]
+                reaction_object = ConcertedReaction(reactant_objects, product_objects)
+
+            self.add_reaction(reaction_object.graph_representation())
+            count += 1
 
         self.PR_record = self.build_PR_record()  # begin creating PR list
         self.Reactant_record = self.build_reactant_record()  # begin creating rct list
