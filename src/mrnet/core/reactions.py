@@ -1788,7 +1788,6 @@ class ConcertedReaction(Reaction):
                 g.remove_node(node)
         return g
 
-
     def swap_elements(self):
         self.reactants, self.products = self.products, self.reactants
         self.base_free_energy_A, self.base_free_energy_B = (
