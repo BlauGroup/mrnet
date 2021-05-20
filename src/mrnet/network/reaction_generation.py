@@ -468,22 +468,20 @@ class ReactionIterator:
                 if product_id is not None:
                     new_products.append(self.entries_box.entries_list[product_id])
 
-            cs = ConcertedReaction(
-                new_reactants,
-                new_products,
-                electron_free_energy=self.rn.electron_free_energy,
-            )
+            free_energy_forward = 0.0
+            for product in new_products:
+                free_energy_forward += product.get_free_energy(
+                    temperature = self.rn.temperature)
 
-            if cs:
-                 return_list.append(
-                     (tuple(reactants),
-                      tuple(products),
-                      cs.free_energy_A,
-                      cs.free_energy_B))
-            else:
-                print("concerted reaction not created:")
-                print("reactants:", reactants)
-                print("products:", products)
+            for reactant in new_reactants:
+                free_energy_forward -= reactant.get_free_energy(
+                    temperature = self.rn.temperature)
+
+
+            return_list.append(
+                (tuple(reactants),
+                 tuple(products),
+                 free_energy_forward))
 
         return return_list
 
@@ -542,9 +540,8 @@ class ReactionIterator:
         first_chunk = [
             ( tuple([int(r) for r in reaction.reactant_indices]),
               tuple([int(r) for r in reaction.product_indices]),
-              reaction.free_energy_A,
-              reaction.free_energy_B
-            )
+              reaction.free_energy_A
+             )
             for reaction in first_chunk_reaction_objects]
 
         self.current_chunk = first_chunk
