@@ -28,12 +28,7 @@ class EntriesBox:
     by features in the attribute entries_dict and given fixed explicit indices
     """
 
-    def __init__(
-        self,
-        input_entries,
-        temperature=298.15,
-        reindex = True
-    ):
+    def __init__(self, input_entries, temperature=298.15, reindex=True):
         if reindex:
 
             entries = dict()
@@ -112,8 +107,7 @@ class EntriesBox:
                 entry.parameters["ind"] = ii
 
             self.entries_dict = entries
-            self.entries_list = sorted(
-                entries_list, key=lambda x: x.parameters["ind"])
+            self.entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
         else:
             self.entries_dict = {}
             self.entries_list = input_entries
@@ -474,18 +468,20 @@ class ReactionIterator:
                 if product_id is not None:
                     new_products.append(self.entries_box.entries_list[product_id])
 
-            cs = ConcertedReaction(
-                new_reactants,
-                new_products,
-                electron_free_energy=self.rn.electron_free_energy,
-            )
+            free_energy_forward = 0.0
+            for product in new_products:
+                free_energy_forward += product.get_free_energy(
+                    temperature = self.rn.temperature)
 
-            if cs:
-                return_list.append(cs)
-            else:
-                print("concerted reaction not created:")
-                print("reactants:", reactants)
-                print("products:", products)
+            for reactant in new_reactants:
+                free_energy_forward -= reactant.get_free_energy(
+                    temperature = self.rn.temperature)
+
+
+            return_list.append(
+                (tuple(reactants),
+                 tuple(products),
+                 free_energy_forward))
 
         return return_list
 
@@ -548,7 +544,13 @@ class ReactionIterator:
 
         # generator state
 
-        first_chunk = self.rn.reactions
+        first_chunk_reaction_objects = self.rn.reactions
+        first_chunk = [
+            ( tuple([int(r) for r in reaction.reactant_indices]),
+              tuple([int(r) for r in reaction.product_indices]),
+              reaction.free_energy_A
+             )
+            for reaction in first_chunk_reaction_objects]
 
         self.current_chunk = first_chunk
         self.chunk_index = 0

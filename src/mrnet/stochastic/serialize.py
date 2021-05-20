@@ -253,10 +253,10 @@ class SerializeNetwork:
     def serialize(self):
 
         for reaction in self.reaction_generator:
-            reactants = tuple([int(r) for r in reaction.reactant_indices])
-            products = tuple([int(r) for r in reaction.product_indices])
-            forward_free_energy = reaction.free_energy_A
-            backward_free_energy = reaction.free_energy_B
+            reactants = reaction[0]
+            products = reaction[1]
+            forward_free_energy = reaction[2]
+            backward_free_energy = - forward_free_energy
 
             forward_reaction_string = "".join(
                 [

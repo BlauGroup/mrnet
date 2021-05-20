@@ -187,7 +187,6 @@ class NetworkUpdater:
         self.update_rates(update_list)
 
 
-
 def update_state(state, reaction):
     for species_index in reaction["reactants"]:
         state[species_index] -= 1
@@ -241,7 +240,7 @@ class SimulationAnalyzer:
         self.reaction_data: Dict[int, dict] = {}
 
         self.reaction_pathways_dict: Dict[int, Dict[frozenset, dict]] = dict()
-        self.reaction_histories = list()
+        self.reaction_histories: List[List[int]] = list()
         self.time_histories = list()
         self.observed_reactions: Dict[int, int] = {}
 
@@ -265,7 +264,7 @@ class SimulationAnalyzer:
                 for line in f:
                     reaction_history.append(int(line.strip()))
 
-            self.reaction_histories.append(np.array(reaction_history))
+            self.reaction_histories.append(reaction_history)
 
         for filename in time_histories_contents:
             time_history = list()
@@ -306,8 +305,8 @@ class SimulationAnalyzer:
         return weight
 
     def collect_duplicate_pathways(
-            self,
-            pathways: List[List[int]]) -> Dict[frozenset, dict]:
+        self, pathways: List[List[int]]
+    ) -> Dict[frozenset, dict]:
         pathway_dict: Dict[frozenset, dict] = {}
         for pathway in pathways:
             key = frozenset(pathway)
@@ -315,13 +314,13 @@ class SimulationAnalyzer:
                 pathway_dict[key]["frequency"] += 1
             else:
                 path_weight = self.compute_path_weight(pathway)
-                pathway_dict[key] = {"pathway": pathway,
-                                     "frequency": 1,
-                                     "weight": path_weight}
+                pathway_dict[key] = {
+                    "pathway": pathway,
+                    "frequency": 1,
+                    "weight": path_weight,
+                }
 
         return pathway_dict
-
-
 
     def extract_species_consumption_info(
         self, target_species_index: int
@@ -362,10 +361,7 @@ class SimulationAnalyzer:
 
         return producing_reactions, consuming_reactions, final_counts
 
-
-    def reaction_pathway_from_history_slice(
-            self,
-            reaction_history_slice: List[int]):
+    def reaction_pathway_from_history_slice(self, reaction_history_slice: List[int]):
         """
         given a reaction history slice, recursively resolve the
         reactants of the final reaction to produce a valid reaction
@@ -384,20 +380,17 @@ class SimulationAnalyzer:
 
         for missing in to_produce:
             slice_producing = self.slice_producing_species(
-                missing,
-                reaction_history_slice)
+                missing, reaction_history_slice
+            )
 
-            pathway_prefix = self.reaction_pathway_from_history_slice(
-                slice_producing)
+            pathway_prefix = self.reaction_pathway_from_history_slice(slice_producing)
             pathway = pathway_prefix + pathway
 
         return pathway
 
-
     def slice_producing_species(
-            self,
-            target_species_index: int,
-            reaction_history_slice: List[int]):
+        self, target_species_index: int, reaction_history_slice: List[int]
+    ):
         """
         take a target species and a reaction history and return the
         initial slice producing the first occourance of the target
@@ -429,23 +422,22 @@ class SimulationAnalyzer:
         print("extracting pathways to", target_species_index)
         reaction_pathway_list = []
 
-
         for reaction_history_num, reaction_history in enumerate(
             self.reaction_histories
         ):
             print("scanning history", reaction_history_num, "for pathway")
 
             slice_producing_target_index = self.slice_producing_species(
-                target_species_index,
-                reaction_history)
-
+                target_species_index, reaction_history
+            )
 
             if slice_producing_target_index is None:
                 continue
             else:
 
                 pathway = self.reaction_pathway_from_history_slice(
-                    slice_producing_target_index)
+                    slice_producing_target_index
+                )
 
                 reaction_pathway_list.append(pathway)
 
@@ -515,16 +507,25 @@ class SimulationAnalyzer:
 
             generate_latex_footer(f)
 
-    def generate_pathway_report(self, mol_entry: MoleculeEntry, number_of_pathways=100, sort_by_frequency = True):
+    def generate_pathway_report(
+        self, mol_entry: MoleculeEntry, number_of_pathways=100, sort_by_frequency=True
+    ):
         target_species_index = mol_entry.parameters["ind"]
 
         if target_species_index not in self.reaction_pathways_dict:
             self.extract_reaction_pathways(target_species_index)
 
+        if sort_by_frequency:
+            suffix = "frequency"
+        else:
+            suffix = "cost"
+
         with open(
             self.reports_folder
             + "/pathway_report_"
             + str(target_species_index)
+            + "_"
+            + suffix
             + ".tex",
             "w",
         ) as f:
@@ -536,30 +537,38 @@ class SimulationAnalyzer:
             f.write("pathway report for\n\n")
             latex_emit_molecule(f, target_species_index)
             if sort_by_frequency:
-                f.write("\n\ntop " + str(number_of_pathways) + " pathways sorted by frequency")
+                f.write(
+                    "\n\ntop "
+                    + str(number_of_pathways)
+                    + " pathways sorted by frequency"
+                )
             else:
-                f.write("\n\ntop " + str(number_of_pathways) + " pathways sorted by cost")
+                f.write(
+                    "\n\ntop " + str(number_of_pathways) + " pathways sorted by cost"
+                )
 
             f.write("\\vspace{1cm}")
             self.latex_emit_initial_state(f)
             f.write("\\newpage\n\n\n")
 
             if sort_by_frequency:
-                sort_function = lambda item: -item[1]["frequency"]
+
+                def sort_function(item):
+                    return -item[1]["frequency"]
 
             else:
-                sort_function = lambda item: item[1]["weight"]
+
+                def sort_function(item):
+                    return item[1]["weight"]
 
             count = 1
-            for _, unique_pathway in sorted(
-                    pathways.items(), key=sort_function
-            ):
+            for _, unique_pathway in sorted(pathways.items(), key=sort_function):
 
                 frequency = unique_pathway["frequency"]
                 weight = unique_pathway["weight"]
 
-                f.write("pathway " + str(count) + '\n\n')
-                f.write("path weight: " + str(weight) + '\n\n')
+                f.write("pathway " + str(count) + "\n\n")
+                f.write("path weight: " + str(weight) + "\n\n")
                 f.write(str(frequency) + " occurrences:\n")
 
                 for reaction_index in unique_pathway["pathway"]:
