@@ -479,7 +479,7 @@ class ReactionIterator:
                     temperature=self.rn.temperature
                 )
 
-            return_list.append((reactants, products, free_energy_forward))
+            return_list.append((tuple(reactants), tuple(products), free_energy_forward))
 
         return return_list
 
