@@ -1290,11 +1290,11 @@ def path_finding_wrapper(
 
     initial_inds = [e.parameters["ind"] for e in init_mols]
 
-    rn.solve_prerequisites(initial_inds, "softplus")
+    rn.solve_prerequisites(initial_inds, "default_cost")
 
     # set initial conditions
     PRs, paths, top_path_list = rn.find_paths(
-        initial_inds, target.parameters["ind"], weight="softplus", num_paths=20
+        initial_inds, target.parameters["ind"], weight="default_cost", num_paths=20
     )
     # return shortest paths to every mol
-    return PRs
+    return PRs, paths, top_path_list
