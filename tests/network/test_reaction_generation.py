@@ -47,12 +47,7 @@ class TestReactionGenerator(PymatgenTest):
         reactions = []
 
         for reaction in reaction_generator:
-            reactions.append(
-                (
-                    reaction[0],
-                    reaction[1]
-                )
-            )
+            reactions.append((reaction[0], reaction[1]))
 
         result = frozenset(reactions)
 
