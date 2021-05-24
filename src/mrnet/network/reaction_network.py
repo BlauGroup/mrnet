@@ -399,51 +399,13 @@ class ReactionNetwork(MSONable):
                     dist_and_path[start][int(node)] = {}
                     dist_and_path[start][node]["cost"] = dist[node]
                     dist_and_path[start][node]["path"] = paths[node]
-                    nodes = []
-                    PR = []
-                    Reactants = []
-                    for ii, step in enumerate(paths[node]):
-                        if isinstance(step, int):
-                            nodes.append(step)
-                        elif "+" in step.split(",")[0]:  # Has PRs
-                            if step.count("+") == 1:
-                                nodes = nodes + [step.split("+")[0]]
-                                Reactants.append(
-                                    int(paths[node][ii - 1])
-                                )  # source reactant
-                                # "pr" reactant identification
-                                source = str(paths[node][ii - 1])
-                                rct_indices = list(step.split(",")[0].split("+"))
-                                rct_indices.remove(source)
-                                PR.append(int(rct_indices[0]))
-                                if node in PR:
-                                    if node not in wrong_paths[start]:
-                                        wrong_paths[start].append(int(node))
-                                nodes = nodes + step.split("+")[1].split(",")
-                            elif step.count("+") == 2:  # A + PR_B -> C + D
-                                nodes = nodes + [step.split(",")[0].split("+")[0]]
-                                rcts = step.split(",")[0].split("+")
-                                Reactants.append(
-                                    int(paths[node][ii - 1])
-                                )  # source reactant
-                                rcts.remove(
-                                    str(paths[node][ii - 1])
-                                )  # remove "reactant" reactant
-                                assert len(rcts) == 1
-                                PR.append(int(rcts[0]))
-                                if node in PR:
-                                    if node not in wrong_paths[start]:
-                                        wrong_paths[start].append(int(node))
-                                nodes = nodes + step.split(",")[1].split("+")  # C, D
-                        else:
-                            assert "," in step
-                            nodes = nodes + step.split(",")
-                    nodes.pop(0)
-                    if len(nodes) != 0:
-                        nodes.pop(-1)
-                    dist_and_path[start][node]["all_nodes"] = nodes
-                    dist_and_path[start][node]["PRs"] = PR
-                    dist_and_path[start][node]["reactant"] = Reactants
+                    this_path = ReactionPath.characterize_path(
+                        paths[node],
+                        weight,
+                        self.graph,
+                    )
+                    if node in this_path.all_prereqs:
+                        wrong_paths[start].append(int(node))
 
         for node in self.graph.nodes():
             if self.graph.nodes[node]["bipartite"] == 0:
