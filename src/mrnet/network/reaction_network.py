@@ -13,6 +13,8 @@ from monty.json import MSONable
 from monty.serialization import dumpfn, loadfn
 from networkx.readwrite import json_graph
 
+from mrnet.utils.visualization import visualize_molecules, generate_latex_header, generate_latex_footer
+
 from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 from mrnet.core.mol_entry import MoleculeEntry
 from pymatgen.analysis.graphs import MoleculeGraph
@@ -1298,3 +1300,40 @@ def path_finding_wrapper(
     )
     # return shortest paths to every mol
     return PRs, paths, top_path_list
+
+def reaction_string_to_dict(str, dG):
+    split1 = str.split(',')
+    reactants = split1[0].split('+')
+    products = split1[1].split('+')
+    return {
+        'reactants': reactants,
+        'products': products,
+        'dG': dG }
+
+def pathfinding_path_report(folder: str, rn: ReactionNetwork, paths):
+    entries_dict = {}
+    for entry in rn.entries_list:
+        entries_dict[entry.parameters["ind"]] = entry
+
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
+
+    visualize_molecules(folder + '/molecule_diagrams', entries_dict)
+
+    pathways = []
+    for reaction_path in paths:
+        pathway = []
+        cost = reaction_path['cost']
+        for node in reaction_path['path']:
+            if type(node) == str:
+                dG = rn.graph.nodes[node]['free_energy']
+                pathway.append(reaction_string_to_dict(node, dG))
+
+        pathways.append((cost, pathway))
+
+    with open(folder + '/pathway_report.tex','w') as f:
+        generate_latex_header(f)
+        generate_latex_footer(f)
+
+
+
