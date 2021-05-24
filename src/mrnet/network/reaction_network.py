@@ -13,8 +13,14 @@ from monty.json import MSONable
 from monty.serialization import dumpfn, loadfn
 from networkx.readwrite import json_graph
 
-from mrnet.utils.visualization import visualize_molecules, generate_latex_header, generate_latex_footer
+from mrnet.utils.visualization import (
+    visualize_molecules,
+    generate_latex_header,
+    generate_latex_footer,
+    latex_emit_reaction,
+)
 
+from mrnet.network.reaction_path import ReactionPath
 from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 from mrnet.core.mol_entry import MoleculeEntry
 from pymatgen.analysis.graphs import MoleculeGraph
@@ -41,308 +47,6 @@ __status__ = "Alpha"
 
 Mapping_Record_Dict = Dict[int, List[str]]
 RN_type = TypeVar("RN_type", bound="ReactionNetwork")
-
-
-class ReactionPath(MSONable):
-    """
-    A class to define path object within the reaction network which
-    constains all the associated characteristic attributes of a given path
-
-    :param path - a list of nodes that defines a path from node A to B
-        within a graph built using ReactionNetwork.build()
-    """
-
-    def __init__(self, path):
-        """
-        initializes the ReactionPath object attributes for a given path
-        :param path: a list of nodes that defines a path from node A to B
-            within a graph built using ReactionNetwork.build()
-        """
-
-        self.path = path
-        self.byproducts = []
-        self.unsolved_prereqs = []
-        self.solved_prereqs = []
-        self.all_prereqs = []
-        self.cost = 0.0
-        self.overall_free_energy_change = 0.0
-        self.hardest_step = None
-        self.description = ""
-        self.pure_cost = 0.0
-        self.full_path = None
-        self.hardest_step_deltaG = None
-        self.path_dict = {
-            "byproducts": self.byproducts,
-            "unsolved_prereqs": self.unsolved_prereqs,
-            "solved_prereqs": self.solved_prereqs,
-            "all_prereqs": self.all_prereqs,
-            "cost": self.cost,
-            "path": self.path,
-            "overall_free_energy_change": self.overall_free_energy_change,
-            "hardest_step": self.hardest_step,
-            "description": self.description,
-            "pure_cost": self.pure_cost,
-            "hardest_step_deltaG": self.hardest_step_deltaG,
-            "full_path": self.full_path,
-        }
-
-    def as_dict(self) -> dict:
-        """
-            A method to convert ReactionPath objection into a dictionary
-        :return: d: dictionary containing all te ReactionPath attributes
-        """
-        d = {
-            "@module": self.__class__.__module__,
-            "@class": self.__class__.__name__,
-            "byproducts": self.byproducts,
-            "unsolved_prereqs": self.unsolved_prereqs,
-            "solved_prereqs": self.solved_prereqs,
-            "all_prereqs": self.all_prereqs,
-            "cost": self.cost,
-            "path": self.path,
-            "overall_free_energy_change": self.overall_free_energy_change,
-            "hardest_step": self.hardest_step,
-            "description": self.description,
-            "pure_cost": self.pure_cost,
-            "hardest_step_deltaG": self.hardest_step_deltaG,
-            "full_path": self.full_path,
-            "path_dict": self.path_dict,
-        }
-        return d
-
-    @classmethod
-    def from_dict(cls, d):
-        """
-            A method to convert dict to ReactionPath object
-        :param d:  dict retuend from ReactionPath.as_dict() method
-        :return: ReactionPath object
-        """
-        x = cls(d.get("path"))
-        x.byproducts = d.get("byproducts")
-        x.unsolved_prereqs = d.get("unsolved_prereqs")
-        x.solved_prereqs = d.get("solved_prereqs")
-        x.all_prereqs = d.get("all_prereqs")
-        x.cost = d.get("cost", 0)
-
-        x.overall_free_energy_change = d.get("overall_free_energy_change", 0)
-        x.hardest_step = d.get("hardest_step")
-        x.description = d.get("description")
-        x.pure_cost = d.get("pure_cost", 0)
-        x.hardest_step_deltaG = d.get("hardest_step_deltaG")
-        x.full_path = d.get("full_path")
-        x.path_dict = d.get("path_dict")
-
-        return x
-
-    @classmethod
-    def characterize_path(
-        cls,
-        path: List[Union[str, int]],
-        weight: str,
-        graph: nx.DiGraph,
-        old_solved_PRs=[],
-    ):  # -> ReactionPath
-        """
-         A method to define ReactionPath attributes based on the inputs
-
-        :param path: a list of nodes that defines a path from node A to B
-            within a graph built using ReactionNetwork.build()
-        :param weight: string (either "softplus" or "exponent")
-        :param graph: nx.Digraph
-        :param old_solved_PRs: previously solved PRs from the iterations before
-            the current iteration
-        :return: ReactionPath object
-        """
-        if path is None:
-            class_instance = cls(None)
-        else:
-            class_instance = cls(path)
-            pool = []
-            pool.append(path[0])
-            for ii, step in enumerate(path):
-                if ii != len(path) - 1:
-                    class_instance.cost += graph[step][path[ii + 1]][weight]
-                    if isinstance(step, str):  # REACTION NODE
-                        reactants = step.split(",")[0]
-                        # products = step.split(",")[1]
-                        if "+" in reactants:  # prs for this reaction
-                            prod = []  # type: List[Union[str, int]]
-                            a = path[ii - 1]  # source reactant (non-pr)
-                            rct_indices = list(reactants.split("+"))
-                            rct_indices.remove(str(a))
-                            a = int(a)
-                            pr = int(rct_indices[0])
-                            if "+" in step.split(",")[1]:
-                                c = int(step.split(",")[1].split("+")[0])
-                                d = int(step.split(",")[1].split("+")[1])
-                                prod = [c, d]
-                            else:
-                                c = int(step.split(",")[1])
-                                prod = [c]
-                            if pr in old_solved_PRs:
-                                class_instance.solved_prereqs.append(pr)
-                            else:
-                                class_instance.unsolved_prereqs.append(pr)
-                            class_instance.all_prereqs.append(pr)
-                            pool.remove(a)
-                            pool = pool + prod
-                        elif "+" in step.split(",")[1]:
-                            # node = A,B+C
-                            a = int(step.split(",")[0])
-                            b = int(step.split(",")[1].split("+")[0])
-                            c = int(step.split(",")[1].split("+")[1])
-                            pool.remove(a)
-                            pool.append(b)
-                            pool.append(c)
-                        else:
-                            # node = A,B
-                            a = int(step.split(",")[0])
-                            b = int(step.split(",")[1])
-                            pool.remove(a)
-                            pool.append(b)
-        pool.remove(class_instance.path[-1])
-        class_instance.byproducts = pool
-        class_instance.path_dict = {
-            "byproducts": class_instance.byproducts,
-            "unsolved_prereqs": class_instance.unsolved_prereqs,
-            "solved_prereqs": class_instance.solved_prereqs,
-            "all_prereqs": class_instance.all_prereqs,
-            "cost": class_instance.cost,
-            "path": class_instance.path,
-            "overall_free_energy_change": class_instance.overall_free_energy_change,
-            "hardest_step": class_instance.hardest_step,
-            "description": class_instance.description,
-            "pure_cost": class_instance.pure_cost,
-            "hardest_step_deltaG": class_instance.hardest_step_deltaG,
-            "full_path": class_instance.full_path,
-        }
-        return class_instance
-
-    @classmethod
-    def characterize_path_final(
-        cls,
-        path: List[Union[str, int]],
-        weight: str,
-        graph: nx.DiGraph,
-        old_solved_PRs=[],
-        PR_paths={},
-        PR_byproduct_dict={},
-    ):
-        """
-            A method to define all the attributes of a given path once all the PRs are solved
-        :param path: a list of nodes that defines a path from node A to B within a graph built using
-        ReactionNetwork.build()
-        :param weight: string (either "softplus" or "exponent")
-        :param min_cost: dict with minimum cost from path start to a node, of from {node: float},
-        if no path exist, value is "no_path", if path is unsolved yet, value is "unsolved_path"
-        :param graph: nx.Digraph
-        :param PR_paths: dict that defines a path from each node to a start,
-               of the form {int(node1): {int(start1}: {ReactionPath object}, int(start2): {ReactionPath object}},
-               int(node2):...}
-        :return: ReactionPath object
-        """
-
-        if path is None:
-            class_instance = cls(None)
-        else:
-            class_instance = cls.characterize_path(path, weight, graph, old_solved_PRs)
-            assert len(class_instance.solved_prereqs) == len(class_instance.all_prereqs)
-            assert len(class_instance.unsolved_prereqs) == 0
-
-            PRs_to_join = copy.deepcopy(class_instance.all_prereqs)
-            full_path = copy.deepcopy(class_instance.path)
-            while len(PRs_to_join) > 0:
-                new_PRs = []
-                for PR in PRs_to_join:
-                    PR_path = None
-                    PR_min_cost = float("inf")
-                    for start in PR_paths[PR]:
-                        if PR_paths[PR][start].path is not None:
-                            if PR_paths[PR][start].cost < PR_min_cost:
-                                PR_min_cost = PR_paths[PR][start].cost
-                                PR_path = PR_paths[PR][start]
-                    if PR_path is not None:
-                        assert len(PR_path.solved_prereqs) == len(PR_path.all_prereqs)
-                        for new_PR in PR_path.all_prereqs:
-                            new_PRs.append(new_PR)
-                        full_path = PR_path.path + full_path
-                PRs_to_join = copy.deepcopy(new_PRs)
-            for PR in class_instance.all_prereqs:
-                if PR in class_instance.byproducts:
-                    print("NOTE: Matching prereq and byproduct found!", PR)
-                BPs = PR_byproduct_dict[PR]["byproducts"]
-                class_instance.byproducts = class_instance.byproducts + BPs
-
-            for ii, step in enumerate(full_path):
-                if graph.nodes[step]["bipartite"] == 1:
-                    if weight == "softplus":
-                        class_instance.pure_cost += ReactionNetwork.softplus(
-                            graph.nodes[step]["free_energy"]
-                        )
-                    elif weight == "exponent":
-                        class_instance.pure_cost += ReactionNetwork.exponent(
-                            graph.nodes[step]["free_energy"]
-                        )
-                    elif weight == "rexp":
-                        class_instance.pure_cost += ReactionNetwork.rexp(
-                            graph.nodes[step]["free_energy"]
-                        )
-                    elif weight == "default_cost":
-                        class_instance.pure_cost += ReactionNetwork.default_cost(
-                            graph.nodes[step]["free_energy"]
-                        )
-
-                    class_instance.overall_free_energy_change += graph.nodes[step][
-                        "free_energy"
-                    ]
-
-                    if class_instance.description == "":
-                        class_instance.description += graph.nodes[step]["rxn_type"]
-                    else:
-                        class_instance.description += (
-                            ", " + graph.nodes[step]["rxn_type"]
-                        )
-
-                    if class_instance.hardest_step is None:
-                        class_instance.hardest_step = step
-                    elif (
-                        graph.nodes[step]["free_energy"]
-                        > graph.nodes[class_instance.hardest_step]["free_energy"]
-                    ):
-                        class_instance.hardest_step = step
-
-            class_instance.full_path = full_path
-
-            if class_instance.hardest_step is None:
-                class_instance.hardest_step_deltaG = None
-            else:
-                class_instance.hardest_step_deltaG = graph.nodes[
-                    class_instance.hardest_step
-                ]["free_energy"]
-
-        class_instance.path_dict = {
-            "byproducts": class_instance.byproducts,
-            "unsolved_prereqs": class_instance.unsolved_prereqs,
-            "solved_prereqs": class_instance.solved_prereqs,
-            "all_prereqs": class_instance.all_prereqs,
-            "cost": class_instance.cost,
-            "path": class_instance.path,
-            "overall_free_energy_change": class_instance.overall_free_energy_change,
-            "hardest_step": class_instance.hardest_step,
-            "description": class_instance.description,
-            "pure_cost": class_instance.pure_cost,
-            "hardest_step_deltaG": class_instance.hardest_step_deltaG,
-            "full_path": class_instance.full_path,
-        }
-        return class_instance
-
-    def __eq__(self, obj):
-        if type(self) == type(obj):
-            return self.as_dict() == obj.as_dict()
-        else:
-            return False
-
-
 Mapping_PR_Dict = Dict[int, Dict[int, ReactionPath]]
 
 
@@ -367,7 +71,6 @@ class ReactionNetwork(MSONable):
                 "CoordinationBondChangeReaction",
             }
         ),
-        determine_atom_mappings: bool = True,
     ):
         """
         Generate a ReactionNetwork from a set of MoleculeEntries.
@@ -390,11 +93,8 @@ class ReactionNetwork(MSONable):
         self.solvent_dielectric = solvent_dielectric
         self.solvent_refractive_index = solvent_refractive_index
 
-        # self.entries = reaction_iterator.rn.entries
         self.entries_list = reaction_iterator.entries_box.entries_list
-
         self.graph = nx.DiGraph()
-
         self.PRs: dict = dict()
         self.reachable_nodes: list = []
         self.unsolvable_PRs: list = []
@@ -402,7 +102,7 @@ class ReactionNetwork(MSONable):
         self.min_cost: dict = {}
         self.not_reachable_nodes: list = []
 
-        print("build() start", time.time())
+        print("init() start", time.time())
 
         # Add molecule nodes
         for entry in self.entries_list:
@@ -423,6 +123,8 @@ class ReactionNetwork(MSONable):
 
         self.PR_record = self.build_PR_record()  # begin creating PR list
         self.Reactant_record = self.build_reactant_record()  # begin creating rct list
+
+        print("init() end", time.time())
 
     @staticmethod
     def softplus(free_energy: float) -> float:
@@ -453,89 +155,6 @@ class ReactionNetwork(MSONable):
         Method to determine edge weight using exponent(dG/kt) + 1 cost function
         """
         return default_cost(free_energy)
-
-    def build(
-        self,
-        reaction_types: Union[Set, FrozenSet] = frozenset(
-            {
-                "RedoxReaction",
-                "IntramolSingleBondChangeReaction",
-                "IntermolecularReaction",
-                "CoordinationBondChangeReaction",
-            }
-        ),
-        determine_atom_mappings: bool = False,
-        build_matrix=False,
-    ) -> nx.DiGraph:
-        """
-            A method to build the reaction network graph
-
-        :param reaction_types (set/frozenset): set/frozenset of all the reactions
-            class to include while building the graph
-        :param determine_atom_mappings (bool): If True (default), create an atom
-            mapping between reactants and products in a given reaction
-        :return: nx.DiGraph
-        """
-
-        print("build() start", time.time())
-
-        # Add molecule nodes
-        for entry in self.entries_list:
-            self.graph.add_node(entry.parameters["ind"], bipartite=0)
-
-        reaction_classes = [load_class(str(self.__module__), s) for s in reaction_types]
-
-        all_reactions = list()
-
-        # Generate reactions
-        for r in reaction_classes:
-            reactions = r.generate(
-                self.entries, determine_atom_mappings=determine_atom_mappings
-            )  # review
-            all_reactions.append(reactions)
-
-        all_reactions = [i for i in all_reactions if i]
-        self.reactions = list(itertools.chain.from_iterable(all_reactions))
-
-        redox_c = 0
-        inter_c = 0
-        intra_c = 0
-        coord_c = 0
-
-        for ii, r in enumerate(self.reactions):
-            r.parameters["ind"] = ii
-            if r.__class__.__name__ == "RedoxReaction":
-                redox_c += 1
-                r.electron_free_energy = self.electron_free_energy
-                r.set_free_energy()
-                r.set_rate_constant()
-            elif r.__class__.__name__ == "IntramolSingleBondChangeReaction":
-                intra_c += 1
-            elif r.__class__.__name__ == "IntermolecularReaction":
-                inter_c += 1
-            elif r.__class__.__name__ == "CoordinationBondChangeReaction":
-                coord_c += 1
-            self.add_reaction(r.graph_representation())  # add graph element here
-
-        print(
-            "redox: ",
-            redox_c,
-            "inter: ",
-            inter_c,
-            "intra: ",
-            intra_c,
-            "coord: ",
-            coord_c,
-        )
-        self.PR_record = self.build_PR_record()  # begin creating PR list
-        self.Reactant_record = self.build_reactant_record()  # begin creating rct list
-
-        if build_matrix:
-            self.build_matrix()
-
-        print("build() end", time.time())
-
-        return self.graph
 
     def add_reaction(self, graph_representation: nx.DiGraph):
         """
@@ -719,35 +338,6 @@ class ReactionNetwork(MSONable):
         print("end solve_prerequisities", time.time())
         return PRs, old_solved_PRs
 
-    def parse_path(self, path):
-        nodes = []
-        PR = []
-        Reactants = []
-        for step in path:
-            if isinstance(step, int):
-                nodes.append(step)
-            elif "+" in step.split(",")[0]:  # PR
-                source = nodes[-1]
-                sides = step.split(",")
-                if (
-                    step.count("+") == 1 or step.count("+") == 2
-                ):  # A+B -> C OR A+B+C -> D
-                    rct = str(source)
-                    nodes = nodes + [rct]
-                    Reactants.append(int(rct))
-                    pr = [int(el) for el in sides[0].split("+") if el != rct]
-                    PR.append(pr)
-                    nodes = nodes + [sides[1]]
-                else:
-                    print("parse_path something is wrong", path, step)
-            else:
-                assert "," in step
-                nodes = nodes + step.split(",")
-        nodes.pop(0)
-        if len(nodes) != 0:
-            nodes.pop(-1)
-        return nodes, PR, Reactants
-
     def find_path_cost(
         self,
         starts,
@@ -756,7 +346,6 @@ class ReactionNetwork(MSONable):
         cost_from_start,
         min_cost,
         PRs,
-        generate=False,
     ):
         """
             A method to characterize the path to all the PRs. Characterize by
@@ -909,12 +498,6 @@ class ReactionNetwork(MSONable):
                     dist_and_path[start][node]["path"] = fixed_paths[start][node][
                         "path"
                     ]
-                    nodes, PR, reactant = self.parse_path(
-                        dist_and_path[start][node]["path"]
-                    )
-                    dist_and_path[start][node]["all_nodes"] = nodes
-                    dist_and_path[start][node]["PRs"] = PR
-                    dist_and_path[start][node]["reactant"] = reactant
             dist_and_path[start] = {
                 key: value
                 for key, value in sorted(
@@ -937,15 +520,6 @@ class ReactionNetwork(MSONable):
                             self.graph,
                             old_solved_PRs,
                         )
-                        if (
-                            start == 456
-                            and node == 2
-                            and path_class.unsolved_prereqs == []
-                            and generate
-                        ):
-                            self.generate_characterize_path_files(
-                                old_solved_PRs, dist_and_path[start][node]["path"]
-                            )
                         cost_from_start[node][start] = path_class.cost
                         if len(path_class.unsolved_prereqs) == 0:
                             PRs[node][start] = path_class
@@ -1217,7 +791,7 @@ class ReactionNetwork(MSONable):
                         break
                     else:
                         ind += 1
-                        path_dict_class2 = ReactionPath.characterize_path_final(
+                        path_dict_class = ReactionPath.characterize_path_final(
                             path,
                             self.weight,
                             self.graph,
@@ -1226,23 +800,23 @@ class ReactionNetwork(MSONable):
                             self.PR_byproducts,
                         )
                         heapq.heappush(
-                            my_heapq, (path_dict_class2.cost, next(c), path_dict_class2)
+                            my_heapq, (path_dict_class.cost, next(c), path_dict_class)
                         )
         except Exception:
             print("no path from this start to the target", start)
         top_path_list = []
         while len(paths) < num_paths and my_heapq:
-            (cost_HP, _x, path_dict_HP_class) = heapq.heappop(my_heapq)
-            top_path_list.append(path_dict_HP_class.path)
+            (cost, _x, path_dict_class) = heapq.heappop(my_heapq)
+            top_path_list.append(path_dict_class.path)
             print(
                 len(paths),
-                cost_HP,
-                path_dict_HP_class.overall_free_energy_change,
-                path_dict_HP_class.hardest_step_deltaG,
-                path_dict_HP_class.path_dict,
+                cost,
+                path_dict_class.overall_free_energy_change,
+                path_dict_class.hardest_step_deltaG,
+                path_dict_class.path_dict,
             )
             paths.append(
-                path_dict_HP_class.path_dict
+                path_dict_class.path_dict
             )  # ideally just append the class, but for now dict for easy printing
 
         self.paths = paths
@@ -1250,37 +824,6 @@ class ReactionNetwork(MSONable):
         print("find_paths end", time.time())
 
         return self.PRs, paths, top_path_list
-
-    @staticmethod
-    def parse_reaction_node(node: str):
-        """
-        A method to identify reactants, PR, and prodcuts from a given reaction node string.
-        :param node: string, ex. "1+2,3+4"
-        :return: react_list: reactant list, ex [1,2]
-        :return: prod_list: product list, ex [3,4]
-        """
-        react_list_str = node.split(",")[0].split("+")
-        prod_list_str = node.split(",")[1].split("+")
-        prod_list_str.sort()
-        react_list: List[int] = [int(r) for r in react_list_str]
-        prod_list: List[int] = [int(p) for p in prod_list_str]
-        return (react_list, prod_list)
-
-    @staticmethod
-    def generate_node_string(combined_reactants, combined_products):
-        """
-        A method to genrate a reaction node string from given reactants and products.
-        :param combined_reactants: list of reactant node indices, ex [1,2]
-        :param combined_products: list of product node indices, ex [3,4]
-        :return: node_str: string of reaction as it would be for a reaction node, ex  "1+2,3+4"
-        """
-        combined_reactants = list(map(str, combined_reactants))
-        node_str = (
-            "+".join(list(map(str, combined_reactants)))
-            + ","
-            + "+".join(list(map(str, combined_products)))
-        )
-        return node_str
 
 
 def path_finding_wrapper(
@@ -1301,14 +844,13 @@ def path_finding_wrapper(
     # return shortest paths to every mol
     return PRs, paths, top_path_list
 
+
 def reaction_string_to_dict(str, dG):
-    split1 = str.split(',')
-    reactants = split1[0].split('+')
-    products = split1[1].split('+')
-    return {
-        'reactants': reactants,
-        'products': products,
-        'dG': dG }
+    split1 = str.split(",")
+    reactants = split1[0].split("+")
+    products = split1[1].split("+")
+    return {"reactants": reactants, "products": products, "dG": dG}
+
 
 def pathfinding_path_report(folder: str, rn: ReactionNetwork, paths):
     entries_dict = {}
@@ -1318,22 +860,30 @@ def pathfinding_path_report(folder: str, rn: ReactionNetwork, paths):
     if not os.path.isdir(folder):
         os.mkdir(folder)
 
-    visualize_molecules(folder + '/molecule_diagrams', entries_dict)
+    visualize_molecules(folder + "/molecule_diagrams", entries_dict)
 
     pathways = []
     for reaction_path in paths:
         pathway = []
-        cost = reaction_path['cost']
-        for node in reaction_path['path']:
+        cost = reaction_path["cost"]
+        for node in reaction_path["full_path"]:
             if type(node) == str:
-                dG = rn.graph.nodes[node]['free_energy']
+                dG = rn.graph.nodes[node]["free_energy"]
                 pathway.append(reaction_string_to_dict(node, dG))
 
         pathways.append((cost, pathway))
 
-    with open(folder + '/pathway_report.tex','w') as f:
+    with open(folder + "/pathway_report.tex", "w") as f:
         generate_latex_header(f)
+
+        count = 1
+        for cost, pathway in pathways:
+            f.write("pathway " + str(count) + "\n\n")
+            f.write("pathway cost: " + str(cost) + "\n\n")
+            for reaction in pathway:
+                latex_emit_reaction(f, reaction)
+
+            f.write("\\newpage\n")
+            count += 1
+
         generate_latex_footer(f)
-
-
-

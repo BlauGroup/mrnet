@@ -52,7 +52,7 @@ class DanielTest(PymatgenTest):
         )
 
         ledc_mol_entry = find_mol_entry_from_xyz_and_charge(
-            molecule_entries, (os.path.join(test_dir, "EC.xyz")), 0
+            molecule_entries, (os.path.join(test_dir, "LEDC.xyz")), 0
         )
 
         result = path_finding_wrapper(
