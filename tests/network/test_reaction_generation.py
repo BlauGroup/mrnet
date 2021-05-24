@@ -84,12 +84,20 @@ class TestReactionGenerator(PymatgenTest):
 
         iter_unfiltered = ReactionIterator(entries_box, single_elem_interm_ignore=[])
         rxns_unfiltered = sorted([e for e in iter_unfiltered])
-        unfiltered_reference = loadfn(os.path.join(test_dir, "unfiltered_rxns_sorted.json"))
-        unfiltered_reference = [(tuple(x[0]), tuple(x[1]), x[2]) for x in unfiltered_reference]
+        unfiltered_reference = loadfn(
+            os.path.join(test_dir, "unfiltered_rxns_sorted.json")
+        )
+        unfiltered_reference = [
+            (tuple(x[0]), tuple(x[1]), x[2]) for x in unfiltered_reference
+        ]
         assert rxns_unfiltered == unfiltered_reference
 
-        iter_filtered = ReactionIterator(entries_box, single_elem_interm_ignore=[], filter_metal_coordination=True)
+        iter_filtered = ReactionIterator(
+            entries_box, single_elem_interm_ignore=[], filter_metal_coordination=True
+        )
         rxns_filtered = sorted([e for e in iter_filtered])
         filtered_reference = loadfn(os.path.join(test_dir, "filtered_rxns_sorted.json"))
-        filtered_reference = [(tuple(x[0]), tuple(x[1]), x[2]) for x in filtered_reference]
+        filtered_reference = [
+            (tuple(x[0]), tuple(x[1]), x[2]) for x in filtered_reference
+        ]
         assert rxns_filtered == filtered_reference

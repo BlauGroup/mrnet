@@ -392,9 +392,7 @@ class ReactionGenerator(MSONable):
                                     (
                                         rxn1,
                                         rxn1_nodes,
-                                    ) = self.concerted_reaction_filter(
-                                        e2[0], s2[0]
-                                    )
+                                    ) = self.concerted_reaction_filter(e2[0], s2[0])
                                     if rxn1 is not None:
                                         rxn_from_filer_iter1.append(rxn1)
                                         rxn_from_filer_iter1_nodes.append(rxn1_nodes)
@@ -437,28 +435,38 @@ class ReactionGenerator(MSONable):
             combined_products.remove(i)
 
         reactant_entries = [
-                e
-                for e in self.entries_box.entries_list
-                if e.parameters["ind"] in combined_reactants
-            ]
+            e
+            for e in self.entries_box.entries_list
+            if e.parameters["ind"] in combined_reactants
+        ]
         product_entries = [
-                e
-                for e in self.entries_box.entries_list
-                if e.parameters["ind"] in combined_products
-            ]
+            e
+            for e in self.entries_box.entries_list
+            if e.parameters["ind"] in combined_products
+        ]
         if 0 < len(combined_reactants) <= 2 and 0 < len(combined_products) <= 2:
             # Filter to remove concerted reactions involving metal coordination
             problem_metal = False
             if "metal_coordination" in self.filters:
                 if any([e.formula in m_formulas for e in reactant_entries]):
-                    this_m_formula = [e.formula for e in reactant_entries if e.formula in m_formulas]
+                    this_m_formula = [
+                        e.formula for e in reactant_entries if e.formula in m_formulas
+                    ]
                     # Metal coordination can only be part of a concerted reaction if the same metal decoordinates
                     if not any([e.formula in this_m_formula for e in product_entries]):
                         problem_metal = True
-                        print("FILTER FAILED", [e.formula for e in reactant_entries], [e.formula for e in product_entries])
+                        print(
+                            "FILTER FAILED",
+                            [e.formula for e in reactant_entries],
+                            [e.formula for e in product_entries],
+                        )
                 elif any([e.formula in m_formulas for e in product_entries]):
                     problem_metal = True
-                    print("FILTER FAILED", [e.formula for e in reactant_entries], [e.formula for e in product_entries])
+                    print(
+                        "FILTER FAILED",
+                        [e.formula for e in reactant_entries],
+                        [e.formula for e in product_entries],
+                    )
 
             if not problem_metal:
                 r = [combined_reactants, combined_products]
