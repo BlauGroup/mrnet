@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple, Union, Any, FrozenSet, Set, TypeVar
 import networkx as nx
 from monty.json import MSONable
 
-from mrnet.network.reaction_network import ReactionNetwork
 from mrnet.core.reactions import (
     exponent,
     rexp,
@@ -251,19 +250,19 @@ class ReactionPath(MSONable):
             for ii, step in enumerate(full_path):
                 if graph.nodes[step]["bipartite"] == 1:
                     if weight == "softplus":
-                        class_instance.pure_cost += ReactionNetwork.softplus(
+                        class_instance.pure_cost += softplus(
                             graph.nodes[step]["free_energy"]
                         )
                     elif weight == "exponent":
-                        class_instance.pure_cost += ReactionNetwork.exponent(
+                        class_instance.pure_cost += exponent(
                             graph.nodes[step]["free_energy"]
                         )
                     elif weight == "rexp":
-                        class_instance.pure_cost += ReactionNetwork.rexp(
+                        class_instance.pure_cost += rexp(
                             graph.nodes[step]["free_energy"]
                         )
                     elif weight == "default_cost":
-                        class_instance.pure_cost += ReactionNetwork.default_cost(
+                        class_instance.pure_cost += default_cost(
                             graph.nodes[step]["free_energy"]
                         )
 
