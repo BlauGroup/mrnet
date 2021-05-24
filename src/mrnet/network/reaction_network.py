@@ -371,7 +371,7 @@ class ReactionNetwork(MSONable):
                 "IntermolecularReaction",
                 "CoordinationBondChangeReaction",
             }
-        )
+        ),
     ):
         """
         Generate a ReactionNetwork from a set of MoleculeEntries.
