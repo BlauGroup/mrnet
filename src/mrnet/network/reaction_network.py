@@ -1334,12 +1334,15 @@ def pathfinding_path_report(folder: str, rn: ReactionNetwork, paths):
     with open(folder + '/pathway_report.tex','w') as f:
         generate_latex_header(f)
 
+        count = 1
         for cost, pathway in pathways:
+            f.write("pathway " + str(count) + '\n\n')
             f.write("pathway cost: " + str(cost) + '\n\n')
             for reaction in pathway:
                 latex_emit_reaction(f, reaction)
 
             f.write('\\newpage\n')
+            count += 1
 
         generate_latex_footer(f)
 
