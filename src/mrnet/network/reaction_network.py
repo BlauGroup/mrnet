@@ -13,7 +13,7 @@ from monty.json import MSONable
 from monty.serialization import dumpfn, loadfn
 from networkx.readwrite import json_graph
 
-from mrnet.utils.visualization import visualize_molecules, generate_latex_header, generate_latex_footer
+from mrnet.utils.visualization import visualize_molecules, generate_latex_header, generate_latex_footer, latex_emit_reaction
 
 from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 from mrnet.core.mol_entry import MoleculeEntry
@@ -1324,7 +1324,7 @@ def pathfinding_path_report(folder: str, rn: ReactionNetwork, paths):
     for reaction_path in paths:
         pathway = []
         cost = reaction_path['cost']
-        for node in reaction_path['path']:
+        for node in reaction_path['full_path']:
             if type(node) == str:
                 dG = rn.graph.nodes[node]['free_energy']
                 pathway.append(reaction_string_to_dict(node, dG))
@@ -1333,6 +1333,14 @@ def pathfinding_path_report(folder: str, rn: ReactionNetwork, paths):
 
     with open(folder + '/pathway_report.tex','w') as f:
         generate_latex_header(f)
+
+        for cost, pathway in pathways:
+            f.write("pathway cost: " + str(cost) + '\n\n')
+            for reaction in pathway:
+                latex_emit_reaction(f, reaction)
+
+            f.write('\\newpage\n')
+
         generate_latex_footer(f)
 
 
