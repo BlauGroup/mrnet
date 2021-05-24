@@ -676,7 +676,6 @@ class ReactionNetwork(MSONable):
         cost_from_start,
         min_cost,
         PRs,
-        generate=False,
     ):
         """
             A method to characterize the path to all the PRs. Characterize by
@@ -1161,37 +1160,6 @@ class ReactionNetwork(MSONable):
         print("find_paths end", time.time())
 
         return self.PRs, paths, top_path_list
-
-    @staticmethod
-    def parse_reaction_node(node: str):
-        """
-        A method to identify reactants, PR, and prodcuts from a given reaction node string.
-        :param node: string, ex. "1+2,3+4"
-        :return: react_list: reactant list, ex [1,2]
-        :return: prod_list: product list, ex [3,4]
-        """
-        react_list_str = node.split(",")[0].split("+")
-        prod_list_str = node.split(",")[1].split("+")
-        prod_list_str.sort()
-        react_list: List[int] = [int(r) for r in react_list_str]
-        prod_list: List[int] = [int(p) for p in prod_list_str]
-        return (react_list, prod_list)
-
-    @staticmethod
-    def generate_node_string(combined_reactants, combined_products):
-        """
-        A method to genrate a reaction node string from given reactants and products.
-        :param combined_reactants: list of reactant node indices, ex [1,2]
-        :param combined_products: list of product node indices, ex [3,4]
-        :return: node_str: string of reaction as it would be for a reaction node, ex  "1+2,3+4"
-        """
-        combined_reactants = list(map(str, combined_reactants))
-        node_str = (
-            "+".join(list(map(str, combined_reactants)))
-            + ","
-            + "+".join(list(map(str, combined_products)))
-        )
-        return node_str
 
 
 def path_finding_wrapper(
