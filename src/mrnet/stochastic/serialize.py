@@ -256,7 +256,7 @@ class SerializeNetwork:
             reactants = reaction[0]
             products = reaction[1]
             forward_free_energy = reaction[2]
-            backward_free_energy = - forward_free_energy
+            backward_free_energy = -forward_free_energy
 
             forward_reaction_string = "".join(
                 [

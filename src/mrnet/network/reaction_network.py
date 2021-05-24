@@ -13,6 +13,8 @@ from monty.json import MSONable
 from monty.serialization import dumpfn, loadfn
 from networkx.readwrite import json_graph
 
+from mrnet.utils.visualization import visualize_molecules, generate_latex_header, generate_latex_footer
+
 from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 from mrnet.core.mol_entry import MoleculeEntry
 from pymatgen.analysis.graphs import MoleculeGraph
@@ -647,7 +649,7 @@ class ReactionNetwork(MSONable):
         ii = 0
 
         while (len(new_solved_PRs) > 0 or old_attrs != new_attrs) and ii < max_iter:
-            print(ii, len(new_solved_PRs) > 0, old_attrs != new_attrs, ii < max_iter)
+            print(ii, len(new_solved_PRs), old_attrs != new_attrs, ii < max_iter)
 
             min_cost = {}
             cost_from_start = {}  # type: Dict[int, Dict[int, Union[float, str]]]
@@ -1290,11 +1292,48 @@ def path_finding_wrapper(
 
     initial_inds = [e.parameters["ind"] for e in init_mols]
 
-    rn.solve_prerequisites(initial_inds, "softplus")
+    rn.solve_prerequisites(initial_inds, "default_cost")
 
     # set initial conditions
     PRs, paths, top_path_list = rn.find_paths(
-        initial_inds, target.parameters["ind"], weight="softplus", num_paths=20
+        initial_inds, target.parameters["ind"], weight="default_cost", num_paths=20
     )
     # return shortest paths to every mol
-    return PRs
+    return PRs, paths, top_path_list
+
+def reaction_string_to_dict(str, dG):
+    split1 = str.split(',')
+    reactants = split1[0].split('+')
+    products = split1[1].split('+')
+    return {
+        'reactants': reactants,
+        'products': products,
+        'dG': dG }
+
+def pathfinding_path_report(folder: str, rn: ReactionNetwork, paths):
+    entries_dict = {}
+    for entry in rn.entries_list:
+        entries_dict[entry.parameters["ind"]] = entry
+
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
+
+    visualize_molecules(folder + '/molecule_diagrams', entries_dict)
+
+    pathways = []
+    for reaction_path in paths:
+        pathway = []
+        cost = reaction_path['cost']
+        for node in reaction_path['path']:
+            if type(node) == str:
+                dG = rn.graph.nodes[node]['free_energy']
+                pathway.append(reaction_string_to_dict(node, dG))
+
+        pathways.append((cost, pathway))
+
+    with open(folder + '/pathway_report.tex','w') as f:
+        generate_latex_header(f)
+        generate_latex_footer(f)
+
+
+

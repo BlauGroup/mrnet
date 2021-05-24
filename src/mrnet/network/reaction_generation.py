@@ -445,7 +445,7 @@ class ReactionIterator:
     def generate_concerted_reactions(
         self,
         entry: MoleculeEntry,
-    ) -> List[Reaction]:
+    ):
         """
         generate all the concerted reactions with intermediate mol_entry
         """
