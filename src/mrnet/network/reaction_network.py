@@ -639,35 +639,6 @@ class ReactionNetwork(MSONable):
         print("end solve_prerequisities", time.time())
         return PRs, old_solved_PRs
 
-    def parse_path(self, path):
-        nodes = []
-        PR = []
-        Reactants = []
-        for step in path:
-            if isinstance(step, int):
-                nodes.append(step)
-            elif "+" in step.split(",")[0]:  # PR
-                source = nodes[-1]
-                sides = step.split(",")
-                if (
-                    step.count("+") == 1 or step.count("+") == 2
-                ):  # A+B -> C OR A+B+C -> D
-                    rct = str(source)
-                    nodes = nodes + [rct]
-                    Reactants.append(int(rct))
-                    pr = [int(el) for el in sides[0].split("+") if el != rct]
-                    PR.append(pr)
-                    nodes = nodes + [sides[1]]
-                else:
-                    print("parse_path something is wrong", path, step)
-            else:
-                assert "," in step
-                nodes = nodes + step.split(",")
-        nodes.pop(0)
-        if len(nodes) != 0:
-            nodes.pop(-1)
-        return nodes, PR, Reactants
-
     def find_path_cost(
         self,
         starts,
@@ -828,12 +799,6 @@ class ReactionNetwork(MSONable):
                     dist_and_path[start][node]["path"] = fixed_paths[start][node][
                         "path"
                     ]
-                    nodes, PR, reactant = self.parse_path(
-                        dist_and_path[start][node]["path"]
-                    )
-                    dist_and_path[start][node]["all_nodes"] = nodes
-                    dist_and_path[start][node]["PRs"] = PR
-                    dist_and_path[start][node]["reactant"] = reactant
             dist_and_path[start] = {
                 key: value
                 for key, value in sorted(
