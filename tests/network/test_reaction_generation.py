@@ -10,6 +10,7 @@ from scipy.constants import N_A
 from monty.serialization import loadfn, dumpfn
 from pymatgen.util.testing import PymatgenTest
 
+from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 from mrnet.stochastic.serialize import (
     SerializeNetwork,
@@ -29,6 +30,13 @@ except ImportError:
 
 __author__ = "Daniel Barter"
 
+root_test_dir = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "test_files",
+)
+
 test_dir = os.path.join(
     os.path.dirname(__file__),
     "..",
@@ -36,6 +44,15 @@ test_dir = os.path.join(
     "test_files",
     "reaction_network_files",
 )
+
+
+class TestEntriesBox(PymatgenTest):
+    def test_filter(self):
+        molecule_entries = loadfn(os.path.join(root_test_dir, "choli.json"))
+        entries_box = EntriesBox(molecule_entries)
+        assert len(entries_box.entries_list) == 100
+        entries_unfiltered = EntriesBox(molecule_entries, remove_complexes=False)
+        assert len(entries_unfiltered.entries_list) == 200
 
 
 class TestReactionGenerator(PymatgenTest):
@@ -60,3 +77,19 @@ class TestReactionGenerator(PymatgenTest):
         )
 
         assert result == ronalds_concerteds
+
+    def test_filter(self):
+        molecule_entries = loadfn(os.path.join(test_dir, "ronalds_MoleculeEntry.json"))
+        entries_box = EntriesBox(molecule_entries)
+
+        iter_unfiltered = ReactionIterator(entries_box, single_elem_interm_ignore=[])
+        rxns_unfiltered = sorted([e for e in iter_unfiltered])
+        unfiltered_reference = loadfn(os.path.join(test_dir, "unfiltered_rxns_sorted.json"))
+        unfiltered_reference = [(tuple(x[0]), tuple(x[1]), x[2]) for x in unfiltered_reference]
+        assert rxns_unfiltered == unfiltered_reference
+
+        iter_filtered = ReactionIterator(entries_box, single_elem_interm_ignore=[], filter_metal_coordination=True)
+        rxns_filtered = sorted([e for e in iter_filtered])
+        filtered_reference = loadfn(os.path.join(test_dir, "filtered_rxns_sorted.json"))
+        filtered_reference = [(tuple(x[0]), tuple(x[1]), x[2]) for x in filtered_reference]
+        assert rxns_filtered == filtered_reference
