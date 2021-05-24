@@ -371,8 +371,7 @@ class ReactionNetwork(MSONable):
                 "IntermolecularReaction",
                 "CoordinationBondChangeReaction",
             }
-        ),
-        determine_atom_mappings: bool = True,
+        )
     ):
         """
         Generate a ReactionNetwork from a set of MoleculeEntries.
@@ -395,11 +394,8 @@ class ReactionNetwork(MSONable):
         self.solvent_dielectric = solvent_dielectric
         self.solvent_refractive_index = solvent_refractive_index
 
-        # self.entries = reaction_iterator.rn.entries
         self.entries_list = reaction_iterator.entries_box.entries_list
-
         self.graph = nx.DiGraph()
-
         self.PRs: dict = dict()
         self.reachable_nodes: list = []
         self.unsolvable_PRs: list = []
@@ -407,7 +403,7 @@ class ReactionNetwork(MSONable):
         self.min_cost: dict = {}
         self.not_reachable_nodes: list = []
 
-        print("build() start", time.time())
+        print("init() start", time.time())
 
         # Add molecule nodes
         for entry in self.entries_list:
@@ -428,6 +424,8 @@ class ReactionNetwork(MSONable):
 
         self.PR_record = self.build_PR_record()  # begin creating PR list
         self.Reactant_record = self.build_reactant_record()  # begin creating rct list
+
+        print("init() end", time.time())
 
     @staticmethod
     def softplus(free_energy: float) -> float:
@@ -458,89 +456,6 @@ class ReactionNetwork(MSONable):
         Method to determine edge weight using exponent(dG/kt) + 1 cost function
         """
         return default_cost(free_energy)
-
-    def build(
-        self,
-        reaction_types: Union[Set, FrozenSet] = frozenset(
-            {
-                "RedoxReaction",
-                "IntramolSingleBondChangeReaction",
-                "IntermolecularReaction",
-                "CoordinationBondChangeReaction",
-            }
-        ),
-        determine_atom_mappings: bool = False,
-        build_matrix=False,
-    ) -> nx.DiGraph:
-        """
-            A method to build the reaction network graph
-
-        :param reaction_types (set/frozenset): set/frozenset of all the reactions
-            class to include while building the graph
-        :param determine_atom_mappings (bool): If True (default), create an atom
-            mapping between reactants and products in a given reaction
-        :return: nx.DiGraph
-        """
-
-        print("build() start", time.time())
-
-        # Add molecule nodes
-        for entry in self.entries_list:
-            self.graph.add_node(entry.parameters["ind"], bipartite=0)
-
-        reaction_classes = [load_class(str(self.__module__), s) for s in reaction_types]
-
-        all_reactions = list()
-
-        # Generate reactions
-        for r in reaction_classes:
-            reactions = r.generate(
-                self.entries, determine_atom_mappings=determine_atom_mappings
-            )  # review
-            all_reactions.append(reactions)
-
-        all_reactions = [i for i in all_reactions if i]
-        self.reactions = list(itertools.chain.from_iterable(all_reactions))
-
-        redox_c = 0
-        inter_c = 0
-        intra_c = 0
-        coord_c = 0
-
-        for ii, r in enumerate(self.reactions):
-            r.parameters["ind"] = ii
-            if r.__class__.__name__ == "RedoxReaction":
-                redox_c += 1
-                r.electron_free_energy = self.electron_free_energy
-                r.set_free_energy()
-                r.set_rate_constant()
-            elif r.__class__.__name__ == "IntramolSingleBondChangeReaction":
-                intra_c += 1
-            elif r.__class__.__name__ == "IntermolecularReaction":
-                inter_c += 1
-            elif r.__class__.__name__ == "CoordinationBondChangeReaction":
-                coord_c += 1
-            self.add_reaction(r.graph_representation())  # add graph element here
-
-        print(
-            "redox: ",
-            redox_c,
-            "inter: ",
-            inter_c,
-            "intra: ",
-            intra_c,
-            "coord: ",
-            coord_c,
-        )
-        self.PR_record = self.build_PR_record()  # begin creating PR list
-        self.Reactant_record = self.build_reactant_record()  # begin creating rct list
-
-        if build_matrix:
-            self.build_matrix()
-
-        print("build() end", time.time())
-
-        return self.graph
 
     def add_reaction(self, graph_representation: nx.DiGraph):
         """
@@ -942,15 +857,6 @@ class ReactionNetwork(MSONable):
                             self.graph,
                             old_solved_PRs,
                         )
-                        if (
-                            start == 456
-                            and node == 2
-                            and path_class.unsolved_prereqs == []
-                            and generate
-                        ):
-                            self.generate_characterize_path_files(
-                                old_solved_PRs, dist_and_path[start][node]["path"]
-                            )
                         cost_from_start[node][start] = path_class.cost
                         if len(path_class.unsolved_prereqs) == 0:
                             PRs[node][start] = path_class
@@ -1222,7 +1128,7 @@ class ReactionNetwork(MSONable):
                         break
                     else:
                         ind += 1
-                        path_dict_class2 = ReactionPath.characterize_path_final(
+                        path_dict_class = ReactionPath.characterize_path_final(
                             path,
                             self.weight,
                             self.graph,
@@ -1231,23 +1137,23 @@ class ReactionNetwork(MSONable):
                             self.PR_byproducts,
                         )
                         heapq.heappush(
-                            my_heapq, (path_dict_class2.cost, next(c), path_dict_class2)
+                            my_heapq, (path_dict_class.cost, next(c), path_dict_class)
                         )
         except Exception:
             print("no path from this start to the target", start)
         top_path_list = []
         while len(paths) < num_paths and my_heapq:
-            (cost_HP, _x, path_dict_HP_class) = heapq.heappop(my_heapq)
-            top_path_list.append(path_dict_HP_class.path)
+            (cost, _x, path_dict_class) = heapq.heappop(my_heapq)
+            top_path_list.append(path_dict_class.path)
             print(
                 len(paths),
-                cost_HP,
-                path_dict_HP_class.overall_free_energy_change,
-                path_dict_HP_class.hardest_step_deltaG,
-                path_dict_HP_class.path_dict,
+                cost,
+                path_dict_class.overall_free_energy_change,
+                path_dict_class.hardest_step_deltaG,
+                path_dict_class.path_dict,
             )
             paths.append(
-                path_dict_HP_class.path_dict
+                path_dict_class.path_dict
             )  # ideally just append the class, but for now dict for easy printing
 
         self.paths = paths
