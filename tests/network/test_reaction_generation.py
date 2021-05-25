@@ -48,7 +48,9 @@ test_dir = os.path.join(
 
 class TestEntriesBox(PymatgenTest):
     def test_filter(self):
-        molecule_entries = loadfn(os.path.join(root_test_dir, "choli_limited_complex_filter.json"))
+        molecule_entries = loadfn(
+            os.path.join(root_test_dir, "choli_limited_complex_filter.json")
+        )
         entries_box = EntriesBox(molecule_entries)
         assert len(entries_box.entries_list) == 100
         entries_unfiltered = EntriesBox(molecule_entries, remove_complexes=False)
@@ -93,7 +95,9 @@ class TestReactionGenerator(PymatgenTest):
         assert rxns_unfiltered == unfiltered_reference
 
         iter_filtered = ReactionIterator(
-            entries_box, single_elem_interm_ignore=[], filter_concerted_metal_coordination=True
+            entries_box,
+            single_elem_interm_ignore=[],
+            filter_concerted_metal_coordination=True,
         )
         rxns_filtered = sorted([e for e in iter_filtered])
         filtered_reference = loadfn(os.path.join(test_dir, "filtered_rxns_sorted.json"))

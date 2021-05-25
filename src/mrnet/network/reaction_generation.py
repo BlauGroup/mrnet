@@ -180,7 +180,9 @@ class ReactionGenerator(MSONable):
         self.matrix = None
         self.matrix_inverse = None
 
-        self.index_formula_mapping = {e.parameters["ind"]: e.formula for e in self.entries_box.entries_list}
+        self.index_formula_mapping = {
+            e.parameters["ind"]: e.formula for e in self.entries_box.entries_list
+        }
 
         self.filters = list()
         if filter_concerted_metal_coordination:
@@ -436,22 +438,14 @@ class ReactionGenerator(MSONable):
             combined_reactants.remove(i)
             combined_products.remove(i)
 
-        reactant_entries = [
-            self.index_formula_mapping[e]
-            for e in combined_reactants
-        ]
-        product_entries = [
-            self.index_formula_mapping[e]
-            for e in combined_products
-        ]
+        reactant_entries = [self.index_formula_mapping[e] for e in combined_reactants]
+        product_entries = [self.index_formula_mapping[e] for e in combined_products]
         if 0 < len(combined_reactants) <= 2 and 0 < len(combined_products) <= 2:
             # Filter to remove concerted reactions involving metal coordination
             problem_metal = False
             if "metal_coordination" in self.filters:
                 if any([e in m_formulas for e in reactant_entries]):
-                    this_m_formula = [
-                        e for e in reactant_entries if e in m_formulas
-                    ]
+                    this_m_formula = [e for e in reactant_entries if e in m_formulas]
                     # Metal coordination can only be part of a concerted reaction if the same metal decoordinates
                     if not any([e in this_m_formula for e in product_entries]):
                         problem_metal = True
