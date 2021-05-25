@@ -129,6 +129,14 @@ class EntriesBox:
             for ii, entry in enumerate(entries_list):
                 entry.parameters["ind"] = ii
 
+
+            for formula in entries:
+                for num_bonds in entries[formula]:
+                    for charge in entries[formula][num_bonds]:
+                        for entry in entries[formula][num_bonds][charge]:
+                            assert entry in entries_list
+                            assert "ind" in entry.parameters
+
             self.entries_dict = entries
             self.entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])
         else:
