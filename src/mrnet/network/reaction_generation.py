@@ -53,6 +53,7 @@ class EntriesBox:
             print(len(connected_entries), "connected entries")
 
             if remove_complexes:
+                orig_len_connected_entries = copy.deepcopy(len(connected_entries))
                 complexes = list()
                 for ii, entry in enumerate(connected_entries):
                     if entry.formula not in m_formulas:
@@ -69,6 +70,9 @@ class EntriesBox:
                 connected_entries = [
                     e for i, e in enumerate(connected_entries) if i not in complexes
                 ]
+                assert orig_len_connected_entries - len(complexes) == len(
+                    connected_entries
+                )
 
             def get_formula(x):
                 return x.formula
@@ -128,6 +132,16 @@ class EntriesBox:
             # Add entry indices
             for ii, entry in enumerate(entries_list):
                 entry.parameters["ind"] = ii
+
+            entry_count = 0
+            for formula in entries:
+                for num_bonds in entries[formula]:
+                    for charge in entries[formula][num_bonds]:
+                        for entry in entries[formula][num_bonds][charge]:
+                            entry_count += 1
+                            assert entry in entries_list
+                            assert "ind" in entry.parameters
+            assert entry_count == len(entries_list)
 
             self.entries_dict = entries
             self.entries_list = sorted(entries_list, key=lambda x: x.parameters["ind"])

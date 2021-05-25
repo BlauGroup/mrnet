@@ -105,3 +105,7 @@ class TestReactionGenerator(PymatgenTest):
             (tuple(x[0]), tuple(x[1]), x[2]) for x in filtered_reference
         ]
         assert rxns_filtered == filtered_reference
+
+
+if __name__ == "__main__":
+    unittest.main()
