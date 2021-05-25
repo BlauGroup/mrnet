@@ -22,15 +22,20 @@ __author__ = "Sam Blau, Hetal Patel, Xiaowei Xie, Evan Spotte-Smith, Daniel Bart
 __maintainer__ = "Daniel Barter"
 
 
+metals = ["Li", "Na", "K", "Mg", "Ca", "Zn", "Al"]
+m_formulas = [m + "1" for m in metals]
+
+
 class EntriesBox:
     """
     function for preprocessing a list of molecule centries. In particular, they get sorted
     by features in the attribute entries_dict and given fixed explicit indices
     """
 
-    def __init__(self, input_entries, temperature=298.15, reindex=True):
+    def __init__(
+        self, input_entries, temperature=298.15, reindex=True, remove_complexes=True
+    ):
         if reindex:
-
             entries = dict()
             entries_list = list()
 
@@ -101,6 +106,24 @@ class EntriesBox:
                         for entry in entries[k1][k2][k3]:
                             entries_list.append(entry)
 
+            if remove_complexes:
+                complexes = list()
+                for ii, entry in enumerate(entries_list):
+                    if entry.formula not in m_formulas:
+                        if any([x in entry.formula for x in metals]):
+                            m_inds = [
+                                i for i, x in enumerate(entry.species) if x in metals
+                            ]
+                            e = copy.deepcopy(entry)
+                            e.mol_graph.remove_nodes(m_inds)
+                            if not nx.is_weakly_connected(e.mol_graph.graph):
+                                complexes.append(ii)
+
+                print("Removed {} metal-centered complexes".format(len(complexes)))
+                entries_list = [
+                    e for i, e in enumerate(entries_list) if i not in complexes
+                ]
+
             print(len(entries_list), "unique entries")
             # Add entry indices
             for ii, entry in enumerate(entries_list):
@@ -125,6 +148,7 @@ class ReactionGenerator(MSONable):
         temperature=298.15,
         solvent_dielectric=18.5,
         solvent_refractive_index=1.415,
+        filter_concerted_metal_coordination=False,
         replace_ind=True,
     ):
         """
@@ -140,6 +164,8 @@ class ReactionGenerator(MSONable):
         :param solvent_refractive_index: Refractive index of the solvent medium
         :param replace_ind: True if reindex the entries if it there is already
             indices in the input_entries
+        :param filters_metal_coordination: Remove concerted reactions involving
+            metal coordination.
         :return:
         """
 
@@ -153,6 +179,10 @@ class ReactionGenerator(MSONable):
         self.entry_ids = {e.entry_id for e in self.entries_box.entries_list}
         self.matrix = None
         self.matrix_inverse = None
+
+        self.filters = list()
+        if filter_concerted_metal_coordination:
+            self.filters.append("metal_coordination")
 
     def build(
         self,
@@ -362,9 +392,7 @@ class ReactionGenerator(MSONable):
                                     (
                                         rxn1,
                                         rxn1_nodes,
-                                    ) = ReactionGenerator.concerted_reaction_filter(
-                                        e2[0], s2[0]
-                                    )
+                                    ) = self.concerted_reaction_filter(e2[0], s2[0])
                                     if rxn1 is not None:
                                         rxn_from_filer_iter1.append(rxn1)
                                         rxn_from_filer_iter1_nodes.append(rxn1_nodes)
@@ -376,8 +404,7 @@ class ReactionGenerator(MSONable):
 
         return rxn_from_filer_iter1, rxn_from_filer_iter1_nodes
 
-    @staticmethod
-    def concerted_reaction_filter(in_reaction_node, out_reaction_node):
+    def concerted_reaction_filter(self, in_reaction_node, out_reaction_node):
         """
         A method to identify a valid concerted reaction based on stiochomtery of maximum of 2 reactants and products
         :param in_reaction_node: incoming reaction node "6,2+7"
@@ -387,7 +414,6 @@ class ReactionGenerator(MSONable):
         """
         r = None
         r_node = None
-        unique_reactions = []
         (
             in_reactants,
             in_products,
@@ -407,14 +433,49 @@ class ReactionGenerator(MSONable):
         for i in inter:
             combined_reactants.remove(i)
             combined_products.remove(i)
+
+        reactant_entries = [
+            e
+            for e in self.entries_box.entries_list
+            if e.parameters["ind"] in combined_reactants
+        ]
+        product_entries = [
+            e
+            for e in self.entries_box.entries_list
+            if e.parameters["ind"] in combined_products
+        ]
         if 0 < len(combined_reactants) <= 2 and 0 < len(combined_products) <= 2:
-            r = [combined_reactants, combined_products]
-            unique_reactions.append(r)
-            r_node = [
-                combined_reactants,
-                combined_products,
-                [in_reaction_node, out_reaction_node],
-            ]
+            # Filter to remove concerted reactions involving metal coordination
+            problem_metal = False
+            if "metal_coordination" in self.filters:
+                if any([e.formula in m_formulas for e in reactant_entries]):
+                    this_m_formula = [
+                        e.formula for e in reactant_entries if e.formula in m_formulas
+                    ]
+                    # Metal coordination can only be part of a concerted reaction if the same metal decoordinates
+                    if not any([e.formula in this_m_formula for e in product_entries]):
+                        problem_metal = True
+                        print(
+                            "FILTER FAILED",
+                            [e.formula for e in reactant_entries],
+                            [e.formula for e in product_entries],
+                        )
+                elif any([e.formula in m_formulas for e in product_entries]):
+                    problem_metal = True
+                    print(
+                        "FILTER FAILED",
+                        [e.formula for e in reactant_entries],
+                        [e.formula for e in product_entries],
+                    )
+
+            if not problem_metal:
+                r = [combined_reactants, combined_products]
+                r_node = [
+                    combined_reactants,
+                    combined_products,
+                    [in_reaction_node, out_reaction_node],
+                ]
+
         return r, r_node
 
     @staticmethod
@@ -523,12 +584,24 @@ class ReactionIterator:
     def __init__(
         self,
         entries_box,
+        electron_free_energy=-2.15,
+        temperature=298.15,
+        solvent_dielectric=18.5,
+        solvent_refractive_index=1.415,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
+        filter_metal_coordination=False,
     ):
 
         self.entries_box = entries_box
 
-        self.rn = ReactionGenerator(entries_box)
+        self.rn = ReactionGenerator(
+            entries_box,
+            electron_free_energy=electron_free_energy,
+            temperature=temperature,
+            solvent_dielectric=solvent_dielectric,
+            solvent_refractive_index=solvent_refractive_index,
+            filter_metal_coordination=filter_metal_coordination,
+        )
         self.rn.build()
         self.single_elem_interm_ignore = single_elem_interm_ignore
 
