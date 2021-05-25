@@ -600,7 +600,7 @@ class ReactionIterator:
             temperature=temperature,
             solvent_dielectric=solvent_dielectric,
             solvent_refractive_index=solvent_refractive_index,
-            filter_metal_coordination=filter_metal_coordination,
+            filter_concerted_metal_coordination=filter_metal_coordination,
         )
         self.rn.build()
         self.single_elem_interm_ignore = single_elem_interm_ignore
