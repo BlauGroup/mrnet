@@ -180,6 +180,8 @@ class ReactionGenerator(MSONable):
         self.matrix = None
         self.matrix_inverse = None
 
+        self.index_formula_mapping = {e.parameters["ind"]: e.formula for e in self.entries_box.entries_list}
+
         self.filters = list()
         if filter_concerted_metal_coordination:
             self.filters.append("metal_coordination")
@@ -435,37 +437,35 @@ class ReactionGenerator(MSONable):
             combined_products.remove(i)
 
         reactant_entries = [
-            e
-            for e in self.entries_box.entries_list
-            if e.parameters["ind"] in combined_reactants
+            self.index_formula_mapping[e]
+            for e in combined_reactants
         ]
         product_entries = [
-            e
-            for e in self.entries_box.entries_list
-            if e.parameters["ind"] in combined_products
+            self.index_formula_mapping[e]
+            for e in combined_products
         ]
         if 0 < len(combined_reactants) <= 2 and 0 < len(combined_products) <= 2:
             # Filter to remove concerted reactions involving metal coordination
             problem_metal = False
             if "metal_coordination" in self.filters:
-                if any([e.formula in m_formulas for e in reactant_entries]):
+                if any([e in m_formulas for e in reactant_entries]):
                     this_m_formula = [
-                        e.formula for e in reactant_entries if e.formula in m_formulas
+                        e for e in reactant_entries if e in m_formulas
                     ]
                     # Metal coordination can only be part of a concerted reaction if the same metal decoordinates
-                    if not any([e.formula in this_m_formula for e in product_entries]):
+                    if not any([e in this_m_formula for e in product_entries]):
                         problem_metal = True
                         print(
                             "FILTER FAILED",
-                            [e.formula for e in reactant_entries],
-                            [e.formula for e in product_entries],
+                            [e for e in reactant_entries],
+                            [e for e in product_entries],
                         )
-                elif any([e.formula in m_formulas for e in product_entries]):
+                elif any([e in m_formulas for e in product_entries]):
                     problem_metal = True
                     print(
                         "FILTER FAILED",
-                        [e.formula for e in reactant_entries],
-                        [e.formula for e in product_entries],
+                        [e for e in reactant_entries],
+                        [e for e in product_entries],
                     )
 
             if not problem_metal:
@@ -589,7 +589,7 @@ class ReactionIterator:
         solvent_dielectric=18.5,
         solvent_refractive_index=1.415,
         single_elem_interm_ignore=["C1", "H1", "O1", "Li1", "P1", "F1"],
-        filter_metal_coordination=False,
+        filter_concerted_metal_coordination=False,
     ):
 
         self.entries_box = entries_box
@@ -600,7 +600,7 @@ class ReactionIterator:
             temperature=temperature,
             solvent_dielectric=solvent_dielectric,
             solvent_refractive_index=solvent_refractive_index,
-            filter_metal_coordination=filter_metal_coordination,
+            filter_concerted_metal_coordination=filter_concerted_metal_coordination,
         )
         self.rn.build()
         self.single_elem_interm_ignore = single_elem_interm_ignore

@@ -93,7 +93,7 @@ class TestReactionGenerator(PymatgenTest):
         assert rxns_unfiltered == unfiltered_reference
 
         iter_filtered = ReactionIterator(
-            entries_box, single_elem_interm_ignore=[], filter_metal_coordination=True
+            entries_box, single_elem_interm_ignore=[], filter_concerted_metal_coordination=True
         )
         rxns_filtered = sorted([e for e in iter_filtered])
         filtered_reference = loadfn(os.path.join(test_dir, "filtered_rxns_sorted.json"))
