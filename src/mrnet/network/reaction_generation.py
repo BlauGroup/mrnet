@@ -52,6 +52,24 @@ class EntriesBox:
                     connected_entries.append(entry)
             print(len(connected_entries), "connected entries")
 
+            if remove_complexes:
+                complexes = list()
+                for ii, entry in enumerate(connected_entries):
+                    if entry.formula not in m_formulas:
+                        if any([x in entry.formula for x in metals]):
+                            m_inds = [
+                                i for i, x in enumerate(entry.species) if x in metals
+                            ]
+                            e = copy.deepcopy(entry)
+                            e.mol_graph.remove_nodes(m_inds)
+                            if not nx.is_weakly_connected(e.mol_graph.graph):
+                                complexes.append(ii)
+
+                print("Removed {} metal-centered complexes".format(len(complexes)))
+                connected_entries = [
+                    e for i, e in enumerate(connected_entries) if i not in complexes
+                ]
+
             def get_formula(x):
                 return x.formula
 
@@ -105,24 +123,6 @@ class EntriesBox:
                             entries[k1][k2][k3] = sorted_entries_3
                         for entry in entries[k1][k2][k3]:
                             entries_list.append(entry)
-
-            if remove_complexes:
-                complexes = list()
-                for ii, entry in enumerate(entries_list):
-                    if entry.formula not in m_formulas:
-                        if any([x in entry.formula for x in metals]):
-                            m_inds = [
-                                i for i, x in enumerate(entry.species) if x in metals
-                            ]
-                            e = copy.deepcopy(entry)
-                            e.mol_graph.remove_nodes(m_inds)
-                            if not nx.is_weakly_connected(e.mol_graph.graph):
-                                complexes.append(ii)
-
-                print("Removed {} metal-centered complexes".format(len(complexes)))
-                entries_list = [
-                    e for i, e in enumerate(entries_list) if i not in complexes
-                ]
 
             print(len(entries_list), "unique entries")
             # Add entry indices
