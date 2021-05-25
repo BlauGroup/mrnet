@@ -60,7 +60,7 @@ def get_entries():
             else:
                 LiEC_reextended_entries.append(mol_entry)
 
-        entries_box = EntriesBox(LiEC_reextended_entries)
+        entries_box = EntriesBox(LiEC_reextended_entries, remove_complexes=False)
 
         EC_mg = MoleculeGraph.with_local_env_strategy(
             Molecule.from_file(os.path.join(test_dir, "EC.xyz")), OpenBabelNN()
