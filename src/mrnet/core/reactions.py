@@ -2492,6 +2492,8 @@ def general_graph_rep(reaction: Reaction) -> nx.DiGraph:
     for reactant in reaction.reactant_indices:
         # Edge from reactant molecule to fwd reaction node
         if not duplicate_rct or not graph.has_edge(int(reactant), fwd_node_name):
+            if reactant is None:
+                breakpoint()
             graph.add_edge(
                 int(reactant),
                 fwd_node_name,
