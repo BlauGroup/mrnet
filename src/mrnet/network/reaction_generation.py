@@ -148,7 +148,7 @@ class ReactionGenerator(MSONable):
         temperature=298.15,
         solvent_dielectric=18.5,
         solvent_refractive_index=1.415,
-        filter_metal_coordination=False,
+        filter_concerted_metal_coordination=False,
         replace_ind=True,
     ):
         """
@@ -181,7 +181,7 @@ class ReactionGenerator(MSONable):
         self.matrix_inverse = None
 
         self.filters = list()
-        if filter_metal_coordination:
+        if filter_concerted_metal_coordination:
             self.filters.append("metal_coordination")
 
     def build(
