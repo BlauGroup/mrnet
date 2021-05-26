@@ -226,8 +226,7 @@ class ReactionGenerator(MSONable):
 
         print("build() start", time.time())
 
-        graph = nx.DiGraph()
-        self.graph = graph
+        self.graph = nx.DiGraph()
 
         # Add molecule nodes
         for entry in self.entries_box.entries_list:
@@ -248,35 +247,38 @@ class ReactionGenerator(MSONable):
         all_reactions = [i for i in all_reactions if i]
         self.reactions = list(itertools.chain.from_iterable(all_reactions))
 
-        redox_c = 0
-        inter_c = 0
-        intra_c = 0
-        coord_c = 0
+        self.redox_c = 0
+        self.inter_c = 0
+        self.intra_c = 0
+        self.coord_c = 0
 
         for ii, r in enumerate(self.reactions):
             r.parameters["ind"] = ii
             if r.__class__.__name__ == "RedoxReaction":
-                redox_c += 1
+                self.redox_c += 1
                 r.electron_free_energy = self.electron_free_energy
                 r.set_free_energy()
                 r.set_rate_constant()
             elif r.__class__.__name__ == "IntramolSingleBondChangeReaction":
-                intra_c += 1
+                self.intra_c += 1
             elif r.__class__.__name__ == "IntermolecularReaction":
-                inter_c += 1
+                self.inter_c += 1
             elif r.__class__.__name__ == "CoordinationBondChangeReaction":
-                coord_c += 1
+                self.coord_c += 1
             self.add_reaction(r.graph_representation())  # add graph element here
+
+        print(len(self.graph.nodes), "nodes in the graph")
+        print(len(self.graph.edges), "edges in the graph")
 
         print(
             "redox: ",
-            redox_c,
+            self.redox_c,
             "inter: ",
-            inter_c,
+            self.inter_c,
             "intra: ",
-            intra_c,
+            self.intra_c,
             "coord: ",
-            coord_c,
+            self.coord_c,
         )
 
         self.build_matrix()

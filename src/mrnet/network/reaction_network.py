@@ -62,15 +62,7 @@ class ReactionNetwork(MSONable):
         temperature=298.15,
         solvent_dielectric=18.5,
         solvent_refractive_index=1.415,
-        replace_ind=True,
-        reaction_types: Union[Set, FrozenSet] = frozenset(
-            {
-                "RedoxReaction",
-                "IntramolSingleBondChangeReaction",
-                "IntermolecularReaction",
-                "CoordinationBondChangeReaction",
-            }
-        ),
+        add_concerteds=True,
     ):
         """
         Generate a ReactionNetwork from a set of MoleculeEntries.
@@ -83,8 +75,6 @@ class ReactionNetwork(MSONable):
             and rate constants (in K)
         :param solvent_dielectric: Dielectric constant of the solvent medium
         :param solvent_refractive_index: Refractive index of the solvent medium
-        :param replace_ind: True if reindex the entries if it there is already
-            indices in the input_entries
         :return:
         """
 
@@ -92,6 +82,7 @@ class ReactionNetwork(MSONable):
         self.temperature = temperature
         self.solvent_dielectric = solvent_dielectric
         self.solvent_refractive_index = solvent_refractive_index
+        self.add_concerteds = add_concerteds
 
         self.entries_list = reaction_iterator.entries_box.entries_list
         self.graph = nx.DiGraph()
@@ -120,6 +111,9 @@ class ReactionNetwork(MSONable):
 
             self.add_reaction(reaction_object.graph_representation())
             count += 1
+            if not self.add_concerteds:
+                if count == len(reaction_iterator.rn.reactions):
+                    break
 
         self.PR_record = self.build_PR_record()  # begin creating PR list
         self.Reactant_record = self.build_reactant_record()  # begin creating rct list

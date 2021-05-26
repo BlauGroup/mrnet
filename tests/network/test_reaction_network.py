@@ -26,10 +26,7 @@ from mrnet.network.reaction_network import (
 from mrnet.network.reaction_generation import ReactionIterator
 from mrnet.stochastic.serialize import find_mol_entry_from_xyz_and_charge
 
-try:
-    import openbabel as ob
-except ImportError:
-    ob = None
+import openbabel as ob
 
 test_dir = os.path.join(
     os.path.dirname(__file__),
