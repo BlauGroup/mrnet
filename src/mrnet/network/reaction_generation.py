@@ -41,7 +41,7 @@ class EntriesBox:
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
         for ii, entry in enumerate(input_entries):
-            entry.parameters["sequential_index"] = ii
+            entry.parameters["ind"] = ii
         self.full_entries_list = input_entries
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
@@ -153,9 +153,6 @@ class EntriesBox:
             assert len(filtered_entries_list) + num_isomorphic == len(connected_entries)
 
             print(len(filtered_entries_list), "unique filtered entries")
-            # Add filtered indices
-            for ii, entry in enumerate(filtered_entries_list):
-                entry.parameters["filtered_index"] = ii
 
             entry_dict_count = 0
             for formula in entries:
@@ -164,12 +161,11 @@ class EntriesBox:
                         for entry in entries[formula][num_bonds][charge]:
                             entry_count += 1
                             assert entry in entries_list
-                            assert "filtered_index" in entry.parameters
-                            assert "sequential_index" in entry.parameters
+                            assert "ind" in entry.parameters
             assert entry_dict_count == len(filtered_entries_list)
 
             self.entries_dict = entries
-            self.filtered_entries_list = sorted(filtered_entries_list, key=lambda x: x.parameters["filtered_index"])
+            self.filtered_entries_list = sorted(filtered_entries_list, key=lambda x: x.parameters["ind"])
         else:
             self.entries_dict = {}
             self.filtered_entries_list = []
