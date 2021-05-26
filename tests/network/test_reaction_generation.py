@@ -53,9 +53,9 @@ class TestEntriesBox(PymatgenTest):
             os.path.join(root_test_dir, "choli_limited_complex_filter.json")
         )
         entries_box = EntriesBox(molecule_entries)
-        assert len(entries_box.entries_list) == 100
+        assert len(entries_box.filtered_entries_list) == 100
         entries_unfiltered = EntriesBox(molecule_entries, remove_complexes=False)
-        assert len(entries_unfiltered.entries_list) == 200
+        assert len(entries_unfiltered.filtered_entries_list) == 200
 
 
 class TestReactionIterator(PymatgenTest):

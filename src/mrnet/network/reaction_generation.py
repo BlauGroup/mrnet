@@ -42,7 +42,7 @@ class EntriesBox:
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
         for ii, entry in enumerate(input_entries):
             entry.parameters["ind"] = ii
-        self.full_entries_list = input_entries
+        self.entries_list = input_entries
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
         # Sequential indices are essential for kMC - DO NOT CHANGE!!!
@@ -155,16 +155,16 @@ class EntriesBox:
             print(len(filtered_entries_list), "unique filtered entries")
 
             entry_dict_count = 0
-            for formula in entries:
-                for num_bonds in entries[formula]:
-                    for charge in entries[formula][num_bonds]:
-                        for entry in entries[formula][num_bonds][charge]:
-                            entry_count += 1
-                            assert entry in entries_list
+            for formula in entries_dict:
+                for num_bonds in entries_dict[formula]:
+                    for charge in entries_dict[formula][num_bonds]:
+                        for entry in entries_dict[formula][num_bonds][charge]:
+                            entry_dict_count += 1
+                            assert entry in self.entries_list
                             assert "ind" in entry.parameters
             assert entry_dict_count == len(filtered_entries_list)
 
-            self.entries_dict = entries
+            self.entries_dict = entries_dict
             self.filtered_entries_list = sorted(filtered_entries_list, key=lambda x: x.parameters["ind"])
         else:
             self.entries_dict = {}
