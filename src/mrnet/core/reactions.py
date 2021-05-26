@@ -5,7 +5,6 @@ from abc import ABCMeta, abstractmethod
 from collections import Counter
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Tuple, Union
-
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
 import numpy as np
