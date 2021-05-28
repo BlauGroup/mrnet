@@ -174,6 +174,7 @@ class SerializeNetwork:
         cur.executescript(create_metadata_table)
 
         self.new_shard()
+        self.insert_sinks()
         self.serialize()
 
         self.number_of_shards = self.current_shard + 1
@@ -209,6 +210,25 @@ class SerializeNetwork:
                 return True
 
         return False
+
+    def insert_sinks(
+            self
+    ):
+        for entry in self.entries_list:
+            species_id = entry.parameters["ind"]
+            self.insert_reaction(
+                str(species_id) + "->",
+                1,
+                0,
+                species_id,
+                -1,
+                -1,
+                -1,
+                self.temperature,
+                entry.get_free_energy()
+            )
+
+        self.con.commit()
 
     def insert_reaction(
         self,
