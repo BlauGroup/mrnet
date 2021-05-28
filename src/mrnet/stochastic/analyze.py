@@ -673,8 +673,9 @@ class SimulationAnalyzer:
             for (reaction_index, number) in sorted(
                 self.sinks.items(), key=lambda pair: -pair[1]
             ):
-                f.write(str(number) + " occourances of:")
+                f.write(str(number) + " occourances of ")
                 latex_emit_molecule(f, reaction_index)
+                f.write("\n\n\n")
             generate_latex_footer(f)
 
 
