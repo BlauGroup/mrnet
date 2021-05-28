@@ -279,6 +279,7 @@ class SimulationAnalyzer:
             self.reports_folder + "/molecule_diagrams", self.mol_entries
         )
 
+
     def index_to_reaction(self, reaction_index):
         shard = reaction_index // self.shard_size
         if reaction_index in self.reaction_data:
@@ -649,6 +650,17 @@ class SimulationAnalyzer:
                         self.observed_reactions[reaction_index] += 1
                     else:
                         self.observed_reactions[reaction_index] = 1
+
+    def compute_sinks(self):
+        self.sinks = {}
+        for history in self.reaction_histories:
+            for reaction_index in history:
+                if reaction_index < len(self.entries_box.entries_list):
+                    if reaction_index in self.sinks:
+                        self.sinks[reaction_index] += 1
+                    else:
+                        self.sinks[reaction_index] = 1
+
 
     def frequently_occouring_reactions(self, number: int):
         """
