@@ -662,6 +662,22 @@ class SimulationAnalyzer:
                         self.sinks[reaction_index] = 1
         return self.sinks
 
+    def generate_sink_report(self):
+        self.compute_sinks()
+        with open(self.reports_folder + "/sink_report.tex", "w") as f:
+
+            generate_latex_header(f)
+
+            f.write("sink report")
+            f.write("\n\n\n")
+            for (reaction_index, number) in sorted(
+                self.sinks.items(), key=lambda pair: -pair[1]
+            ):
+                f.write(str(number) + " occourances of:")
+                latex_emit_molecule(f, reaction_index)
+            generate_latex_footer(f)
+
+
 
     def frequently_occouring_reactions(self, number: int):
         """
