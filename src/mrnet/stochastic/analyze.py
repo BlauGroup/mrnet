@@ -655,11 +655,12 @@ class SimulationAnalyzer:
         self.sinks = {}
         for history in self.reaction_histories:
             for reaction_index in history:
-                if reaction_index < len(self.entries_box.entries_list):
+                if reaction_index < len(self.mol_entries):
                     if reaction_index in self.sinks:
                         self.sinks[reaction_index] += 1
                     else:
                         self.sinks[reaction_index] = 1
+        return self.sinks
 
 
     def frequently_occouring_reactions(self, number: int):
