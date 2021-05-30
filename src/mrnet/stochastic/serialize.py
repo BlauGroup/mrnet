@@ -420,7 +420,7 @@ def serialize_simulation_parameters(
         f.write(str(number_of_threads) + "\n")
 
     with open(folder + seeds_postfix, "w") as f:
-        for seed in range(1000, 1000 + number_of_simulations * 2):
+        for seed in range(base_seed, base_seed + number_of_simulations * 2):
             f.write(str(seed) + "\n")
 
 
