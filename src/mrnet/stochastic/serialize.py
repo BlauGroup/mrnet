@@ -224,7 +224,7 @@ class SerializeNetwork:
                 -1,
                 -1,
                 -1,
-                self.temperature,
+                self.temperature * 100.0,
                 entry.get_free_energy()
             )
 
