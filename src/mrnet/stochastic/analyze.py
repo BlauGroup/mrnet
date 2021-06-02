@@ -200,7 +200,7 @@ class SimulationAnalyzer:
     A class to analyze the resutls of a set of MC runs
     """
 
-    def __init__(self, network_folder: str, entries_box: EntriesBox):
+    def __init__(self, network_folder: str, entries_box: EntriesBox, load_times=True):
 
         initial_state_postfix = "/initial_state"
         simulation_histories_postfix = "/simulation_histories"
@@ -248,15 +248,9 @@ class SimulationAnalyzer:
         reaction_histories_contents = [
             x for x in histories_contents if x.startswith("reactions")
         ]
-        time_histories_contents = [
-            x for x in histories_contents if x.startswith("times")
-        ]
 
         reaction_seeds = [x.split("_")[1] for x in reaction_histories_contents]
-        time_seeds = [x.split("_")[1] for x in reaction_histories_contents]
 
-        if reaction_seeds != time_seeds:
-            raise ValueError("Reactions and times not from same set of initial seeds!")
 
         for filename in reaction_histories_contents:
             reaction_history = list()
@@ -266,13 +260,20 @@ class SimulationAnalyzer:
 
             self.reaction_histories.append(reaction_history)
 
-        for filename in time_histories_contents:
-            time_history = list()
-            with open(self.histories_folder + "/" + filename) as f:
-                for line in f:
-                    time_history.append(float(line.strip()))
+        if load_times:
 
-            self.time_histories.append(np.array(time_history))
+            time_histories_contents = [
+                x for x in histories_contents if x.startswith("times")
+            ]
+            time_seeds = [x.split("_")[1] for x in reaction_histories_contents]
+
+            for filename in time_histories_contents:
+                time_history = list()
+                with open(self.histories_folder + "/" + filename) as f:
+                    for line in f:
+                        time_history.append(float(line.strip()))
+
+                self.time_histories.append(time_history)
 
         self.number_simulations = len(self.reaction_histories)
         visualize_molecules(
