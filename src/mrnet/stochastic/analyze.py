@@ -323,6 +323,61 @@ class SimulationAnalyzer:
 
         return pathway_dict
 
+    def extract_sink_info(
+            self):
+
+        consumed_dict = [0] * self.number_of_species
+        produced_dict = [0] * self.number_of_species
+
+        for reaction_history in self.reaction_histories:
+            for reaction_index in reaction_history:
+                reaction = self.index_to_reaction(reaction_index)
+
+                for reactant_index in reaction["reactants"]:
+                    consumed_dict[reactant_index] += 1
+
+                for product_index in reaction["products"]:
+                    produced_dict[product_index] += 1
+
+        max_ratio = 1e10
+        ratio_dict = [max_ratio] * self.number_of_species
+
+        for i in range(self.number_of_species):
+            if consumed_dict[i] != 0:
+                ratio_dict[i] = produced_dict[i] / consumed_dict[i]
+
+        return sorted(
+            list(enumerate(zip(consumed_dict, produced_dict, ratio_dict))),
+            key=lambda item: -item[1][2])
+
+
+    def sink_report(
+            self):
+
+        sink_info = self.extract_sink_info()
+
+        with open(
+            self.reports_folder + "/sink_report.tex",
+            "w",
+        ) as f:
+
+            generate_latex_header(f)
+
+            for (species_index,(c,p,r)) in sink_info:
+                if c + p > 0:
+                    f.write("\n\n\n")
+                    f.write("ratio: " + str(r) + '\n\n\n')
+                    f.write("produced: " + str(p) + '\n\n\n')
+                    f.write("consumed: " + str(c) + '\n\n\n')
+                    latex_emit_molecule(f, species_index)
+                    f.write("\\vspace{1cm}")
+
+
+            generate_latex_footer(f)
+
+
+
+
     def extract_species_consumption_info(
         self, target_species_index: int
     ) -> Tuple[Dict[int, int], Dict[int, int], List[int]]:
