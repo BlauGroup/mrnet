@@ -3,8 +3,11 @@
 # Distributed under the terms of the MIT License.
 from ast import literal_eval, operator
 from functools import reduce
+import math
+
 import mrnet
 from mrnet.stochastic.analyze import SimulationAnalyzer, NetworkUpdater
+from mrnet.utils.constants import KB, ROOM_TEMP, PLANCK
 
 __author__ = "Hetal D. Patel"
 __maintainer__ = "Hetal D. Patel"
@@ -14,12 +17,17 @@ __status__ = "Alpha"
 __date__ = "May, 2021"
 
 
-
-
 def reaction_category_RNMC(network_folder, entriesbox, reaction_ids):
+    """
+    Method to categorize reactions from RNMC based on reaction ids
+    :param network_folder: path to network folder
+    :param entriesbox: EntriesBox instance of the entries
+    :param reaction_ids: list of RNMC reaction ids
+    :return: category_dict: dict with key being the type of reactions and item being
+        a list of reaction ids
+    """
 
-    category_dict = {"single_element_reactant":[], "redox":[],"Li_hopping":[], "Li_coord_change":[],
-                     "H_or_F_abstraction":[], "actual_bond_changes": [], "non_local_reaction_center": []}
+    category_dict = {}
     sa = SimulationAnalyzer(network_folder, entriesbox)
     for rxn_id in reaction_ids:
         r_info = sa.index_to_reaction(rxn_id)
@@ -31,25 +39,47 @@ def reaction_category_RNMC(network_folder, entriesbox, reaction_ids):
             products.append(entriesbox.entries_list[p])
         r = [reactants, products]
         rxn_type = reaction_category(r)
-        category_dict[rxn_type].append(rxn_id)
+        if rxn_type not in category_dict.keys():
+            category_dict[rxn_type] = []
+        else:
+            category_dict[rxn_type].append(rxn_id)
+    return category_dict
 
 
-def update_rates_RNMC(network_folder, category_dict, rates=None):
-
+def update_rates_RNMC(network_folder, category_dict, barrier=None):
+    """
+    Method to update rates of reactions based on the type of reactions and its reaction id
+    :param network_folder: path to network folder
+    :param category_dict: category_dict: dict with key being the type of reactions and item
+    being a list of reaction ids
+    :param rates: dict with key being the category of reactions to udpate barriers for
+    and the value being the barrier
+    value to update to
+    """
     update = []
-    if rates is None:
-        rates = {"redox": 0.1, "Li_hopping": 0.1, "Li_coord_change": 0.1, "H_or_F_abstraction": 0.1}
-
-    for rxn_type in rates:
-        rate = rates[rxn_type]
+    if barrier is None:
+        barrier = {
+            "Li_hopping": -0.24,
+            "Li_coord_change": -0.24,
+        }
+    kT = KB * ROOM_TEMP
+    max_rate = kT / PLANCK
+    for rxn_type in barrier:
+        rate = max_rate * math.exp(barrier[rxn_type] / kT)
         for rxn_id in category_dict[rxn_type]:
             update.append((rxn_id, rate))
 
     network_updater = NetworkUpdater(network_folder)
     network_updater.update_rates(update)
 
-def reaction_category(r): #r = [[reactnat molecule entries], [product moleucle entries]]
 
+def reaction_category(r):
+    """
+    Mehtod to categroize a single reaction
+    :param r: list of reactant and product MoleculeEntry [[reactnat molecule entries],
+    [product moleucle entries]]
+    :return: string indicating type of reaction
+    """
 
     all_reactants = []
     react_global_bonds = []
@@ -81,11 +111,7 @@ def reaction_category(r): #r = [[reactnat molecule entries], [product moleucle e
             if i.formula == "Li1":
                 single_elemt_Li = True
 
-
-
-
     mapping_dict = mrnet.core.reactions.get_reaction_atom_mapping(r[0], r[1])
-    print("reactant speices", all_reactants)
     all_reactant_species = all_reactants
     for r_id, react in enumerate(r[0]):
         for b in react.bonds:
@@ -97,13 +123,10 @@ def reaction_category(r): #r = [[reactnat molecule entries], [product moleucle e
             s = (mapping_dict[1][p_id][b[0]], mapping_dict[1][p_id][b[1]])
             s = sorted(s)
             prod_global_bonds.append(s)
-    print(react_global_bonds, prod_global_bonds)
     r_set = set(map(lambda x: repr(x), react_global_bonds))
     p_set = set(map(lambda x: repr(x), prod_global_bonds))
     diff_r_p = list(map(lambda y: literal_eval(y), r_set - p_set))
     diff_p_r = list(map(lambda y: literal_eval(y), p_set - r_set))
-    print("diff_p-r", diff_p_r)
-    print("diff_r-p", diff_r_p)
 
     if diff_r_p != []:
         r_p = reduce(operator.concat, diff_r_p)
@@ -114,176 +137,83 @@ def reaction_category(r): #r = [[reactnat molecule entries], [product moleucle e
     else:
         p_r = []
 
-    print("!!", r_p, p_r)
-
-    # if len(list((set(r_p) & set(p_r)))) != 0:
-    # print("reaction center behaving")
     Li_ind = [i for i, x in enumerate(all_reactant_species) if x == "Li"]
-    # if Li_ind != []:
 
-    if r_charge != p_charge:
-        print("redox")
+    if r_charge != p_charge:  # redox
+        return "redox"
 
-
-
-    elif r_p == [] or p_r == []:
-        print("either only bond forming or breaking")
+    elif r_p == [] or p_r == []:  # bonds are either only forming or only breaking
         combined_diff = diff_p_r + diff_r_p
-        print(combined_diff)
-        if combined_diff == []:
-            print("UNSURE")
-        elif list(set(combined_diff[0]).intersection(*combined_diff)) == []:  # [(10,1), (10,9), (10,3)]
-            print("either only forming or breaking bonds during the reaction AND not following rxn center")
-            print("non_local_reaction_center")
+        if (
+            combined_diff == []
+        ):  # there is no difference in reactant and product graphs, so change transfer maybe
+            # occuring
+            return "uncategorized"
+        elif (
+            list(set(combined_diff[0]).intersection(*combined_diff)) == []
+        ):  # reaction center rule not satisfied
             if LiF:
-                print(
-                    "LiF forming - either only forming or breaking bonds during the reaction AND not following rxn center")
-                print("LiF forming - non_local_reaction_center")
+                return "non_local_reaction_center_LiF_formning"
+            else:
+                return "non_local_reaction_center"
 
         elif single_elem_react_or_prod:
-            print("single element bond forming or breaking")
             if single_elemt_Li:
-                print("Li coordination bond Li+A <> LiA")
+                return "Li_coordination_Li+A_to_LiA"
             else:
-                print("for AutoTS")
+                return "AutoTS"
 
-
-        elif (set(Li_ind) & set(r_p)) or (set(Li_ind) & set(p_r)):  # [10,4,5]
-            # print((set(Li_ind) & set(r_p)),(set(Li_ind) & set(p_r)))
+        elif (set(Li_ind) & set(r_p)) or (
+            set(Li_ind) & set(p_r)
+        ):  # bond changes involve Li
             if len(r[0]) == 1 and len(r[1]) == 1:
-                print("change in corrdination within a molecule")
+                return "coordination_change_within_molecule"  # EC monodentate <> EC bidentate
             elif LiF:
-                print("LiF coordinating")
+                return "LiF_coordinating"  # A + LiF <> ALiF
             else:
-                print("for AutoTS")
+                print("AutoTS")
         else:
-            print("coord and covalent bond break/form")
+            print(
+                "coord_and_covalent_bond_changes"
+            )  # ex. Li coordination causes covalent bond breakage
 
-
-    else:
-        print("bonds breaking AND forming", single_elem_react_or_prod, Li_ind)
-
-        if len(list((set(r_p) & set(p_r)))) == 0:  # reaction center
-            # list(set(diff_r_p[0]).intersection(*diff_r_p)) == [] or list(set(diff_p_r[0]).intersection(*diff_p_r))
-            # == []:
-            # print("change in corrdination within a molecule")
-            print("non_local_reaction_center")
-
+    else:  # bonds are being broken AND formed
+        if len(list((set(r_p) & set(p_r)))) == 0:  # check for reaction center
+            return "non_local_reaction_center"
 
         elif (set(Li_ind) & set(r_p)) and (
-                set(Li_ind) & set(p_r)):  # some sort of Li bonding AND Li breaking is involved
-            Li_changing = (set(Li_ind) & set(r_p) & set(p_r))
+            set(Li_ind) & set(p_r)
+        ):  # some sort of Li bonding AND Li breaking
+            Li_changing = set(Li_ind) & set(r_p) & set(p_r)
             if len(r[0]) == 1 and len(r[1]) == 1:
-                print("change in corrdination within a molecule")
+                return "coordination_change_within_molecule"
             elif "F" in all_reactant_species:
                 F_ind = [i for i, x in enumerate(all_reactant_species) if x == "F"]
-
                 edge = [[x, y] for x in F_ind for y in Li_changing]
                 for e in edge:
                     e.sort()
                     if e in react_global_bonds and e in prod_global_bonds:
                         Li_hopping = True
                 if Li_hopping:
-                    print("LiF hopping")
+                    return "LiF_hopping"  # ALiF + B <> A + BLiF
                 else:
-                    print("Li_hopping - inside")
+                    print("Li_hopping")  # LiA + B <> A + LiB
             else:
-                print("Li_hopping")
+                print("Li_hopping")  # LiA + B <> A + LiB
 
-
-
-        elif (set(Li_ind) & set(r_p)) or (set(Li_ind) & set(p_r)):
+        elif (set(Li_ind) & set(r_p)) or (
+            set(Li_ind) & set(p_r)
+        ):  # some sort of Li bonding OR breaking
             if single_elemt_Li:
-                # print((set(Li_ind) & set(r_p)),(set(Li_ind) & set(p_r)))
-                print("coord and covalent bond break/form")
+                return "coord_and_covalent_bond_changes"  # ex. Li coordination
+                # causes covalent bond breakage
             else:
-                print("for AutoTS")
+                return "AutoTS"
 
         elif single_elem_react_or_prod:
-            print("single element bond forming or breaking")
             if single_elemt_Li:
-                print("Li coordination bond Li+A <> LiA")
+                return "Li_coordination_Li+A_to_LiA"
             else:
-                print("for AutoTS")
+                return "AutoTS"
         else:
-            print("for AutoTS")
-
-
-
-
-
-        all_reactant_species = []
-        react_global_bonds = []
-        prod_global_bonds = []
-        r_charge = 0
-        p_charge = 0
-        single_elem_reactant = False
-
-        for i in r[0]:
-            r_charge = r_charge + i.charge
-            all_reactant_species = all_reactant_species + i.species
-            if len(i.species) == 1:
-                single_elem_reactant = True
-        for i in r[1]:
-            p_charge = p_charge + i.charge
-
-        if single_elem_reactant:
-            return "single_element_reactant"
-        elif r_charge != p_charge:
-            return "redox"
-        else:
-            mapping_dict = mrnet.core.reactions.get_reaction_atom_mapping(r[0], r[1])
-            for r_id, react in enumerate(r[0]):
-                for b in react.bonds:
-                    s = (mapping_dict[0][r_id][b[0]], mapping_dict[0][r_id][b[1]])
-                    s = sorted(s)
-                    react_global_bonds.append(s)
-            for p_id, prod in enumerate(r[1]):
-                for b in prod.bonds:
-                    s = (mapping_dict[1][p_id][b[0]], mapping_dict[1][p_id][b[1]])
-                    s = sorted(s)
-                    prod_global_bonds.append(s)
-            r_set = set(map(lambda x: repr(x), react_global_bonds))
-            p_set = set(map(lambda x: repr(x), prod_global_bonds))
-            diff_r_p = list(map(lambda y: literal_eval(y), r_set - p_set))
-            diff_p_r = list(map(lambda y: literal_eval(y), p_set - r_set))
-            print("p-r", diff_p_r)
-            print("r-p", diff_r_p)
-            if diff_r_p != []:
-                r_p = reduce(operator.concat, diff_r_p)
-            else:
-                r_p = []
-            if diff_p_r != []:
-                p_r = reduce(operator.concat, diff_p_r)
-            else:
-                p_r = []
-
-            if r_p == [] or p_r == []:
-                print("either only forming or breaking bonds during the reaction")
-                if list(set(diff_r_p[0]).intersection(*diff_r_p)) == []:
-                    print("either only forming or breaking bonds during the reaction AND not following rxn center")
-                    return "non_local_reaction_center"
-                elif len(list((set(r_p) & set(p_r)))) != 0:
-                    print("reaction center behaving")
-                    Li_ind = [i for i, x in enumerate(all_reactant_species) if x == "Li"]
-                    if Li_ind != []:
-                        if (set(Li_ind) & set(r_p)) and (set(Li_ind) & set(p_r)):
-                            print("in both - so hopping")
-                            return "Li_hopping"
-                        elif (set(Li_ind) & set(r_p)) or (set(Li_ind) & set(p_r)):
-                            print("only in one - so coord")
-                            return "Li_coord_change"
-                    elif "H" in all_reactant_species or "F" in all_reactant_species:
-                        print("actual bond change?")
-                        if len(set(r_p) & set(p_r)) == 1 and all_reactant_species[list(set(r_p) & set(p_r))[0]] == "H" or all_reactant_species[
-                            list(set(r_p) & set(p_r))[0]] == "F":
-                            print("H or F abstraction")
-                            return "H_or_F_abstraction"
-                    else:
-                        return "actual_bond_changes"
-                # print(r_p, p_r, list(set(r_p) & set(p_r))[0])
-
-
-
-
-
+            return "AutoTS"
