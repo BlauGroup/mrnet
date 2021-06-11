@@ -10,7 +10,7 @@ from scipy.constants import N_A
 from monty.serialization import loadfn, dumpfn
 from pymatgen.util.testing import PymatgenTest
 
-from mrnet.network.reaction_generation import ReactionGenerator
+from mrnet.network.reaction_generation import ReactionIterator, EntriesBox
 from mrnet.stochastic.serialize import (
     SerializeNetwork,
     serialize_simulation_parameters,
@@ -66,7 +66,8 @@ class RNMC(PymatgenTest):
         initial_state_data_1 = [(li_plus_mol_entry, 300), (ec_mol_entry, 30)]
         initial_state_data_2 = [(li_plus_mol_entry, 30), (ec_mol_entry, 300)]
 
-        reaction_generator = ReactionGenerator(molecule_entries)
+        entries_box = EntriesBox(molecule_entries)
+        reaction_generator = ReactionIterator(entries_box)
 
         # for large networks, you want to use shard_size=2000000
         SerializeNetwork(network_folder_1, reaction_generator, shard_size=100)
@@ -81,18 +82,14 @@ class RNMC(PymatgenTest):
         # instead, for reaction_network_2 we symlink the database into the folder
         clone_database(network_folder_1, network_folder_2)
 
-        serialize_initial_state(
-            network_folder_1, molecule_entries, initial_state_data_1
-        )
-        serialize_initial_state(
-            network_folder_2, molecule_entries, initial_state_data_2
-        )
+        serialize_initial_state(network_folder_1, entries_box, initial_state_data_1)
+        serialize_initial_state(network_folder_2, entries_box, initial_state_data_2)
         serialize_simulation_parameters(param_folder, number_of_threads=4)
 
         run_simulator(network_folder_1, param_folder)
         run_simulator(network_folder_2, param_folder)
 
-        sa_1 = SimulationAnalyzer(network_folder_1, molecule_entries)
+        sa_1 = SimulationAnalyzer(network_folder_1, entries_box)
         sa_1.generate_pathway_report(ledc_mol_entry, 10)
         sa_1.generate_consumption_report(ledc_mol_entry)
         sa_1.generate_reaction_tally_report(10)
@@ -100,7 +97,7 @@ class RNMC(PymatgenTest):
         states_1 = sa_1.final_state_analysis(profiles_1["final_states"])
         rxn_counts_1 = sa_1.rank_reaction_counts()
 
-        sa_2 = SimulationAnalyzer(network_folder_2, molecule_entries)
+        sa_2 = SimulationAnalyzer(network_folder_2, entries_box)
         sa_2.generate_pathway_report(ledc_mol_entry, 10)
         sa_2.generate_consumption_report(ledc_mol_entry)
         sa_2.generate_reaction_tally_report(10)

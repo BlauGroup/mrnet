@@ -12,7 +12,7 @@ from pymatgen.analysis.local_env import OpenBabelNN
 from pymatgen.analysis.fragmenter import metal_edge_extender
 
 from mrnet.network.reaction_network import ReactionNetwork
-from mrnet.network.reaction_generation import ReactionGenerator
+from mrnet.network.reaction_generation import ReactionIterator
 from mrnet.core.mol_entry import MoleculeEntry
 from mrnet.utils.constants import ROOM_TEMP, PLANCK, KB
 
@@ -140,7 +140,7 @@ class SerializeNetwork:
     def __init__(
         self,
         folder: str,
-        reaction_generator: ReactionGenerator,
+        reaction_generator: ReactionIterator,
         shard_size: int = 1000000,
         commit_barrier: int = 10000,
         temperature=ROOM_TEMP,
@@ -160,7 +160,7 @@ class SerializeNetwork:
         self.constant_barrier = constant_barrier
         self.insert_duplicates = insert_duplicates
         self.dG_cutoff = dG_cutoff
-        self.entries_list = self.reaction_generator.rn.entries_list
+        self.entries_list = self.reaction_generator.entries_box.entries_list
         self.db_postfix = "/rn.sqlite"
         self.current_shard = -1
         self.number_of_reactions = 0
@@ -252,12 +252,11 @@ class SerializeNetwork:
 
     def serialize(self):
 
-        for (
-            reactants,
-            products,
-            forward_free_energy,
-            backward_free_energy,
-        ) in self.reaction_generator:
+        for reaction in self.reaction_generator:
+            reactants = reaction[0]
+            products = reaction[1]
+            forward_free_energy = reaction[2]
+            backward_free_energy = -forward_free_energy
 
             forward_reaction_string = "".join(
                 [
@@ -353,7 +352,7 @@ def rate(dG, temperature, constant_barrier):
 
 def serialize_initial_state(
     folder: str,
-    entries_list,
+    entries_box,
     initial_state_data: List[Tuple[MoleculeEntry, int]],
     factor_zero: float = 1.0,
     factor_two: float = 1.0,
@@ -374,7 +373,7 @@ def serialize_initial_state(
     with open(folder + factor_duplicate_postfix, "w") as f:
         f.write(("%e" % factor_duplicate) + "\n")
 
-    initial_state = np.zeros(len(entries_list))
+    initial_state = np.zeros(len(entries_box.entries_list))
     for (mol_entry, count) in initial_state_data:
         index = mol_entry.parameters["ind"]
         initial_state[index] = count

@@ -86,7 +86,7 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install -e .
-        pytest --cov=mrnet --cov-report=xml
+        PYTHONHASHSEED=42 pytest --cov=mrnet --cov-report=xml
 
     - uses: codecov/codecov-action@v1
       with:
