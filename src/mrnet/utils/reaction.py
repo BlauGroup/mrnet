@@ -1,10 +1,7 @@
 # coding: utf-8
 # Copyright (c) Pymatgen Development Team.
 # Distributed under the terms of the MIT License.
-import os
-import sys
 from collections import defaultdict
-from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -128,23 +125,14 @@ def get_reaction_atom_mapping(
 
     # solve integer programming problem to get atom mapping
     if len(reactant_bonds) != 0 and len(product_bonds) != 0:
-        if not msg:
-            with stdout_redirected():
-                num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
-                    reactant_species,
-                    product_species,
-                    reactant_bonds,
-                    product_bonds,
-                    threads,
-                )
-        else:
-            num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
-                reactant_species,
-                product_species,
-                reactant_bonds,
-                product_bonds,
-                threads,
-            )
+        num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
+            reactant_species,
+            product_species,
+            reactant_bonds,
+            product_bonds,
+            msg,
+            threads,
+        )
     else:
         # corner case that integer programming cannot handle
         out = get_atom_mapping_no_bonds(
@@ -264,6 +252,7 @@ def solve_integer_programing(
     product_species: List[str],
     reactant_bonds: List[Bond],
     product_bonds: List[Bond],
+    msg: bool = True,
     threads: Optional[int] = None,
 ) -> Tuple[int, List[Union[int, None]], List[Union[int, None]]]:
     """
@@ -277,6 +266,7 @@ def solve_integer_programing(
         product_species: species string of product atoms
         reactant_bonds: bonds in reactant
         product_bonds: bonds in product
+        msg: whether to show the solver running message to stdout.
         threads: number of threads for the solver. `None` to use default.
 
     Returns:
@@ -303,6 +293,11 @@ def solve_integer_programing(
 
     if threads is not None:
         model.threads = threads
+
+    if msg:
+        model.verbose = 1
+    else:
+        model.verbose = 0
 
     y_vars = {
         (i, k): model.add_var(var_type=BINARY, name=f"y_{i}_{k}")
@@ -435,34 +430,6 @@ def generate_atom_mapping_1_1(
     product_atom_mapping = {v: k for k, v in node_mapping.items()}
 
     return reactant_atom_mapping, product_atom_mapping
-
-
-@contextmanager
-def stdout_redirected(to=os.devnull):
-    """
-    Context manager to redirect file descriptor stdout (e.g. C library output) to devnull.
-
-    Example:
-    with stdout_redirected(to=filename):
-        print("from Python")
-        os.system("echo non-Python applications are also supported")
-
-    See: https://stackoverflow.com/questions/5081657/how-do-i-prevent-a-c-shared-library-to-print-on-stdout-in-python/
-    """
-    fd = sys.stdout.fileno()
-
-    def _redirect_stdout(to):
-        sys.stdout.close()  # + implicit flush()
-        os.dup2(to.fileno(), fd)  # fd writes to 'to' file
-        sys.stdout = os.fdopen(fd, "w")  # Python writes to fd
-
-    with os.fdopen(os.dup(fd), "w") as old_stdout:
-        with open(to, "w") as file:
-            _redirect_stdout(to=file)
-        try:
-            yield  # allow code to be run with the redirected stdout
-        finally:
-            _redirect_stdout(to=old_stdout)  # restore stdout.
 
 
 class ReactionMappingError(Exception):
