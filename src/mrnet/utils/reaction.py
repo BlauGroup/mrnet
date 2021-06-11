@@ -1,26 +1,26 @@
 # coding: utf-8
 # Copyright (c) Pymatgen Development Team.
 # Distributed under the terms of the MIT License.
-
+import os
+import sys
 from collections import defaultdict
-from typing import Dict, List, Tuple, Union
+from contextlib import contextmanager
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
-import pulp
-from pulp import LpBinary, LpMinimize, LpProblem, LpVariable, lpSum
+from mip import BINARY, CBC, MINIMIZE, Model, xsum
 
 from mrnet.core.mol_entry import MoleculeEntry
 
 __author__ = "Mingjian Wen"
 __maintainer__ = "Mingjian Wen"
 __email__ = "mjwen@lbl.gov"
-__version__ = "0.1"
+__version__ = "0.2"
 __status__ = "Alpha"
 __date__ = "April, 2021"
 
 
 # typing
-
 Bond = Tuple[int, int]
 AtomMappingDict = Dict[int, int]
 
@@ -29,8 +29,8 @@ def get_reaction_atom_mapping(
     reactants: List[MoleculeEntry],
     products: List[MoleculeEntry],
     max_bond_change: int = 10,
-    solver: str = "COIN_CMD",
-    **kwargs,
+    msg: bool = False,
+    threads: int = 1,
 ) -> Tuple[List[AtomMappingDict], List[AtomMappingDict], int]:
     """
     Get the atom mapping between the reactants and products of a reaction.
@@ -53,17 +53,8 @@ def get_reaction_atom_mapping(
         products: product molecules
         max_bond_change: maximum number of allowed bond changes (break and form) between
             the reactants and products.
-        solver: pulp solver to solve the integer linear programming problem. Different
-            solver may give different result if there is degeneracy in the problem,
-            e.g. symmetry in molecules. So, to give deterministic result, the default
-            solver is set to `COIN_CMD`. If this solver is unavailable on your machine,
-            try a different one (e.g. PULP_CBC_CMD). For a full list of solvers, see
-            https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html
-        kwargs: additional keyword arguments passed to the pulp solver.
-            For example, if solver is `COIN_CMD`, we can pass `msg=True` to enable
-            the printing of solver message for debug purpose.
-            For available additional keyword argument for each solver, see
-            https://coin-or.github.io/pulp/technical/solvers.html
+        msg: whether to show the integer programming solver running message to stdout.
+        threads: number of threads for the integer programming solver.
 
     Returns:
         reactants_map_number: rdkit style atom map number for the reactant molecules
@@ -74,10 +65,14 @@ def get_reaction_atom_mapping(
             to each other in the reaction. For example, given
             `reactants_map_number=[{0:3, 1:0}, {0:2, 1:1}]` and
             `products_map_number = [{0:1}, {0:0, 1:2, 2:3}]`, we can conclude that
-            atom 0 in reactant molecule 0 maps to atom 2 in product molecule 1;
-            atom 1 in reactant molecule 0 maps to atom 0 in product molecule 1;
-            atom 0 in reactant molecule 1 maps to atom 1 in product molecule 1;
-            atom 1 in reactant molecule 1 maps to atom 0 in product molecule 0.
+            atom 0 in reactant molecule 0 maps to atom 2 in product molecule 1 (both
+            with map number 3);
+            atom 1 in reactant molecule 0 maps to atom 0 in product molecule 1 (both
+            with map number 0);
+            atom 0 in reactant molecule 1 maps to atom 1 in product molecule 1 (both
+            with map number 2);
+            atom 1 in reactant molecule 1 maps to atom 0 in product molecule 0 both
+            with map number 1).
         products_map_number: rdkit style atom map number for the product molecules.
             See `reactants_map_number` for more.
         num_bond_change: number of changed bond in the reaction
@@ -89,9 +84,6 @@ def get_reaction_atom_mapping(
     """
 
     # preliminary check
-
-    # check 0: pulp solver
-    solver = _check_pulp_solver(solver)
 
     # check 1: reactants and products have the same atom counts
     rct_species = defaultdict(int)  # type: Dict[str, int]
@@ -136,14 +128,23 @@ def get_reaction_atom_mapping(
 
     # solve integer programming problem to get atom mapping
     if len(reactant_bonds) != 0 and len(product_bonds) != 0:
-        num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
-            reactant_species,
-            product_species,
-            reactant_bonds,
-            product_bonds,
-            solver,
-            **kwargs,
-        )
+        if not msg:
+            with stdout_redirected():
+                num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
+                    reactant_species,
+                    product_species,
+                    reactant_bonds,
+                    product_bonds,
+                    threads,
+                )
+        else:
+            num_bond_change, r2p_mapping, p2r_mapping = solve_integer_programing(
+                reactant_species,
+                product_species,
+                reactant_bonds,
+                product_bonds,
+                threads,
+            )
     else:
         # corner case that integer programming cannot handle
         out = get_atom_mapping_no_bonds(
@@ -263,8 +264,7 @@ def solve_integer_programing(
     product_species: List[str],
     reactant_bonds: List[Bond],
     product_bonds: List[Bond],
-    solver: str = "COIN_CMD",
-    **kwargs,
+    threads: Optional[int] = None,
 ) -> Tuple[int, List[Union[int, None]], List[Union[int, None]]]:
     """
     Solve an integer programming problem to get atom mapping between reactants and
@@ -277,13 +277,7 @@ def solve_integer_programing(
         product_species: species string of product atoms
         reactant_bonds: bonds in reactant
         product_bonds: bonds in product
-        solver: pulp solver to solve the integer linear programming problem. Different
-            solver may give different result if there is degeneracy in the problem,
-            e.g. symmetry in molecules. So, to give deterministic result, the default
-            solver is set to `COIN_CMD`. If this solver is unavailable on your machine,
-            try a different one (e.g. PULP_CBC_CMD). For a full list of solvers, see
-            https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html
-        kwargs: additional keyword arguments passed to the pulp solver.
+        threads: number of threads for the solver. `None` to use default.
 
     Returns:
         objective: minimized objective value. This corresponds to the number of changed
@@ -300,25 +294,24 @@ def solve_integer_programing(
         Reaction Mechanisms through Integer Linear Optimization`,
         J. Chem. Inf. Model. 2012, 52, 84–92, https://doi.org/10.1021/ci200351b
     """
-    solver = _check_pulp_solver(solver)
-
-    # default msg to False to avoid printing solver info
-    msg = kwargs.pop("msg", False)
-    solver = pulp.getSolver(solver, msg=msg, **kwargs)
 
     atoms = list(range(len(reactant_species)))
 
     # init model and variables
-    model = LpProblem(name="Reaction_Atom_Mapping", sense=LpMinimize)
+    model = Model(name="Reaction_Atom_Mapping", sense=MINIMIZE, solver_name=CBC)
+    model.emphasis = 1
+
+    if threads is not None:
+        model.threads = threads
 
     y_vars = {
-        (i, k): LpVariable(cat=LpBinary, name=f"y_{i}_{k}")
+        (i, k): model.add_var(var_type=BINARY, name=f"y_{i}_{k}")
         for i in atoms
         for k in atoms
     }
 
     alpha_vars = {
-        (i, j, k, l): LpVariable(cat=LpBinary, name=f"alpha_{i}_{j}_{k}_{l}")
+        (i, j, k, l): model.add_var(var_type=BINARY, name=f"alpha_{i}_{j}_{k}_{l}")
         for (i, j) in reactant_bonds
         for (k, l) in product_bonds
     }
@@ -328,9 +321,9 @@ def solve_integer_programing(
     # constraint 2: each atom in the reactants maps to exactly one atom in the products
     # constraint 3: each atom in the products maps to exactly one atom in the reactants
     for i in atoms:
-        model += lpSum([y_vars[(i, k)] for k in atoms]) == 1
+        model += xsum([y_vars[(i, k)] for k in atoms]) == 1
     for k in atoms:
-        model += lpSum([y_vars[(i, k)] for i in atoms]) == 1
+        model += xsum([y_vars[(i, k)] for i in atoms]) == 1
 
     # constraint 4: allows only atoms of the same type to map to one another
     for i in atoms:
@@ -346,34 +339,35 @@ def solve_integer_programing(
             model += alpha_vars[(i, j, k, l)] <= y_vars[(j, k)] + y_vars[(j, l)]
 
     # create objective
-    obj1 = lpSum(
-        1 - lpSum(alpha_vars[(i, j, k, l)] for (k, l) in product_bonds)
+    obj1 = xsum(
+        1 - xsum(alpha_vars[(i, j, k, l)] for (k, l) in product_bonds)
         for (i, j) in reactant_bonds
     )
-    obj2 = lpSum(
-        1 - lpSum(alpha_vars[(i, j, k, l)] for (i, j) in reactant_bonds)
+    obj2 = xsum(
+        1 - xsum(alpha_vars[(i, j, k, l)] for (i, j) in reactant_bonds)
         for (k, l) in product_bonds
     )
     obj = obj1 + obj2
 
     # solve the problem
     try:
-        model.setObjective(obj)
-        model.solve(solver)
+        model.objective = obj
+        model.optimize()
     except Exception:
         raise ReactionMappingError("Failed solving integer programming.")
 
-    objective = pulp.value(model.objective)  # type: int
-    if objective is None:
+    if not model.num_solutions:
         raise ReactionMappingError("Failed solving integer programming.")
 
     # get atom mapping between reactant and product
     r2p_mapping = [None for _ in atoms]  # type: List[Union[int, None]]
     p2r_mapping = [None for _ in atoms]  # type: List[Union[int, None]]
     for (i, k), v in y_vars.items():
-        if pulp.value(v) == 1:
+        if v.x == 1:
             r2p_mapping[i] = k
             p2r_mapping[k] = i
+
+    objective = model.objective_value  # type: int
 
     return objective, r2p_mapping, p2r_mapping
 
@@ -443,41 +437,32 @@ def generate_atom_mapping_1_1(
     return reactant_atom_mapping, product_atom_mapping
 
 
-def _check_pulp_solver(solver: str) -> str:
+@contextmanager
+def stdout_redirected(to=os.devnull):
     """
-    Depending on how `pulp` is installed, different solver are available. If installed
-    via conda-forge, `COIN_CMD` is available; and if installed via PyPI, `PULP_CBC_CMD`
-    and `PULP_CHOCO_CMD` are available. In fact, `PULP_CBC_CMD` is just a precompiled
-    version of the COIN/CBC method, and it should behave the same as `COIN_CMD`.
+    Context manager to redirect file descriptor stdout (e.g. C library output) to devnull.
 
-    In this function, we select `PULP_CBC_CMD` if `COIN_CMD` is unavailable. In such,
-    we get the same behavior regardless whether `pulp` is installed via conda-forge or
-    from PyPI.
+    Example:
+    with stdout_redirected(to=filename):
+        print("from Python")
+        os.system("echo non-Python applications are also supported")
 
-    Returns:
-        Either `COIN_CMD` or `PULP_CBC_CMD`.
+    See: https://stackoverflow.com/questions/5081657/how-do-i-prevent-a-c-shared-library-to-print-on-stdout-in-python/
     """
-    solver = solver.upper()
-    avail_solver = pulp.listSolvers(onlyAvailable=True)
+    fd = sys.stdout.fileno()
 
-    # switch to the other if requested solver is unavailable
-    if solver not in avail_solver:
-        if solver == "COIN_CMD":
-            solver = "PULP_CBC_CMD"
-        elif solver == "PULP_CBC_CMD":
-            solver = "COIN_CMD"
+    def _redirect_stdout(to):
+        sys.stdout.close()  # + implicit flush()
+        os.dup2(to.fileno(), fd)  # fd writes to 'to' file
+        sys.stdout = os.fdopen(fd, "w")  # Python writes to fd
 
-    if solver not in avail_solver:
-        raise ReactionMappingError(
-            f"Cannot proceed to do atom mapping, because the default `pulp` solvers "
-            f"`COIN_CMD` or `PULP_CBC_CMD` are unavailable on your machine. Your current "
-            f"`pulp`installation supports {avail_solver}. Try one of these by passing "
-            "`solver=<AVAILABLE_SOLVER>` to the function."
-            "For more information of `pulp` solver, see: "
-            "https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html"
-        )
-
-    return solver
+    with os.fdopen(os.dup(fd), "w") as old_stdout:
+        with open(to, "w") as file:
+            _redirect_stdout(to=file)
+        try:
+            yield  # allow code to be run with the redirected stdout
+        finally:
+            _redirect_stdout(to=old_stdout)  # restore stdout.
 
 
 class ReactionMappingError(Exception):
