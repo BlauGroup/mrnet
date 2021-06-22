@@ -630,10 +630,7 @@ class TestReactionNetwork(PymatgenTest):
             [self.EC_ind, self.Li1_ind], self.LEDC_ind, weight="softplus", num_paths=10
         )
 
-        if 420 in paths_calculated[0]["all_prereqs"]:
-            assert paths_calculated[0]["byproducts"] == [164]
-        elif 41 in paths_calculated[0]["all_prereqs"]:
-            assert paths_calculated[0]["byproducts"] == [164, 164]
+        assert paths_calculated[0]["byproducts"] == [164]
 
         benchmark = 0.000001
         assert abs(paths_calculated[0]["cost"] - 2.3135953094636403) < benchmark
