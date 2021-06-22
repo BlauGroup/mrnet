@@ -232,8 +232,7 @@ def get_local_global_atom_index_mapping(
     for i, m in enumerate(molecules):
         global_species.extend(m.species)
 
-        bonds = np.asarray(m.bonds) + n
-        bonds = [tuple(b) for b in bonds.tolist()]
+        bonds = [(b[0] + n, b[1] + n) for b in m.bonds]
         global_bonds.extend(bonds)
 
         mp_l2g = [j + n for j in range(m.num_atoms)]
