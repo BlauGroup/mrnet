@@ -546,12 +546,14 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
             ],
         )
         self.assertEqual(len(graph.edges), 6)
-        self.assertEqual(
+        assert (
             graph.get_edge_data(
                 LiEC_ind, str(LiEC_ind) + "," + str(EC_minus_ind) + "+" + str(Li_ind)
-            )["softplus"],
-            1.5036425808336291,
+            )["softplus"]
+            - 1.5036425808336291
+            < 0.0000000000001
         )
+
         self.assertEqual(
             graph.get_edge_data(
                 LiEC_ind, str(EC_minus_ind) + "+" + str(Li_ind) + "," + str(LiEC_ind)
@@ -669,7 +671,7 @@ class TestMetalHopReaction(PymatgenTest):
             ],
         )
         self.assertEqual(len(graph.edges), 8)
-        self.assertEqual(
+        assert (
             graph.get_edge_data(
                 liec_ind,
                 str(liec_ind)
@@ -679,9 +681,11 @@ class TestMetalHopReaction(PymatgenTest):
                 + str(liec_plus_ind)
                 + "+"
                 + str(ec_minus_ind),
-            )["softplus"],
-            1.1019073858904995,
+            )["softplus"]
+            - 1.1019073858904995
+            < 0.0000000000001
         )
+
         self.assertEqual(
             graph.get_edge_data(
                 liec_ind,
