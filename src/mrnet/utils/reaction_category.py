@@ -4,7 +4,6 @@
 from ast import literal_eval, operator
 from functools import reduce
 import math
-
 import mrnet
 from mrnet.stochastic.analyze import SimulationAnalyzer, NetworkUpdater
 from mrnet.utils.constants import KB, ROOM_TEMP, PLANCK
@@ -46,7 +45,7 @@ def reaction_category_RNMC(network_folder, entriesbox, reaction_ids):
     return category_dict
 
 
-def update_rates_RNMC(network_folder, category_dict, barrier=None):
+def update_rates_RNMC(network_folder, category_dict, barrier_dict=None):
     """
     Method to update rates of reactions based on the type of reactions and its reaction id
     :param network_folder: path to network folder
@@ -57,17 +56,35 @@ def update_rates_RNMC(network_folder, category_dict, barrier=None):
     value to update to
     """
     update = []
-    if barrier is None:
-        barrier = {
+    if barrier_dict is None:
+        barrier_dict = {
             "Li_hopping": -0.24,
-            "Li_coord_change": -0.24,
         }
     kT = KB * ROOM_TEMP
     max_rate = kT / PLANCK
-    for rxn_type in barrier:
-        rate = max_rate * math.exp(barrier[rxn_type] / kT)
-        for rxn_id in category_dict[rxn_type]:
+    rate_dict = {}
+    for category, barrier in barrier_dict.items():
+        rate_dict[category] = max_rate * math.exp(-barrier_dict[barrier] / kT)
+    for category, rate in rate_dict.items():
+        for rxn_id in category_dict[category]:
             update.append((rxn_id, rate))
+
+    network_updater = NetworkUpdater(network_folder)
+    network_updater.update_rates(update)
+
+
+def update_rates_specific_rxn(network_folder, reactions_barriers):
+    """
+    Method to update rates for specific reactions
+    :param network_folder: path to network folder
+    :param reactions_barriers: list of tuples with (reaction_id, barrier)
+    """
+
+    update = []
+    for r in reactions_barriers:
+        r_id = r[0]
+        r_barrier = r[1]
+        update.append((r_id, r_barrier))
 
     network_updater = NetworkUpdater(network_folder)
     network_updater.update_rates(update)
