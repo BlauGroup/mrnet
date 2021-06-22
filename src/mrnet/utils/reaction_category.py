@@ -39,10 +39,32 @@ def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids):
         r = [reactants, products]
         rxn_type = reaction_category(r)
         if rxn_type not in category_dict.keys():
-            category_dict[rxn_type] = []
+            category_dict[rxn_type] = [rxn_id]
         else:
             category_dict[rxn_type].append(rxn_id)
     return category_dict
+
+
+def reaction_extraction_from_pathway(
+    simulation_analyzer, target_id, num_paths=100, sort_by="weight"
+):
+
+    reaction_dict = simulation_analyzer.extract_reaction_pathways(target_id)[target_id]
+    paths = list(reaction_dict.keys())
+    if sort_by == "weight":
+        paths_sorted = sorted(
+            paths,
+            key=lambda x: (reaction_dict[x]["weight"], reaction_dict[x]["frequency"]),
+        )
+    else:
+        paths_sorted = sorted(
+            paths,
+            key=lambda x: (reaction_dict[x]["frequency"], reaction_dict[x]["weight"]),
+        )
+    paths_sorted = [list(x) for x in paths_sorted]
+    top_paths_sorted = [list(x) for x in paths_sorted][0:num_paths]
+    all_reactions = reduce(operator.concat, top_paths_sorted)
+    return all_reactions
 
 
 def update_rates_RNMC(network_folder_to_udpate, category_dict, barrier_dict=None):
@@ -58,13 +80,13 @@ def update_rates_RNMC(network_folder_to_udpate, category_dict, barrier_dict=None
     update = []
     if barrier_dict is None:
         barrier_dict = {
-            "Li_hopping": -0.24,
+            "Li_hopping": 0.24,
         }
     kT = KB * ROOM_TEMP
     max_rate = kT / PLANCK
     rate_dict = {}
     for category, barrier in barrier_dict.items():
-        rate_dict[category] = max_rate * math.exp(-barrier_dict[barrier] / kT)
+        rate_dict[category] = max_rate * math.exp(-barrier / kT)
     for category, rate in rate_dict.items():
         for rxn_id in category_dict[category]:
             update.append((rxn_id, rate))
@@ -188,11 +210,9 @@ def reaction_category(r):
             elif LiF:
                 return "LiF_coordinating"  # A + LiF <> ALiF
             else:
-                return("AutoTS")
+                return "AutoTS"
         else:
-            return(
-                "coord_and_covalent_bond_changes"
-            )  # ex. Li coordination causes covalent bond breakage
+            return "coord_and_covalent_bond_changes"  # ex. Li coordination causes covalent bond breakage
 
     else:  # bonds are being broken AND formed
         if len(list((set(r_p) & set(p_r)))) == 0:  # check for reaction center
@@ -214,9 +234,9 @@ def reaction_category(r):
                 if Li_hopping:
                     return "LiF_hopping"  # ALiF + B <> A + BLiF
                 else:
-                    return("Li_hopping")  # LiA + B <> A + LiB
+                    return "Li_hopping"  # LiA + B <> A + LiB
             else:
-                return("Li_hopping")  # LiA + B <> A + LiB
+                return "Li_hopping"  # LiA + B <> A + LiB
 
         elif (set(Li_ind) & set(r_p)) or (
             set(Li_ind) & set(p_r)
