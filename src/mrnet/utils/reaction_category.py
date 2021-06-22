@@ -16,7 +16,7 @@ __status__ = "Alpha"
 __date__ = "May, 2021"
 
 
-def reaction_category_RNMC(network_folder, entriesbox, reaction_ids):
+def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids):
     """
     Method to categorize reactions from RNMC based on reaction ids
     :param network_folder: path to network folder
@@ -27,9 +27,8 @@ def reaction_category_RNMC(network_folder, entriesbox, reaction_ids):
     """
 
     category_dict = {}
-    sa = SimulationAnalyzer(network_folder, entriesbox)
     for rxn_id in reaction_ids:
-        r_info = sa.index_to_reaction(rxn_id)
+        r_info = simulation_analyzer.index_to_reaction(rxn_id)
         reactants = []
         products = []
         for r in r_info["reactants"]:
@@ -45,7 +44,7 @@ def reaction_category_RNMC(network_folder, entriesbox, reaction_ids):
     return category_dict
 
 
-def update_rates_RNMC(network_folder, category_dict, barrier_dict=None):
+def update_rates_RNMC(network_folder_to_udpate, category_dict, barrier_dict=None):
     """
     Method to update rates of reactions based on the type of reactions and its reaction id
     :param network_folder: path to network folder
@@ -69,11 +68,11 @@ def update_rates_RNMC(network_folder, category_dict, barrier_dict=None):
         for rxn_id in category_dict[category]:
             update.append((rxn_id, rate))
 
-    network_updater = NetworkUpdater(network_folder)
+    network_updater = NetworkUpdater(network_folder_to_udpate)
     network_updater.update_rates(update)
 
 
-def update_rates_specific_rxn(network_folder, reactions_barriers):
+def update_rates_specific_rxn(network_folder_to_update, reactions_barriers):
     """
     Method to update rates for specific reactions
     :param network_folder: path to network folder
@@ -86,7 +85,7 @@ def update_rates_specific_rxn(network_folder, reactions_barriers):
         r_barrier = r[1]
         update.append((r_id, r_barrier))
 
-    network_updater = NetworkUpdater(network_folder)
+    network_updater = NetworkUpdater(network_folder_to_update)
     network_updater.update_rates(update)
 
 
