@@ -1,8 +1,9 @@
 # coding: utf-8
 # Copyright (c) Pymatgen Development Team.
 # Distributed under the terms of the MIT License.
-from ast import literal_eval, operator
+from ast import literal_eval
 from functools import reduce
+import operator
 import math
 import mrnet
 from mrnet.stochastic.analyze import SimulationAnalyzer, NetworkUpdater
@@ -187,9 +188,9 @@ def reaction_category(r):
             elif LiF:
                 return "LiF_coordinating"  # A + LiF <> ALiF
             else:
-                print("AutoTS")
+                return("AutoTS")
         else:
-            print(
+            return(
                 "coord_and_covalent_bond_changes"
             )  # ex. Li coordination causes covalent bond breakage
 
@@ -213,9 +214,9 @@ def reaction_category(r):
                 if Li_hopping:
                     return "LiF_hopping"  # ALiF + B <> A + BLiF
                 else:
-                    print("Li_hopping")  # LiA + B <> A + LiB
+                    return("Li_hopping")  # LiA + B <> A + LiB
             else:
-                print("Li_hopping")  # LiA + B <> A + LiB
+                return("Li_hopping")  # LiA + B <> A + LiB
 
         elif (set(Li_ind) & set(r_p)) or (
             set(Li_ind) & set(p_r)
