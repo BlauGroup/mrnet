@@ -8,6 +8,7 @@ import math
 import mrnet
 from mrnet.stochastic.analyze import SimulationAnalyzer, NetworkUpdater
 from mrnet.utils.constants import KB, ROOM_TEMP, PLANCK
+from mrnet.utils.visualization import generate_latex_header, generate_latex_footer
 
 __author__ = "Hetal D. Patel"
 __maintainer__ = "Hetal D. Patel"
@@ -80,6 +81,23 @@ def reaction_extraction_from_pathway(
         all_reactions = list(set(reduce(operator.concat, top_paths_sorted)))
 
         return all_reactions
+
+def generate_categorization_report(sa, reports_folder, category_dict, categories_to_print=[]):
+
+
+    with open(
+            reports_folder + "/categorization.tex",
+            "w",
+    ) as f:
+        generate_latex_header(f)
+        for rxn_type, reactions in category_dict.items():
+            f.write("\n\n\n")
+            f.write("REACTION TYPE COUNT: " + rxn_type + " " + str(len(reactions)))
+            if rxn_type in categories_to_print:
+                f.write("\n\n\n")
+                for reaction_index in reactions:
+                    sa.latex_emit_reaction(f, reaction_index)
+        generate_latex_footer(f)
 
 
 def update_rates_RNMC(network_folder_to_udpate, category_dict, barrier_dict=None):
