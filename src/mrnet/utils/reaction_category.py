@@ -160,7 +160,6 @@ def reaction_category(r):
         if i.formula == "F1 Li1":
             LiF = True
         elif len(i.species) == 1:
-            print(i.species)
             single_elem_react_or_prod = True
             if i.formula == "Li1":
                 single_elemt_Li = True
