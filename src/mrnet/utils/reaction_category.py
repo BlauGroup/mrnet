@@ -49,22 +49,32 @@ def reaction_extraction_from_pathway(
     simulation_analyzer, target_id, num_paths=100, sort_by="weight"
 ):
 
-    reaction_dict = simulation_analyzer.extract_reaction_pathways(target_id)[target_id]
-    paths = list(reaction_dict.keys())
-    if sort_by == "weight":
-        paths_sorted = sorted(
-            paths,
-            key=lambda x: (reaction_dict[x]["weight"], reaction_dict[x]["frequency"]),
-        )
+    simulation_analyzer.extract_reaction_pathways(target_id)
+    reaction_dict = simulation_analyzer.reaction_pathways_dict[target_id]
+    if reaction_dict == {}:
+        return "No paths to " + str(target_id)
     else:
-        paths_sorted = sorted(
-            paths,
-            key=lambda x: (reaction_dict[x]["frequency"], reaction_dict[x]["weight"]),
-        )
-    paths_sorted = [list(x) for x in paths_sorted]
-    top_paths_sorted = [list(x) for x in paths_sorted][0:num_paths]
-    all_reactions = reduce(operator.concat, top_paths_sorted)
-    return all_reactions
+        paths = list(reaction_dict.keys())
+        if sort_by == "weight":
+            paths_sorted = sorted(
+                paths,
+                key=lambda x: (
+                    reaction_dict[x]["weight"],
+                    reaction_dict[x]["frequency"],
+                ),
+            )
+        else:
+            paths_sorted = sorted(
+                paths,
+                key=lambda x: (
+                    reaction_dict[x]["frequency"],
+                    reaction_dict[x]["weight"],
+                ),
+            )
+        paths_sorted = [list(x) for x in paths_sorted]
+        top_paths_sorted = [list(x) for x in paths_sorted][0:num_paths]
+        all_reactions = reduce(operator.concat, top_paths_sorted)
+        return all_reactions
 
 
 def update_rates_RNMC(network_folder_to_udpate, category_dict, barrier_dict=None):
