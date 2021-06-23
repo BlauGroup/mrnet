@@ -92,7 +92,8 @@ def generate_categorization_report(sa, reports_folder, category_dict, categories
         generate_latex_header(f)
         for rxn_type, reactions in category_dict.items():
             f.write("\n\n\n")
-            f.write("REACTION TYPE COUNT: " + rxn_type + " " + str(len(reactions)))
+            str_type = str("Reaction Type: " + rxn_type + " count: " + str(len(reactions))).replace("_", " ")
+            f.write(str_type)
             if rxn_type in categories_to_print:
                 f.write("\n\n\n")
                 for reaction_index in reactions:
@@ -244,7 +245,7 @@ def reaction_category(r):
             else:
                 return "AutoTS"
         else:
-            return "coord_and_covalent_bond_changes"  # ex. Li coordination causes covalent bond breakage
+            return "AutoTS"
 
     else:  # bonds are being broken AND formed
         if len(list((set(r_p) & set(p_r)))) == 0:  # check for reaction center
