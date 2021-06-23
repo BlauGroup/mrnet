@@ -17,17 +17,17 @@ __status__ = "Alpha"
 __date__ = "May, 2021"
 
 
-def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids):
+def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids, category_dict={}):
     """
     Method to categorize reactions from RNMC based on reaction ids
     :param network_folder: path to network folder
     :param entriesbox: EntriesBox instance of the entries
     :param reaction_ids: list of RNMC reaction ids
+    :param category_dict: if pre-existing dictionary with categorization exist
     :return: category_dict: dict with key being the type of reactions and item being
         a list of reaction ids
     """
 
-    category_dict = {}
     for rxn_id in reaction_ids:
         r_info = simulation_analyzer.index_to_reaction(rxn_id)
         reactants = []
@@ -42,6 +42,10 @@ def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids):
             category_dict[rxn_type] = [rxn_id]
         else:
             category_dict[rxn_type].append(rxn_id)
+
+    for rxn_type in category_dict:
+        category_dict[rxn_type] = list(set(category_dict[rxn_type]))
+
     return category_dict
 
 
@@ -73,7 +77,8 @@ def reaction_extraction_from_pathway(
             )
         paths_sorted = [list(x) for x in paths_sorted]
         top_paths_sorted = [list(x) for x in paths_sorted][0:num_paths]
-        all_reactions = reduce(operator.concat, top_paths_sorted)
+        all_reactions = list(set(reduce(operator.concat, top_paths_sorted)))
+
         return all_reactions
 
 
