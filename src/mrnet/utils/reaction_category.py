@@ -18,7 +18,13 @@ __status__ = "Alpha"
 __date__ = "May, 2021"
 
 
-def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids, category_dict={}):
+def reaction_category_RNMC(
+    simulation_analyzer,
+    entriesbox,
+    reaction_ids,
+    category_dict={},
+    initial_mol_molentries=None,
+):
     """
     Method to categorize reactions from RNMC based on reaction ids
     :param network_folder: path to network folder
@@ -38,7 +44,7 @@ def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids, catego
         for p in r_info["products"]:
             products.append(entriesbox.entries_list[p])
         r = [reactants, products]
-        rxn_type = reaction_category(r)
+        rxn_type = reaction_category(r, initial_mol_molentries)
         if rxn_type not in category_dict.keys():
             category_dict[rxn_type] = [rxn_id]
         else:
@@ -49,8 +55,14 @@ def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids, catego
 
     return category_dict
 
-def dG_based_barrier_update_RNMC_(simulation_analyzer, network_folder_to_udpate, reaction_ids,barrier=0.24,
-                                  abs_cutoff=0.08):
+
+def dG_based_barrier_update_RNMC_(
+    simulation_analyzer,
+    network_folder_to_udpate,
+    reaction_ids,
+    barrier=0.24,
+    abs_cutoff=0.08,
+):
 
     kT = KB * ROOM_TEMP
     max_rate = kT / PLANCK
@@ -58,7 +70,7 @@ def dG_based_barrier_update_RNMC_(simulation_analyzer, network_folder_to_udpate,
     update = []
     for rxn_id in reaction_ids:
         r_info = simulation_analyzer.index_to_reaction(rxn_id)
-        dG = r_info['free_energy']
+        dG = r_info["free_energy"]
         if abs(dG) <= abs_cutoff:
             update.append((rxn_id, rate))
 
@@ -98,18 +110,23 @@ def reaction_extraction_from_pathway(
 
         return all_reactions
 
-def generate_categorization_report(sa, reports_folder, category_dict, categories_to_print=[]):
+
+def generate_categorization_report(
+    sa, reports_folder, category_dict, categories_to_print=[]
+):
 
     if categories_to_print == []:
         categories_to_print = list(category_dict.keys())
     with open(
-            reports_folder + "/categorization.tex",
-            "w",
+        reports_folder + "/categorization.tex",
+        "w",
     ) as f:
         generate_latex_header(f)
         for rxn_type, reactions in category_dict.items():
             f.write("\n\n\n")
-            str_type = str("Reaction Type: " + rxn_type + " count: " + str(len(reactions))).replace("_", " ")
+            str_type = str(
+                "Reaction Type: " + rxn_type + " count: " + str(len(reactions))
+            ).replace("_", " ")
             f.write(str_type)
             if rxn_type in categories_to_print:
                 f.write("\n\n\n")
@@ -282,15 +299,20 @@ def reaction_category(r, initial_mol_molentries=None):
                     return "LiF_hopping"  # ALiF + B <> A + BLiF
                 else:
                     if initial_mol_molentries is not None:
-                        if set(r[0]).intersection(set(initial_mol_molentries)) != set() and set(r[1]).intersection(set(
-                            initial_mol_molentries)) != set():
+                        if (
+                            set(r[0]).intersection(set(initial_mol_molentries)) != set()
+                            and set(r[1]).intersection(set(initial_mol_molentries))
+                            != set()
+                        ):
                             return "Li_hopping_initial_mol_in_reactant_and_product"
                     else:
                         return "Li_hopping"  # LiA + B <> A + LiB
             else:
                 if initial_mol_molentries is not None:
-                    if set(r[0]).intersection(set(initial_mol_molentries)) != set() and set(r[1]).intersection(set(
-                            initial_mol_molentries)) != set():
+                    if (
+                        set(r[0]).intersection(set(initial_mol_molentries)) != set()
+                        and set(r[1]).intersection(set(initial_mol_molentries)) != set()
+                    ):
                         return "Li_hopping_initial_mol_in_reactant_and_product"
                 else:
                     return "Li_hopping"  # LiA + B <> A + LiB
