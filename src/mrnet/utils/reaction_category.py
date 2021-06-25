@@ -56,9 +56,9 @@ def reaction_category_RNMC(
     return category_dict
 
 
-def dG_based_barrier_update_RNMC_(
+def dG_based_barrier_update_RNMC(
     simulation_analyzer,
-    network_folder_to_udpate,
+    network_folder_to_update,
     reaction_ids,
     barrier=0.24,
     abs_cutoff=0.08,
@@ -74,8 +74,8 @@ def dG_based_barrier_update_RNMC_(
         if abs(dG) <= abs_cutoff:
             update.append((rxn_id, rate))
 
-        network_updater = NetworkUpdater(network_folder_to_udpate)
-        network_updater.update_rates(update)
+    network_updater = NetworkUpdater(network_folder_to_update)
+    network_updater.update_rates(update)
 
 
 def reaction_extraction_from_pathway(
