@@ -49,6 +49,22 @@ def reaction_category_RNMC(simulation_analyzer, entriesbox, reaction_ids, catego
 
     return category_dict
 
+def dG_based_barrier_update_RNMC_(simulation_analyzer, network_folder_to_udpate, reaction_ids,barrier=0.24,
+                                  abs_cutoff=0.08):
+
+    kT = KB * ROOM_TEMP
+    max_rate = kT / PLANCK
+    rate = max_rate * math.exp(-barrier / kT)
+    update = []
+    for rxn_id in reaction_ids:
+        r_info = simulation_analyzer.index_to_reaction(rxn_id)
+        dG = r_info['free_energy']
+        if abs(dG) <= abs_cutoff:
+            update.append((rxn_id, rate))
+
+        network_updater = NetworkUpdater(network_folder_to_udpate)
+        network_updater.update_rates(update)
+
 
 def reaction_extraction_from_pathway(
     simulation_analyzer, target_id, num_paths=100, sort_by="weight"
@@ -84,7 +100,8 @@ def reaction_extraction_from_pathway(
 
 def generate_categorization_report(sa, reports_folder, category_dict, categories_to_print=[]):
 
-
+    if categories_to_print == []:
+        categories_to_print = list(category_dict.keys())
     with open(
             reports_folder + "/categorization.tex",
             "w",
@@ -129,24 +146,22 @@ def update_rates_RNMC(network_folder_to_udpate, category_dict, barrier_dict=None
     network_updater.update_rates(update)
 
 
-def update_rates_specific_rxn(network_folder_to_update, reactions_barriers):
+def supress_rxns_RNMC(network_folder_to_update, reactions_ids):
     """
-    Method to update rates for specific reactions
-    :param network_folder: path to network folder
-    :param reactions_barriers: list of tuples with (reaction_id, barrier)
+    Method to add high barriers to reactions
+    :param network_folder_to_update: path to network folder
+    :param reactions_ids: list of reaction ids
     """
 
     update = []
-    for r in reactions_barriers:
-        r_id = r[0]
-        r_barrier = r[1]
-        update.append((r_id, r_barrier))
+    for r_id in reactions_ids:
+        update.append((r_id, 0))
 
     network_updater = NetworkUpdater(network_folder_to_update)
     network_updater.update_rates(update)
 
 
-def reaction_category(r):
+def reaction_category(r, initial_mol_molentries=None):
     """
     Mehtod to categroize a single reaction
     :param r: list of reactant and product MoleculeEntry [[reactnat molecule entries],
@@ -175,7 +190,6 @@ def reaction_category(r):
                 single_elemt_Li = True
     for i in r[1]:
         p_charge = p_charge + i.charge
-
         if i.formula == "F1 Li1":
             LiF = True
         elif len(i.species) == 1:
@@ -225,7 +239,7 @@ def reaction_category(r):
             list(set(combined_diff[0]).intersection(*combined_diff)) == []
         ):  # reaction center rule not satisfied
             if LiF:
-                return "non_local_reaction_center_LiF_formning"
+                return "non_local_reaction_center_LiF_forming"
             else:
                 return "non_local_reaction_center"
 
@@ -267,9 +281,19 @@ def reaction_category(r):
                 if Li_hopping:
                     return "LiF_hopping"  # ALiF + B <> A + BLiF
                 else:
-                    return "Li_hopping"  # LiA + B <> A + LiB
+                    if initial_mol_molentries is not None:
+                        if set(r[0]).intersection(set(initial_mol_molentries)) != set() and set(r[1]).intersection(set(
+                            initial_mol_molentries)) != set():
+                            return "Li_hopping_initial_mol_in_reactant_and_product"
+                    else:
+                        return "Li_hopping"  # LiA + B <> A + LiB
             else:
-                return "Li_hopping"  # LiA + B <> A + LiB
+                if initial_mol_molentries is not None:
+                    if set(r[0]).intersection(set(initial_mol_molentries)) != set() and set(r[1]).intersection(set(
+                            initial_mol_molentries)) != set():
+                        return "Li_hopping_initial_mol_in_reactant_and_product"
+                else:
+                    return "Li_hopping"  # LiA + B <> A + LiB
 
         elif (set(Li_ind) & set(r_p)) or (
             set(Li_ind) & set(p_r)
