@@ -305,6 +305,8 @@ def reaction_category(r, initial_mol_molentries=None):
                             != set()
                         ):
                             return "Li_hopping_initial_mol_in_reactant_and_product"
+                        else:
+                            return "Li_hopping"  # LiA + B <> A + LiB
                     else:
                         return "Li_hopping"  # LiA + B <> A + LiB
             else:
@@ -314,6 +316,8 @@ def reaction_category(r, initial_mol_molentries=None):
                         and set(r[1]).intersection(set(initial_mol_molentries)) != set()
                     ):
                         return "Li_hopping_initial_mol_in_reactant_and_product"
+                    else:
+                        return "Li_hopping"  # LiA + B <> A + LiB
                 else:
                     return "Li_hopping"  # LiA + B <> A + LiB
 
