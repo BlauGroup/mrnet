@@ -31,7 +31,7 @@ def reaction_category_RNMC(
     :param entriesbox: EntriesBox instance of the entries
     :param reaction_ids: list of RNMC reaction ids
     :param category_dict: if pre-existing dictionary with categorization exist
-    :return: category_dict: dict with key being the type of reactions and item being
+    :return: category_dict: dictionary with key being the type of reactions and item being
         a list of reaction ids
     """
 
@@ -63,6 +63,14 @@ def dG_based_barrier_update_RNMC(
     barrier=0.24,
     abs_cutoff=0.08,
 ):
+    """
+    Method to identify Li_hopping reactions with a dG within the absolate value of the cutoff.
+    :param simulation_analyzer: SimulationAnalyzer object
+    :param network_folder_to_update: path to network folder with rn.sqlite to update
+    :param reaction_ids: list of Li_hopping reaction ids
+    :param barrier: new barrier to set to the Li_hopping reactions with dG within the absolate value of the cuttoff
+    :param abs_cutoff: absolate dG value within which the barrier should be modified
+    """
 
     kT = KB * ROOM_TEMP
     max_rate = kT / PLANCK
@@ -70,7 +78,7 @@ def dG_based_barrier_update_RNMC(
     update = []
     for rxn_id in reaction_ids:
         r_info = simulation_analyzer.index_to_reaction(rxn_id)
-        dG = r_info["free_energy"]
+        dG = r_info["dG"]
         if abs(dG) <= abs_cutoff:
             update.append((rxn_id, rate))
 
@@ -81,6 +89,14 @@ def dG_based_barrier_update_RNMC(
 def reaction_extraction_from_pathway(
     simulation_analyzer, target_id, num_paths=100, sort_by="weight"
 ):
+    """
+    Method to extract reaction ids from the pathways
+    :param simulation_analyzer: SimulationAnalyzer object
+    :param target_id: speices id to path find to
+    :param num_paths: number of paths to extract reactions from
+    :param sort_by: sort top pathways by frequency or weight
+    :return: all_reactions: list of reaction ids
+    """
 
     simulation_analyzer.extract_reaction_pathways(target_id)
     reaction_dict = simulation_analyzer.reaction_pathways_dict[target_id]
@@ -114,6 +130,13 @@ def reaction_extraction_from_pathway(
 def generate_categorization_report(
     sa, reports_folder, category_dict, categories_to_print=[]
 ):
+    """
+    Method to generate categorization report
+    :param sa: SimulationAnalyzer object
+    :param reports_folder: path to the save the report to
+    :param category_dict: dictionary with reaction category as the key and list of reactions as the value
+    :param categories_to_print: list of reaction types to print, if "[]" all reaction types will be printed
+    """
 
     if categories_to_print == []:
         categories_to_print = list(category_dict.keys())
@@ -138,10 +161,10 @@ def generate_categorization_report(
 def update_rates_RNMC(network_folder_to_udpate, category_dict, barrier_dict=None):
     """
     Method to update rates of reactions based on the type of reactions and its reaction id
-    :param network_folder: path to network folder
+    :param network_folder_to_udpate: path to network folder
     :param category_dict: category_dict: dict with key being the type of reactions and item
     being a list of reaction ids
-    :param rates: dict with key being the category of reactions to udpate barriers for
+    :param barrier_dict: dict with key being the category of reactions to udpate barriers for
     and the value being the barrier
     value to update to
     """
@@ -183,6 +206,8 @@ def reaction_category(r, initial_mol_molentries=None):
     Mehtod to categroize a single reaction
     :param r: list of reactant and product MoleculeEntry [[reactnat molecule entries],
     [product moleucle entries]]
+    :param initial_mol_molentries: list of inital molecule ids, if None Li_hopping reactions with initial
+    molecules both in reactant and prodcuts will not be identified as such.
     :return: string indicating type of reaction
     """
 
