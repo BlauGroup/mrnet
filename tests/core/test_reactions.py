@@ -221,11 +221,12 @@ class TestRedoxReaction(PymatgenTest):
             ],
         )
         self.assertEqual(len(graph.edges), 4)
-        self.assertEqual(
+        assert (
             graph.get_edge_data(EC_0_ind, str(EC_0_ind) + "," + str(EC_1_ind))[
                 "softplus"
-            ],
-            5.629805462349386,
+            ]
+            - 5.629805462349386
+            < 0.0000000000001
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -305,11 +306,12 @@ class TestIntramolSingleBondChangeReaction(PymatgenTest):
             ],
         )
         self.assertEqual(len(graph.edges), 4)
-        self.assertEqual(
+        assert (
             graph.get_edge_data(LiEC_ind, str(LiEC_ind) + "," + str(LiEC_RO_ind))[
                 "softplus"
-            ],
-            0.15092362164364986,
+            ]
+            - 0.15092362164364986
+            < 0.0000000000001
         )
 
     @unittest.skipIf(not ob, "OpenBabel not present. Skipping...")
@@ -422,13 +424,15 @@ class TestIntermolecularReaction(PymatgenTest):
             ],
         )
         self.assertEqual(len(graph.edges), 6)
-        self.assertEqual(
+        assert (
             graph.get_edge_data(
                 LiEC_RO_ind,
                 str(LiEC_RO_ind) + "," + str(C1Li1O3_ind) + "+" + str(C2H4_ind),
-            )["softplus"],
-            0.5828092060367285,
+            )["softplus"]
+            - 0.5828092060367285
+            < 0.0000000000001
         )
+
         self.assertEqual(
             graph.get_edge_data(
                 LiEC_RO_ind,
@@ -542,12 +546,14 @@ class TestCoordinationBondChangeReaction(PymatgenTest):
             ],
         )
         self.assertEqual(len(graph.edges), 6)
-        self.assertEqual(
+        assert (
             graph.get_edge_data(
                 LiEC_ind, str(LiEC_ind) + "," + str(EC_minus_ind) + "+" + str(Li_ind)
-            )["softplus"],
-            1.5036425808336291,
+            )["softplus"]
+            - 1.5036425808336291
+            < 0.0000000000001
         )
+
         self.assertEqual(
             graph.get_edge_data(
                 LiEC_ind, str(EC_minus_ind) + "+" + str(Li_ind) + "," + str(LiEC_ind)
@@ -665,7 +671,7 @@ class TestMetalHopReaction(PymatgenTest):
             ],
         )
         self.assertEqual(len(graph.edges), 8)
-        self.assertEqual(
+        assert (
             graph.get_edge_data(
                 liec_ind,
                 str(liec_ind)
@@ -675,9 +681,11 @@ class TestMetalHopReaction(PymatgenTest):
                 + str(liec_plus_ind)
                 + "+"
                 + str(ec_minus_ind),
-            )["softplus"],
-            1.1019073858904995,
+            )["softplus"]
+            - 1.1019073858904995
+            < 0.0000000000001
         )
+
         self.assertEqual(
             graph.get_edge_data(
                 liec_ind,
