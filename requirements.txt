@@ -1,4 +1,4 @@
-pymatgen==2022.0.9
+pymatgen==2022.0.10
 numpy==1.21.0
 networkx==2.5.1
 pathos==0.2.8
